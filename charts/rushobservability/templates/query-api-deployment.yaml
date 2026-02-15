@@ -30,12 +30,12 @@ spec:
             - name: CLICKHOUSE_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-clickhouse-credentials
+                  name: rushobs-clickhouse-credentials
                   key: user
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-clickhouse-credentials
+                  name: rushobs-clickhouse-credentials
                   key: password
             {{- range $key, $val := .Values.queryApi.env }}
             - name: {{ $key }}
