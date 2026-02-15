@@ -20,10 +20,10 @@ queryApi:
     type: ClusterIP
     port: 8080
 
-# ── web-ui ──
-webUi:
+# ── frontend ──
+frontend:
   image:
-    repository: ghcr.io/rushobservability/web-ui
+    repository: ghcr.io/rushobservability/frontend
     tag: "0.0.3"
     pullPolicy: Always
   replicas: 1
