@@ -27,6 +27,16 @@ spec:
           env:
             - name: CLICKHOUSE_URL
               value: "http://clickhouse-{{ .Release.Name }}-clickhouse:8123"
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-clickhouse-credentials
+                  key: user
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-clickhouse-credentials
+                  key: password
             {{- range $key, $val := .Values.queryApi.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
