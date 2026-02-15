@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "rush.fullname" . }}-web-ui
+  name: {{ include "rush.fullname" . }}-frontend
   labels:
-    app.kubernetes.io/component: web-ui
+    app.kubernetes.io/component: frontend
     {{- include "rush.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.webUi.replicas }}
+  replicas: {{ .Values.frontend.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/component: web-ui
+      app.kubernetes.io/component: frontend
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: web-ui
+        app.kubernetes.io/component: frontend
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
         checksum/nginx-config: {{ include (print $.Template.BasePath "/web-ui-nginx-configmap.yaml") . | sha256sum }}
     spec:
       containers:
-        - name: web-ui
-          image: "{{ .Values.webUi.image.repository }}:{{ .Values.webUi.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.webUi.image.pullPolicy }}
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
             - name: http
               containerPort: 80
@@ -34,7 +34,7 @@ spec:
               mountPath: /etc/nginx/templates/default.conf.template
               subPath: default.conf.template
           resources:
-            {{- toYaml .Values.webUi.resources | nindent 12 }}
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
           readinessProbe:
             httpGet:
               path: /
@@ -50,4 +50,4 @@ spec:
       volumes:
         - name: nginx-config
           configMap:
-            name: {{ include "rush.fullname" . }}-web-ui-nginx
+            name: {{ include "rush.fullname" . }}-frontend-nginx
