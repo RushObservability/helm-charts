@@ -52,8 +52,15 @@ jobs:
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Build dependencies
-        run: helm dependency build charts/${{ matrix.chart }}
+      - name: Build dependencies (if not vendored)
+        run: |
+          CHART_DIR="charts/${{ matrix.chart }}"
+          if [ -f "$CHART_DIR/Chart.lock" ] && ls "$CHART_DIR"/charts/*.tgz 1>/dev/null 2>&1; then
+            echo "Dependencies already vendored, skipping build"
+          else
+            helm repo add altinity https://helm.altinity.com || true
+            helm dependency build "$CHART_DIR"
+          fi
 
       - name: Lint chart
         run: helm lint charts/${{ matrix.chart }}
