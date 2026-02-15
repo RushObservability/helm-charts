@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/component: web-ui
     {{- include "rush.labels" . | nindent 4 }}
 data:
-  default.conf: |
+  default.conf.template: |
     server {
         listen 80;
 
@@ -17,7 +17,7 @@ data:
         }
 
         location /api/ {
-            proxy_pass http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}/api/;
+            proxy_pass http://${QUERY_API_HOST}/api/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
