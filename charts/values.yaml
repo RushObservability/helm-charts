@@ -1,0 +1,46 @@
+# ── query-api ──
+queryApi:
+  image:
+    repository: ghcr.io/rushobservability/query-api
+    tag: ""          # defaults to .Chart.AppVersion
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 8080
+  env:
+    CLICKHOUSE_DATABASE: observability
+    RUST_LOG: wide_query_api=info,tower_http=info
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  service:
+    type: ClusterIP
+    port: 8080
+
+# ── ClickHouse (Altinity subchart) ──
+# Full options: https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse
+clickhouse:
+  enabled: true
+  shardsCount: 1
+  replicasCount: 1
+  image:
+    repository: altinity/clickhouse-server
+    tag: "25.3.6.10034.altinitystable"
+    pullPolicy: IfNotPresent
+  persistence:
+    enabled: true
+    storageClass: ""      # empty = cluster default
+    size: 50Gi
+  initScripts:
+    enabled: true
+    configMapName: "rushobs-clickhouse-init"
+    alwaysRun: true
+  service:
+    type: ClusterIP
+  keeper:
+    enabled: false
+  operator:
+    enabled: true

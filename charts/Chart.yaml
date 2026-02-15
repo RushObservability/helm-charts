@@ -1,0 +1,12 @@
+apiVersion: v2
+name: rushobservability
+description: Rush Observability — query-api + ClickHouse
+version: 0.1.0
+appVersion: "0.1.0"
+type: application
+
+dependencies:
+  - name: clickhouse
+    version: "0.3.x"
+    repository: https://helm.altinity.com
+    condition: clickhouse.enabled

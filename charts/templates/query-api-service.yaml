@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rush.fullname" . }}-query-api
+  labels:
+    app.kubernetes.io/component: query-api
+    {{- include "rush.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.queryApi.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.queryApi.service.port }}
+      targetPort: http
+  selector:
+    app.kubernetes.io/component: query-api
+    app.kubernetes.io/instance: {{ .Release.Name }}
