@@ -3,7 +3,7 @@ queryApi:
   image:
     repository: ghcr.io/rushobservability/query-api
     tag: ""          # defaults to .Chart.AppVersion
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   replicas: 1
   port: 8080
   env:
@@ -19,6 +19,24 @@ queryApi:
   service:
     type: ClusterIP
     port: 8080
+
+# ── web-ui ──
+webUi:
+  image:
+    repository: ghcr.io/rushobservability/web-ui
+    tag: ""          # defaults to .Chart.AppVersion
+    pullPolicy: Always
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  service:
+    type: ClusterIP
+    port: 80
 
 # ── ClickHouse (Altinity subchart) ──
 # Full options: https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse
