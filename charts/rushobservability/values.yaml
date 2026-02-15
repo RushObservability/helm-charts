@@ -24,7 +24,7 @@ queryApi:
 webUi:
   image:
     repository: ghcr.io/rushobservability/web-ui
-    tag: ""          # defaults to .Chart.AppVersion
+    tag: "0.0.2"
     pullPolicy: Always
   replicas: 1
   resources:
