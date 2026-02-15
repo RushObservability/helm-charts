@@ -306,7 +306,7 @@ data:
         TimeUnix              DateTime64(9) CODEC(Delta, ZSTD(1)),
         Count                 UInt64 CODEC(Delta, ZSTD(1)),
         Sum                   Float64 CODEC(ZSTD(1)),
-        ValueAtQuantiles      Array(Tuple(Float64, Float64)) CODEC(ZSTD(1)),
+        ValueAtQuantiles Nested(Quantile Float64, Value Float64) CODEC(ZSTD(1)),
         Flags                 UInt32 CODEC(ZSTD(1)),
         INDEX idx_res_attr_key    mapKeys(ResourceAttributes)  TYPE bloom_filter(0.01) GRANULARITY 1,
         INDEX idx_res_attr_value  mapValues(ResourceAttributes) TYPE bloom_filter(0.01) GRANULARITY 1,
