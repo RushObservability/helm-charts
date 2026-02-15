@@ -10,3 +10,4 @@ dependencies:
     version: "0.3.x"
     repository: https://helm.altinity.com
     condition: clickhouse.enabled
+
