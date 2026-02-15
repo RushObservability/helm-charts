@@ -1,0 +1,81 @@
+name: Release Helm Charts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "charts/**"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      charts: ${{ steps.changed.outputs.charts }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed charts
+        id: changed
+        run: |
+          # Get changed files between this commit and previous
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- charts/)
+
+          # Extract unique chart directories (first level under charts/)
+          CHARTS=$(echo "$CHANGED" \
+            | grep '^charts/' \
+            | cut -d'/' -f2 \
+            | sort -u \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          echo "Changed charts: $CHARTS"
+          echo "charts=$CHARTS" >> "$GITHUB_OUTPUT"
+
+  package-and-push:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.charts != '[]' && needs.detect-changes.outputs.charts != ''
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.detect-changes.outputs.charts) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build dependencies
+        run: helm dependency build charts/${{ matrix.chart }}
+
+      - name: Lint chart
+        run: helm lint charts/${{ matrix.chart }}
+
+      - name: Extract chart version
+        id: meta
+        run: |
+          VERSION=$(grep '^version:' charts/${{ matrix.chart }}/Chart.yaml | awk '{print $2}')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Package chart
+        run: helm package charts/${{ matrix.chart }} --destination .pkg
+
+      - name: Push to GHCR
+        run: |
+          PKG=$(ls .pkg/*.tgz)
+          helm push "$PKG" oci://ghcr.io/${{ github.repository_owner }}/helm-charts
+          echo "Pushed $PKG"
+
+      - name: Summary
+        run: |
+          echo "### Published \`${{ matrix.chart }}\` v${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "helm install ${{ matrix.chart }} oci://ghcr.io/${{ github.repository_owner }}/helm-charts/${{ matrix.chart }} --version ${{ steps.meta.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
