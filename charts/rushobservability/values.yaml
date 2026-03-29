@@ -20,6 +20,36 @@ queryApi:
     type: ClusterIP
     port: 8080
 
+# ── sre-agent ──
+sreAgent:
+  enabled: false                     # disabled by default — requires LLM_API_KEY
+  image:
+    repository: ghcr.io/rushobservability/query-api
+    tag: "0.0.2"
+    pullPolicy: Always
+  replicas: 1
+  port: 8081
+  env:
+    CLICKHOUSE_DATABASE: observability
+    RUST_LOG: wide_query_api=info,tower_http=info
+    LLM_BASE_URL: "https://api.openai.com"
+    LLM_MODEL: "gpt-4o"
+  # LLM API key — provide via --set or external secret
+  # llmApiKey: "sk-..."
+  llmApiKeySecret:
+    name: ""                         # existing secret name (overrides llmApiKey)
+    key: "api-key"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  service:
+    type: ClusterIP
+    port: 8081
+
 # ── frontend ──
 frontend:
   image:
@@ -38,6 +68,39 @@ frontend:
     type: ClusterIP
     port: 80
 
+# ── wide.toml config ──
+# Rendered into a ConfigMap and mounted into query-api at /etc/wide/wide.toml
+wideConfig:
+  storage:
+    s3:
+      enabled: false            # set true + fill in to enable S3 tiered storage
+      endpoint: ""
+      bucket: "wide-clickhouse"
+      access_key_id: ""
+      secret_access_key: ""
+      region: "us-east-1"
+    tiering:
+      metrics_move_after_days: 3   # 0 = disabled, keep on local disk only
+      traces_move_after_days: 3
+      logs_move_after_days: 7
+  retention:
+    defaults:
+      metrics_days: 30
+      traces_days: 30
+      logs_days: 30
+    metrics: []
+    # - labels: { env: "dev" }
+    #   retain_days: 90
+    # - labels: { env: "prod" }
+    #   retain_days: 400
+    traces: []
+    # - service_name: "gateway"
+    #   retain_days: 60
+    enforcer:
+      enabled: true
+      interval_secs: 3600
+      dry_run: false
+
 # ── ClickHouse (Altinity subchart) ──
 # Full options: https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse
 clickhouse:
@@ -55,7 +118,7 @@ clickhouse:
   persistence:
     enabled: true
     storageClass: ""      # empty = cluster default
-    size: 50Gi
+    size: 500Gi
   initScripts:
     enabled: true
     configMapName: "rushobs-clickhouse-init"
