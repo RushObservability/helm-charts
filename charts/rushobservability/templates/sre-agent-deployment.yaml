@@ -1,32 +1,36 @@
+{{- if .Values.sreAgent.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "rush.fullname" . }}-query-api
+  name: {{ include "rush.fullname" . }}-sre-agent
   labels:
-    app.kubernetes.io/component: query-api
+    app.kubernetes.io/component: sre-agent
     {{- include "rush.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.queryApi.replicas }}
+  replicas: {{ .Values.sreAgent.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/component: query-api
+      app.kubernetes.io/component: sre-agent
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: query-api
+        app.kubernetes.io/component: sre-agent
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
         checksum/wide-config: {{ include (print $.Template.BasePath "/wide-config-configmap.yaml") . | sha256sum }}
     spec:
       containers:
-        - name: query-api
-          image: "{{ .Values.queryApi.image.repository }}:{{ .Values.queryApi.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.queryApi.image.pullPolicy }}
+        - name: sre-agent
+          image: "{{ .Values.sreAgent.image.repository }}:{{ .Values.sreAgent.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.sreAgent.image.pullPolicy }}
+          command: ["/usr/local/bin/wide-sre-agent"]
           ports:
             - name: http
-              containerPort: {{ .Values.queryApi.port }}
+              containerPort: {{ .Values.sreAgent.port }}
           env:
+            - name: SRE_AGENT_PORT
+              value: {{ .Values.sreAgent.port | quote }}
             - name: CLICKHOUSE_URL
               value: "http://clickhouse-{{ .Release.Name }}-clickhouse:8123"
             - name: CLICKHOUSE_USER
@@ -41,7 +45,17 @@ spec:
                   key: password
             - name: WIDE_CONFIG
               value: /etc/wide/wide.toml
-            {{- range $key, $val := .Values.queryApi.env }}
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.sreAgent.llmApiKeySecret.name }}
+                  name: {{ .Values.sreAgent.llmApiKeySecret.name }}
+                  key: {{ .Values.sreAgent.llmApiKeySecret.key }}
+                  {{- else }}
+                  name: {{ include "rush.fullname" . }}-sre-agent-llm
+                  key: api-key
+                  {{- end }}
+            {{- range $key, $val := .Values.sreAgent.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
@@ -50,7 +64,7 @@ spec:
               mountPath: /etc/wide
               readOnly: true
           resources:
-            {{- toYaml .Values.queryApi.resources | nindent 12 }}
+            {{- toYaml .Values.sreAgent.resources | nindent 12 }}
           readinessProbe:
             httpGet:
               path: /healthz
@@ -67,3 +81,4 @@ spec:
         - name: wide-config
           configMap:
             name: {{ include "rush.fullname" . }}-wide-config
+{{- end }}
