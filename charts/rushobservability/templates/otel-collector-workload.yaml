@@ -1,0 +1,80 @@
+{{- if include "rush.otelEnabled" . }}
+{{- $fullName := include "rush.fullname" . -}}
+{{- $isDaemonSet := eq .Values.collectors.otel.kind "daemonset" -}}
+apiVersion: apps/v1
+kind: {{ if $isDaemonSet }}DaemonSet{{ else }}Deployment{{ end }}
+metadata:
+  name: {{ $fullName }}-otel-collector
+  labels:
+    app.kubernetes.io/component: otel-collector
+    {{- include "rush.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: otel-collector
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  {{- if and (not $isDaemonSet) (not .Values.collectors.otel.autoscaling.enabled) }}
+  replicas: {{ .Values.collectors.otel.replicas }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: otel-collector
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/otel-collector-configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: otel-collector
+          image: "{{ .Values.collectors.otel.image.repository }}:{{ .Values.collectors.otel.image.tag }}"
+          imagePullPolicy: {{ .Values.collectors.otel.image.pullPolicy }}
+          args:
+            - "--config=/etc/otelcol/collector.yaml"
+          ports:
+            - name: otlp-grpc
+              containerPort: {{ .Values.collectors.otel.service.grpcPort }}
+              protocol: TCP
+            - name: otlp-http
+              containerPort: {{ .Values.collectors.otel.service.httpPort }}
+              protocol: TCP
+            - name: metrics
+              containerPort: 8888
+              protocol: TCP
+          env:
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rushobs-clickhouse-credentials
+                  key: user
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rushobs-clickhouse-credentials
+                  key: password
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+              readOnly: true
+          resources:
+            {{- toYaml .Values.collectors.otel.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $fullName }}-otel-collector
+            items:
+              - key: collector.yaml
+                path: collector.yaml
+{{- end }}

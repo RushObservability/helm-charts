@@ -1,0 +1,89 @@
+{{- if include "rush.otelEnabled" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rush.fullname" . }}-otel-collector
+  labels:
+    app.kubernetes.io/component: otel-collector
+    {{- include "rush.labels" . | nindent 4 }}
+data:
+  collector.yaml: |
+    {{- if .Values.collectors.otel.configOverride }}
+    {{- .Values.collectors.otel.configOverride | nindent 4 }}
+    {{- else }}
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:{{ .Values.collectors.otel.service.grpcPort }}
+          http:
+            endpoint: 0.0.0.0:{{ .Values.collectors.otel.service.httpPort }}
+
+    processors:
+      batch:
+        timeout: 5s
+        send_batch_size: 10000
+        send_batch_max_size: 20000
+      memory_limiter:
+        check_interval: 2s
+        limit_percentage: 80
+        spike_limit_percentage: 15
+      resource:
+        attributes:
+          - key: k8s.cluster.name
+            value: "{{ .Release.Name }}"
+            action: upsert
+      transform/flatten:
+        trace_statements:
+          - context: span
+            statements:
+              - set(attributes["service.name"], resource.attributes["service.name"])
+              - set(attributes["service.version"], resource.attributes["service.version"])
+              - set(attributes["host.name"], resource.attributes["host.name"])
+
+    exporters:
+      clickhouse:
+        endpoint: tcp://{{ include "rush.clickhouseService" . }}:9000
+        database: {{ .Values.queryApi.env.CLICKHOUSE_DATABASE | default "observability" | quote }}
+        username: "${env:CLICKHOUSE_USER}"
+        password: "${env:CLICKHOUSE_PASSWORD}"
+        traces_table_name: otel_traces
+        logs_table_name: otel_logs
+        create_schema: false
+        timeout: 30s
+        retry_on_failure:
+          enabled: true
+          initial_interval: 5s
+          max_interval: 60s
+        sending_queue:
+          enabled: true
+          num_consumers: 10
+          queue_size: 5000
+
+    service:
+      telemetry:
+        logs:
+          level: info
+        metrics:
+          address: 0.0.0.0:8888
+      pipelines:
+        {{- if .Values.collectors.otel.signals.traces }}
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, transform/flatten, batch]
+          exporters: [clickhouse]
+        {{- end }}
+        {{- if .Values.collectors.otel.signals.metrics }}
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, batch]
+          exporters: [clickhouse]
+        {{- end }}
+        {{- if .Values.collectors.otel.signals.logs }}
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, batch]
+          exporters: [clickhouse]
+        {{- end }}
+    {{- end }}
+{{- end }}

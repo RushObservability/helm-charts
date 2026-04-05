@@ -1,0 +1,96 @@
+{{- if include "rush.vectorEnabled" . }}
+{{- $fullName := include "rush.fullname" . -}}
+{{- $fullOtel := include "rush.vectorFullOtel" . -}}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ $fullName }}-vector
+  labels:
+    app.kubernetes.io/component: vector
+    {{- include "rush.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: vector
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: vector
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/vector-configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ $fullName }}-vector
+      # The kubernetes_logs source needs host access to container stdout/err.
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: vector
+          image: "{{ .Values.collectors.vector.image.repository }}:{{ .Values.collectors.vector.image.tag }}"
+          imagePullPolicy: {{ .Values.collectors.vector.image.pullPolicy }}
+          args: ["--config", "/etc/vector/vector.yaml"]
+          env:
+            - name: VECTOR_SELF_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: VECTOR_SELF_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: VECTOR_SELF_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rushobs-clickhouse-credentials
+                  key: user
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rushobs-clickhouse-credentials
+                  key: password
+          ports:
+            - name: api
+              containerPort: 8686
+              protocol: TCP
+            {{- if $fullOtel }}
+            - name: otlp-grpc
+              containerPort: 4317
+              protocol: TCP
+            - name: otlp-http
+              containerPort: 4318
+              protocol: TCP
+            {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/vector
+              readOnly: true
+            - name: var-log
+              mountPath: {{ .Values.collectors.vector.hostPath.varLog }}
+              readOnly: true
+            - name: var-lib-docker-containers
+              mountPath: {{ .Values.collectors.vector.hostPath.varLibDockerContainers }}
+              readOnly: true
+            - name: data
+              mountPath: /vector-data-dir
+          resources:
+            {{- toYaml .Values.collectors.vector.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $fullName }}-vector
+            items:
+              - key: vector.yaml
+                path: vector.yaml
+        - name: var-log
+          hostPath:
+            path: {{ .Values.collectors.vector.hostPath.varLog }}
+        - name: var-lib-docker-containers
+          hostPath:
+            path: {{ .Values.collectors.vector.hostPath.varLibDockerContainers }}
+        - name: data
+          emptyDir: {}
+{{- end }}

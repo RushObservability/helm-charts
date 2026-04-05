@@ -1,0 +1,27 @@
+{{- if include "rush.otelEnabled" . }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rush.fullname" . }}-otel-collector
+  labels:
+    app.kubernetes.io/component: otel-collector
+    {{- include "rush.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.collectors.otel.service.type }}
+  selector:
+    app.kubernetes.io/component: otel-collector
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: otlp-grpc
+      port: {{ .Values.collectors.otel.service.grpcPort }}
+      targetPort: otlp-grpc
+      protocol: TCP
+    - name: otlp-http
+      port: {{ .Values.collectors.otel.service.httpPort }}
+      targetPort: otlp-http
+      protocol: TCP
+    - name: metrics
+      port: 8888
+      targetPort: metrics
+      protocol: TCP
+{{- end }}

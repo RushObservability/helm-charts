@@ -1,0 +1,140 @@
+{{- $fullName := include "rush.fullname" . -}}
+{{- $ns := .Release.Namespace -}}
+{{- $ch := include "rush.clickhouseService" . -}}
+{{- $mode := .Values.collectors.mode -}}
+{{- $otelEnabled := include "rush.otelEnabled" . -}}
+{{- $vectorEnabled := include "rush.vectorEnabled" . -}}
+{{- $vectorFullOtel := include "rush.vectorFullOtel" . -}}
+
+╔════════════════════════════════════════════════════════════════════╗
+║  Rush Observability — release "{{ .Release.Name }}" installed      ║
+╚════════════════════════════════════════════════════════════════════╝
+
+Core services:
+  • rush-api      svc/{{ $fullName }}-query-api     (port 8080)
+  • rush-frontend svc/{{ $fullName }}-frontend      (port 80)
+  {{- if .Values.sreAgent.enabled }}
+  • sre-agent     svc/{{ $fullName }}-sre-agent     (port {{ .Values.sreAgent.port }})
+  {{- end }}
+  • clickhouse    svc/{{ $ch }}                     (8123 HTTP / 9000 native)
+
+Reach the UI with:
+  kubectl -n {{ $ns }} port-forward svc/{{ $fullName }}-frontend 8080:80
+  open http://localhost:8080
+
+────────────────────────────────────────────────────────────────────
+  Data ingestion — collectors.mode = "{{ $mode }}"
+────────────────────────────────────────────────────────────────────
+
+{{- if eq $mode "none" }}
+
+No collector was deployed. You are responsible for getting telemetry
+into ClickHouse.
+
+  Option 1: run your own OTel Collector pointed at ClickHouse native:
+    exporters:
+      clickhouse:
+        endpoint: tcp://{{ $ch }}.{{ $ns }}.svc.cluster.local:9000
+        database: observability
+        username: ${CLICKHOUSE_USER}
+        password: ${CLICKHOUSE_PASSWORD}
+        traces_table_name: otel_traces
+        logs_table_name: otel_logs
+        create_schema: false
+
+  Option 2: re-install with --set collectors.mode=otel|vector|hybrid
+  to let Rush deploy one for you.
+
+{{- else if eq $mode "otel" }}
+
+✓ OpenTelemetry Collector deployed as a {{ .Values.collectors.otel.kind }}.
+
+  Endpoints (in-cluster):
+    gRPC:  {{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.grpcPort }}
+    HTTP:  http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.httpPort }}
+
+  Signals enabled: {{ if .Values.collectors.otel.signals.traces }}traces {{ end }}{{ if .Values.collectors.otel.signals.metrics }}metrics {{ end }}{{ if .Values.collectors.otel.signals.logs }}logs{{ end }}
+
+  ── Point your app at the collector ──
+
+  Env vars (OTel SDK auto-discovers these):
+    OTEL_EXPORTER_OTLP_ENDPOINT=http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.httpPort }}
+    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    OTEL_SERVICE_NAME=my-service
+
+  Or via gRPC (lower overhead):
+    OTEL_EXPORTER_OTLP_ENDPOINT=http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.grpcPort }}
+    OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+
+{{- else if eq $mode "vector" }}
+
+✓ Vector DaemonSet deployed in "{{ .Values.collectors.vector.mode }}" mode.
+
+  {{- if eq .Values.collectors.vector.mode "logs" }}
+
+  Vector is tailing every pod's stdout/stderr on every node and writing
+  to ClickHouse (database=observability, table=otel_logs).
+
+  There is nothing to configure in your apps — write to stdout/stderr
+  and Vector picks it up automatically. Structured JSON logs are
+  parsed; free-form lines fall back to the Body field.
+
+  Inspect Vector itself:
+    kubectl -n {{ $ns }} port-forward ds/{{ $fullName }}-vector 8686:8686
+    curl http://localhost:8686/health
+  {{- else }}
+
+  Vector accepts OTLP on 4317/4318 AND tails kubernetes logs.
+
+  Endpoints (in-cluster):
+    gRPC:  {{ $fullName }}-vector.{{ $ns }}.svc.cluster.local:4317
+    HTTP:  http://{{ $fullName }}-vector.{{ $ns }}.svc.cluster.local:4318
+    API:   http://{{ $fullName }}-vector.{{ $ns }}.svc.cluster.local:8686
+
+  Env vars for your apps:
+    OTEL_EXPORTER_OTLP_ENDPOINT=http://{{ $fullName }}-vector.{{ $ns }}.svc.cluster.local:4318
+    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+  {{- end }}
+
+  If you need metrics/traces in ClickHouse too, switch to mode=hybrid:
+    helm upgrade {{ .Release.Name }} . --set collectors.mode=hybrid
+
+{{- else if eq $mode "hybrid" }}
+
+✓ Hybrid mode: OTel Collector for metrics+traces, Vector DaemonSet for logs.
+
+  OTel Collector (traces + metrics):
+    gRPC:  {{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.grpcPort }}
+    HTTP:  http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.httpPort }}
+
+  Vector DaemonSet: automatically tails every pod's stdout/stderr on
+  every node. No app-side config needed for logs.
+
+  ── Point your app at the OTel Collector ──
+
+  Env vars:
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.httpPort }}
+    OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.httpPort }}
+    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+    OTEL_LOGS_EXPORTER=none        # logs are handled by Vector from kube stdout
+    OTEL_SERVICE_NAME=my-service
+
+{{- else }}
+
+Unknown collectors.mode "{{ $mode }}" — expected one of: none, otel, vector, hybrid.
+
+{{- end }}
+
+{{- if or (eq $mode "otel") (eq $mode "hybrid") }}
+
+  Inspect the collector's own self-metrics:
+    kubectl -n {{ $ns }} port-forward svc/{{ $fullName }}-otel-collector 8888:8888
+    curl http://localhost:8888/metrics | grep otelcol_exporter
+{{- end }}
+
+────────────────────────────────────────────────────────────────────
+
+Docs & quickstarts:
+  https://rushobservability.com/docs/quickstart
+  https://rushobservability.com/docs/send-otel
+  https://rushobservability.com/docs/send-vector
