@@ -17,7 +17,7 @@ spec:
         app.kubernetes.io/component: query-api
         app.kubernetes.io/instance: {{ .Release.Name }}
       annotations:
-        checksum/wide-config: {{ include (print $.Template.BasePath "/wide-config-configmap.yaml") . | sha256sum }}
+        checksum/rush-config: {{ include (print $.Template.BasePath "/rush-config-configmap.yaml") . | sha256sum }}
     spec:
       serviceAccountName: {{ include "rush.fullname" . }}-query-api
       containers:
@@ -40,8 +40,8 @@ spec:
                 secretKeyRef:
                   name: rushobs-clickhouse-credentials
                   key: password
-            - name: WIDE_CONFIG
-              value: /etc/wide/wide.toml
+            - name: RUSH_CONFIG
+              value: /etc/rush/rush.toml
             {{- if .Values.argocd.enabled }}
             - name: ARGOCD_NAMESPACE
               value: {{ .Values.argocd.namespace | quote }}
@@ -51,8 +51,8 @@ spec:
               value: {{ $val | quote }}
             {{- end }}
           volumeMounts:
-            - name: wide-config
-              mountPath: /etc/wide
+            - name: rush-config
+              mountPath: /etc/rush
               readOnly: true
           resources:
             {{- toYaml .Values.queryApi.resources | nindent 12 }}
@@ -69,6 +69,6 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
       volumes:
-        - name: wide-config
+        - name: rush-config
           configMap:
-            name: {{ include "rush.fullname" . }}-wide-config
+            name: {{ include "rush.fullname" . }}-rush-config

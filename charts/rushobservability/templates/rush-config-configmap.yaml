@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rush.fullname" . }}-rush-config
+  labels:
+    app.kubernetes.io/component: query-api
+    {{- include "rush.labels" . | nindent 4 }}
+data:
+  rush.toml: |
+    {{- if .Values.rushConfig.storage.s3.enabled }}
+    [storage.s3]
+    endpoint = {{ .Values.rushConfig.storage.s3.endpoint | quote }}
+    bucket = {{ .Values.rushConfig.storage.s3.bucket | quote }}
+    access_key_id = {{ .Values.rushConfig.storage.s3.access_key_id | quote }}
+    secret_access_key = {{ .Values.rushConfig.storage.s3.secret_access_key | quote }}
+    region = {{ .Values.rushConfig.storage.s3.region | quote }}
+    {{- end }}
+
+    [storage.tiering]
+    metrics_move_after_days = {{ .Values.rushConfig.storage.tiering.metrics_move_after_days }}
+    traces_move_after_days = {{ .Values.rushConfig.storage.tiering.traces_move_after_days }}
+    logs_move_after_days = {{ .Values.rushConfig.storage.tiering.logs_move_after_days }}
+
+    [retention.defaults]
+    metrics_days = {{ .Values.rushConfig.retention.defaults.metrics_days }}
+    traces_days = {{ .Values.rushConfig.retention.defaults.traces_days }}
+    logs_days = {{ .Values.rushConfig.retention.defaults.logs_days }}
+
+    {{- range .Values.rushConfig.retention.metrics }}
+    [[retention.metrics]]
+    {{- if .name }}
+    name = {{ .name | quote }}
+    {{- end }}
+    {{- if .name_regex }}
+    name_regex = {{ .name_regex | quote }}
+    {{- end }}
+    {{- if .labels }}
+    labels = { {{- $first := true }}{{- range $k, $v := .labels }}{{- if not $first }}, {{ end }}{{ $k }} = {{ $v | quote }}{{- $first = false }}{{- end }} }
+    {{- end }}
+    retain_days = {{ .retain_days }}
+    {{- end }}
+
+    {{- range .Values.rushConfig.retention.traces }}
+    [[retention.traces]]
+    {{- if .service_name }}
+    service_name = {{ .service_name | quote }}
+    {{- end }}
+    {{- if .attribute }}
+    attribute = { key = {{ .attribute.key | quote }}, value = {{ .attribute.value | quote }} }
+    {{- end }}
+    retain_days = {{ .retain_days }}
+    {{- end }}
+
+    [retention.enforcer]
+    enabled = {{ .Values.rushConfig.retention.enforcer.enabled }}
+    interval_secs = {{ .Values.rushConfig.retention.enforcer.interval_secs }}
+    dry_run = {{ .Values.rushConfig.retention.enforcer.dry_run }}
