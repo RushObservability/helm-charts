@@ -1,0 +1,49 @@
+{{- if .Values.argocd.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "rush.fullname" . }}-argocd-reader
+  labels:
+    app.kubernetes.io/component: query-api
+    {{- include "rush.labels" . | nindent 4 }}
+rules:
+  # ArgoCD CRDs
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "applicationsets"]
+    verbs: ["get", "list", "watch"]
+  # Read-only access to core K8s resources for AI investigation
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "services", "endpoints", "configmaps", "secrets", "events", "namespaces", "nodes", "persistentvolumeclaims", "replicationcontrollers", "serviceaccounts"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "rush.fullname" . }}-argocd-reader
+  labels:
+    app.kubernetes.io/component: query-api
+    {{- include "rush.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "rush.fullname" . }}-argocd-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "rush.fullname" . }}-query-api
+    namespace: {{ .Release.Namespace }}
+{{- end }}

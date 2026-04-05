@@ -17,14 +17,12 @@ spec:
       labels:
         app.kubernetes.io/component: sre-agent
         app.kubernetes.io/instance: {{ .Release.Name }}
-      annotations:
-        checksum/wide-config: {{ include (print $.Template.BasePath "/wide-config-configmap.yaml") . | sha256sum }}
     spec:
+      serviceAccountName: {{ include "rush.fullname" . }}-query-api
       containers:
         - name: sre-agent
           image: "{{ .Values.sreAgent.image.repository }}:{{ .Values.sreAgent.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.sreAgent.image.pullPolicy }}
-          command: ["/usr/local/bin/wide-sre-agent"]
           ports:
             - name: http
               containerPort: {{ .Values.sreAgent.port }}
@@ -43,8 +41,13 @@ spec:
                 secretKeyRef:
                   name: rushobs-clickhouse-credentials
                   key: password
-            - name: WIDE_CONFIG
-              value: /etc/wide/wide.toml
+            - name: WIDE_CONFIG_DB
+              value: /tmp/wide_config.db
+            # URL of query-api used to fetch user-defined custom skills.
+            # query-api owns the custom_skills table; sre-agent is a read-only
+            # HTTP consumer so the two services don't need a shared volume.
+            - name: QUERY_API_URL
+              value: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.port }}"
             - name: LLM_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -55,14 +58,14 @@ spec:
                   name: {{ include "rush.fullname" . }}-sre-agent-llm
                   key: api-key
                   {{- end }}
+            {{- if .Values.argocd.enabled }}
+            - name: ARGOCD_NAMESPACE
+              value: {{ .Values.argocd.namespace | quote }}
+            {{- end }}
             {{- range $key, $val := .Values.sreAgent.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
-          volumeMounts:
-            - name: wide-config
-              mountPath: /etc/wide
-              readOnly: true
           resources:
             {{- toYaml .Values.sreAgent.resources | nindent 12 }}
           readinessProbe:
@@ -77,8 +80,4 @@ spec:
               port: http
             initialDelaySeconds: 10
             periodSeconds: 10
-      volumes:
-        - name: wide-config
-          configMap:
-            name: {{ include "rush.fullname" . }}-wide-config
 {{- end }}
