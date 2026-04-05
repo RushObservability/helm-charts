@@ -73,9 +73,9 @@ frontend:
     type: ClusterIP
     port: 80
 
-# ── wide.toml config ──
-# Rendered into a ConfigMap and mounted into query-api at /etc/wide/wide.toml
-wideConfig:
+# ── rush.toml config ──
+# Rendered into a ConfigMap and mounted into query-api at /etc/rush/rush.toml
+rushConfig:
   storage:
     s3:
       enabled: false            # set true + fill in to enable S3 tiered storage

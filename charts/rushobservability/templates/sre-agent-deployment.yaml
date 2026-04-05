@@ -41,8 +41,8 @@ spec:
                 secretKeyRef:
                   name: rushobs-clickhouse-credentials
                   key: password
-            - name: WIDE_CONFIG_DB
-              value: /tmp/wide_config.db
+            - name: RUSH_CONFIG_DB
+              value: /tmp/rush_config.db
             # URL of query-api used to fetch user-defined custom skills.
             # query-api owns the custom_skills table; sre-agent is a read-only
             # HTTP consumer so the two services don't need a shared volume.
