@@ -1,0 +1,144 @@
+{{- if include "rush.vectorEnabled" . }}
+{{- $chDatabase := .Values.queryApi.env.CLICKHOUSE_DATABASE | default "observability" -}}
+{{- $chEndpoint := printf "http://%s:8123" (include "rush.clickhouseService" .) -}}
+{{- $fullOtel := include "rush.vectorFullOtel" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rush.fullname" . }}-vector
+  labels:
+    app.kubernetes.io/component: vector
+    {{- include "rush.labels" . | nindent 4 }}
+data:
+  vector.yaml: |
+    {{- if .Values.collectors.vector.configOverride }}
+    {{- .Values.collectors.vector.configOverride | nindent 4 }}
+    {{- else }}
+    api:
+      enabled: true
+      address: 0.0.0.0:8686
+
+    sources:
+      kubernetes_logs:
+        type: kubernetes_logs
+        auto_partial_merge: true
+        pod_annotation_fields:
+          pod_labels: ".pod_labels"
+          pod_namespace: ".pod_namespace"
+          pod_name: ".pod_name"
+          pod_node_name: ".pod_node_name"
+          container_name: ".container_name"
+          container_image: ".container_image"
+      {{- if $fullOtel }}
+      otlp:
+        type: opentelemetry
+        grpc:
+          address: 0.0.0.0:4317
+        http:
+          address: 0.0.0.0:4318
+      {{- end }}
+
+    transforms:
+      parse_logs:
+        type: remap
+        inputs:
+          - kubernetes_logs
+        source: |
+          svc_name, err = to_string(.pod_labels."app.kubernetes.io/name")
+          if err != null || svc_name == "" {
+            svc_name, err = to_string(.pod_labels.app)
+          }
+          if err != null || svc_name == "" {
+            svc_name, err = to_string(.container_name)
+          }
+          if err != null || svc_name == "" {
+            svc_name = "unknown"
+          }
+          .ServiceName = svc_name
+          .SeverityText = "INFO"
+          .SeverityNumber = 9
+          body = string!(.message)
+          if match(body, r'(?i)\berror\b|panic|fatal') {
+            .SeverityText = "ERROR"
+            .SeverityNumber = 17
+          } else if match(body, r'(?i)\bwarn(ing)?\b') {
+            .SeverityText = "WARN"
+            .SeverityNumber = 13
+          } else if match(body, r'(?i)\bdebug\b') {
+            .SeverityText = "DEBUG"
+            .SeverityNumber = 5
+          }
+          .Body = body
+          ts, err = to_unix_timestamp(.timestamp, unit: "nanoseconds")
+          if err != null {
+            ts = to_unix_timestamp(now(), unit: "nanoseconds")
+          }
+          .Timestamp = ts
+          .ResourceAttributes = {}
+          .ResourceAttributes."k8s.namespace.name" = to_string(del(.pod_namespace)) ?? ""
+          .ResourceAttributes."k8s.pod.name" = to_string(del(.pod_name)) ?? ""
+          .ResourceAttributes."k8s.node.name" = to_string(del(.pod_node_name)) ?? ""
+          .ResourceAttributes."k8s.container.name" = to_string(del(.container_name)) ?? ""
+          .ResourceAttributes."k8s.container.image" = to_string(del(.container_image)) ?? ""
+          .LogAttributes = {}
+          if exists(.pod_labels) {
+            for_each(object!(.pod_labels)) -> |key, value| {
+              .LogAttributes = set!(.LogAttributes, [key], value)
+            }
+          }
+          .TraceId = ""
+          .SpanId = ""
+          .TraceFlags = 0
+          .ResourceSchemaUrl = ""
+          .ScopeSchemaUrl = ""
+          .ScopeName = "vector"
+          .ScopeVersion = ""
+          .ScopeAttributes = {}
+          .EventName = ""
+          del(.message)
+          del(.timestamp)
+          del(.source_type)
+          del(.pod_labels)
+          del(.file)
+          del(.stream)
+
+    sinks:
+      clickhouse_logs:
+        type: clickhouse
+        inputs:
+          - parse_logs
+        endpoint: {{ $chEndpoint | quote }}
+        database: {{ $chDatabase | quote }}
+        table: "otel_logs"
+        auth:
+          strategy: basic
+          user: "${CLICKHOUSE_USER}"
+          password: "${CLICKHOUSE_PASSWORD}"
+        encoding:
+          timestamp_format: unix
+        batch:
+          max_events: 1000
+          timeout_secs: 5
+        healthcheck:
+          enabled: true
+      {{- if $fullOtel }}
+      # full-otel sub-mode forwards traces & metrics received via OTLP on
+      # through to the OTel-collector sink (traces/metrics use distinct
+      # ClickHouse tables which Vector does not currently write to
+      # directly — forward them to the Rush OTel collector, or disable
+      # these pipelines). The sinks below are intentionally opinionated:
+      # traces go to console so you see the wire format during setup,
+      # switch to an otlp sink if you run a downstream collector.
+      console_traces:
+        type: console
+        inputs: ["otlp.traces"]
+        encoding:
+          codec: json
+      console_metrics:
+        type: console
+        inputs: ["otlp.metrics"]
+        encoding:
+          codec: json
+      {{- end }}
+    {{- end }}
+{{- end }}

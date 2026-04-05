@@ -134,3 +134,103 @@ clickhouse:
     enabled: false
   operator:
     enabled: true
+
+# ═══════════════════════════════════════════════════════════════════════
+# Data collectors (optional)
+#
+# Deploy an ingestion pipeline that forwards metrics / traces / logs into
+# the Rush ClickHouse. Four modes — pick one:
+#
+#   none    Bring your own collector. Rush deploys nothing here.
+#           Point your collectors at the ClickHouse service directly.
+#
+#   otel    Deploy an OpenTelemetry Collector (contrib). Accepts OTLP on
+#           :4317 (gRPC) and :4318 (HTTP). Handles traces, metrics, logs.
+#           Runs as a Deployment (default, scalable) or DaemonSet.
+#
+#   vector  Deploy Vector as a DaemonSet on every node. Two sub-modes:
+#             - logs      kubernetes_logs source only (cheapest, tails
+#                         container stdout/stderr from the node)
+#             - full-otel kubernetes_logs + OTLP receivers for traces &
+#                         metrics
+#
+#   hybrid  OTel Collector for traces+metrics, Vector DaemonSet for logs.
+#           Best when you want OTLP ingest centrally but don't want the
+#           collector shipping every node's logs through a single pod.
+# ═══════════════════════════════════════════════════════════════════════
+collectors:
+  mode: none                         # none | otel | vector | hybrid
+
+  # ── OpenTelemetry Collector ──
+  otel:
+    image:
+      repository: otel/opentelemetry-collector-contrib
+      tag: "0.118.0"
+      pullPolicy: IfNotPresent
+
+    # deployment  — central, scalable, single service endpoint
+    # daemonset   — one collector per node, receives from local workloads
+    kind: deployment
+    replicas: 2
+
+    # HPA (only honored when kind=deployment)
+    autoscaling:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+
+    # Which signal pipelines to enable. Disabling a signal removes its
+    # receiver pipeline entirely (the OTLP receiver itself still accepts
+    # the wire format — it just isn't routed anywhere).
+    signals:
+      traces: true
+      metrics: true
+      logs: true
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "2"
+        memory: 1Gi
+
+    service:
+      type: ClusterIP
+      # Per-port override. 4317=OTLP gRPC, 4318=OTLP HTTP, 8888=collector
+      # self-metrics (prometheus scrape).
+      grpcPort: 4317
+      httpPort: 4318
+
+    # Raw collector config override. When set, replaces the generated
+    # config entirely. Leave empty to use the generated config which
+    # writes directly to the in-cluster ClickHouse.
+    configOverride: ""
+
+  # ── Vector ──
+  vector:
+    image:
+      repository: timberio/vector
+      tag: "0.45.0-distroless-libc"
+      pullPolicy: IfNotPresent
+
+    # logs       — kubernetes_logs source only (DaemonSet)
+    # full-otel  — kubernetes_logs + OTLP receivers on 4317/4318
+    mode: logs
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+
+    # Host paths mounted into the DaemonSet for the kubernetes_logs source.
+    hostPath:
+      varLog: /var/log
+      varLibDockerContainers: /var/lib/docker/containers
+
+    # Raw vector.yaml override. When set, replaces the generated config.
+    configOverride: ""

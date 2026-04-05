@@ -1,0 +1,39 @@
+{{- if include "rush.vectorEnabled" . }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "rush.fullname" . }}-vector
+  labels:
+    app.kubernetes.io/component: vector
+    {{- include "rush.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "rush.fullname" . }}-vector
+  labels:
+    app.kubernetes.io/component: vector
+    {{- include "rush.labels" . | nindent 4 }}
+rules:
+  # kubernetes_logs source needs to discover pods and read their metadata.
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "rush.fullname" . }}-vector
+  labels:
+    app.kubernetes.io/component: vector
+    {{- include "rush.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "rush.fullname" . }}-vector
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "rush.fullname" . }}-vector
+    namespace: {{ .Release.Namespace }}
+{{- end }}

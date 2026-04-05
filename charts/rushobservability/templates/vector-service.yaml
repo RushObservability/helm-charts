@@ -1,0 +1,30 @@
+{{- if and (include "rush.vectorEnabled" .) (include "rush.vectorFullOtel" .) }}
+# Vector is accepting OTLP traffic (full-otel sub-mode). Expose a
+# ClusterIP service so in-cluster apps can push traces/metrics/logs
+# without hitting a specific node.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rush.fullname" . }}-vector
+  labels:
+    app.kubernetes.io/component: vector
+    {{- include "rush.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/component: vector
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+      protocol: TCP
+    - name: api
+      port: 8686
+      targetPort: api
+      protocol: TCP
+{{- end }}
