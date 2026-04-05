@@ -1,14 +1,14 @@
 # ── query-api ──
 queryApi:
   image:
-    repository: ghcr.io/rushobservability/query-api
-    tag: "0.0.2"
+    repository: mzupan/rush-api
+    tag: "0.1.24"
     pullPolicy: Always
   replicas: 1
   port: 8080
   env:
     CLICKHOUSE_DATABASE: observability
-    RUST_LOG: wide_query_api=info,tower_http=info
+    RUST_LOG: rush_api=info,tower_http=info
   resources:
     requests:
       cpu: 100m
@@ -24,14 +24,14 @@ queryApi:
 sreAgent:
   enabled: false                     # disabled by default — requires LLM_API_KEY
   image:
-    repository: ghcr.io/rushobservability/query-api
-    tag: "0.0.2"
+    repository: mzupan/sre-agent
+    tag: "0.1.0"
     pullPolicy: Always
   replicas: 1
   port: 8081
   env:
     CLICKHOUSE_DATABASE: observability
-    RUST_LOG: wide_query_api=info,tower_http=info
+    RUST_LOG: sre_agent=info,tower_http=info
     LLM_BASE_URL: "https://api.openai.com"
     LLM_MODEL: "gpt-4o"
   # LLM API key — provide via --set or external secret
@@ -50,11 +50,16 @@ sreAgent:
     type: ClusterIP
     port: 8081
 
+# ── argocd integration ──
+argocd:
+  enabled: false                     # enable ArgoCD CRD reading
+  namespace: argocd                  # namespace where ArgoCD apps live
+
 # ── frontend ──
 frontend:
   image:
-    repository: ghcr.io/rushobservability/frontend
-    tag: "0.0.3"
+    repository: mzupan/wide-frontend
+    tag: "0.1.12"
     pullPolicy: Always
   replicas: 1
   resources:

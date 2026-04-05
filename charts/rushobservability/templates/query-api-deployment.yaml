@@ -19,6 +19,7 @@ spec:
       annotations:
         checksum/wide-config: {{ include (print $.Template.BasePath "/wide-config-configmap.yaml") . | sha256sum }}
     spec:
+      serviceAccountName: {{ include "rush.fullname" . }}-query-api
       containers:
         - name: query-api
           image: "{{ .Values.queryApi.image.repository }}:{{ .Values.queryApi.image.tag | default .Chart.AppVersion }}"
@@ -41,6 +42,10 @@ spec:
                   key: password
             - name: WIDE_CONFIG
               value: /etc/wide/wide.toml
+            {{- if .Values.argocd.enabled }}
+            - name: ARGOCD_NAMESPACE
+              value: {{ .Values.argocd.namespace | quote }}
+            {{- end }}
             {{- range $key, $val := .Values.queryApi.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
