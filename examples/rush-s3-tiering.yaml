@@ -5,11 +5,12 @@
 # older partitions to S3-compatible object storage (cheap, unlimited capacity).
 # Rush queries both tiers transparently — no application changes needed.
 #
-# This file shows three configurations — pick the one matching your environment:
+# This file shows four configurations — pick the one matching your environment:
 #
 #   1. AWS S3 with IAM Roles for Service Accounts (IRSA)   ← recommended for EKS
 #   2. AWS S3 with static access keys                      ← simpler, less secure
 #   3. MinIO / on-prem S3-compatible object storage        ← self-hosted
+#   4. RustFS / S3-compatible Rust-native object storage   ← self-hosted
 #
 # For Google Cloud Storage or Azure Blob, see the notes at the bottom.
 #
@@ -343,6 +344,111 @@ rushConfig:
       enabled: true
       interval_secs: 3600
       dry_run: false
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# OPTION 4 — RustFS (S3-compatible, Rust-native object storage)
+#
+# RustFS is a high-performance, S3-compatible object store written in Rust.
+# It exposes the same S3 API as MinIO, so the ClickHouse disk config is
+# identical — only the endpoint URL changes.
+#
+# Pre-requisites:
+#   • RustFS running in-cluster or on-prem
+#     (e.g. rustfs.storage.svc.cluster.local:9000)
+#   • A bucket named rushobs-clickhouse created in RustFS
+#   • Access key / secret with read+write access to that bucket
+# ══════════════════════════════════════════════════════════════════════════════
+
+# clickhouse:
+#   enabled: true
+#   shardsCount: 1
+#   replicasCount: 1
+#   image:
+#     repository: altinity/clickhouse-server
+#     tag: "25.3.6.10034.altinitystable"
+#     pullPolicy: IfNotPresent
+#   clickhouse:
+#     defaultUser:
+#       password_secret_name: "rushobs-clickhouse-credentials"
+#       allowExternalAccess: true
+#     configurationFiles:
+#       rush_settings.xml: |
+#         <clickhouse>
+#           <custom_settings_prefixes>rush_</custom_settings_prefixes>
+#         </clickhouse>
+#       storage_s3.xml: |
+#         <clickhouse>
+#           <storage_configuration>
+#             <disks>
+#               <s3>
+#                 <type>s3</type>
+#                 <!-- RustFS endpoint: bucket name in path, trailing slash required -->
+#                 <endpoint>http://rustfs.storage.svc.cluster.local:9000/rushobs-clickhouse/clickhouse/</endpoint>
+#                 <access_key_id>rustfs-access-key</access_key_id>
+#                 <secret_access_key>rustfs-secret-key</secret_access_key>
+#                 <!-- Path-style URLs required for RustFS (same as MinIO) -->
+#                 <use_environment_credentials>0</use_environment_credentials>
+#                 <region>us-east-1</region>
+#                 <metadata_path>/var/lib/clickhouse/disks/s3/</metadata_path>
+#               </s3>
+#               <s3_cache>
+#                 <type>cache</type>
+#                 <disk>s3</disk>
+#                 <path>/var/lib/clickhouse/s3_cache/</path>
+#                 <max_size>21474836480</max_size>
+#               </s3_cache>
+#             </disks>
+#             <policies>
+#               <tiered>
+#                 <volumes>
+#                   <hot>
+#                     <disk>default</disk>
+#                     <max_data_part_size_bytes>1073741824</max_data_part_size_bytes>
+#                   </hot>
+#                   <cold>
+#                     <disk>s3_cache</disk>
+#                   </cold>
+#                 </volumes>
+#                 <move_factor>0.2</move_factor>
+#               </tiered>
+#             </policies>
+#           </storage_configuration>
+#         </clickhouse>
+#   persistence:
+#     enabled: true
+#     storageClass: ""
+#     size: 200Gi
+#   keeper:
+#     enabled: false
+#   operator:
+#     enabled: true
+#
+# rushConfig:
+#   storage:
+#     s3:
+#       enabled: true
+#       # RustFS endpoint WITHOUT the bucket name (Rush appends it)
+#       endpoint: "http://rustfs.storage.svc.cluster.local:9000"
+#       bucket: "rushobs-clickhouse"
+#       access_key_id: "rustfs-access-key"
+#       secret_access_key: "rustfs-secret-key"
+#       region: "us-east-1"   # RustFS ignores this but it must be present
+#     tiering:
+#       metrics_move_after_days: 7
+#       traces_move_after_days: 3
+#       logs_move_after_days: 7
+#   retention:
+#     defaults:
+#       metrics_days: 365
+#       traces_days: 90
+#       logs_days: 90
+#     metrics: []
+#     traces: []
+#     enforcer:
+#       enabled: true
+#       interval_secs: 3600
+#       dry_run: false
 
 
 # ──────────────────────────────────────────────────────────────────────────────
