@@ -1,0 +1,198 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Rush Observability — Multi-Pod HA ClickHouse Example
+#
+# Use for:  production, high-availability requirements, large data volumes
+# Topology: 1 shard × 3 replicas + 3 ClickHouse Keeper nodes
+#           → Quorum replication: survives loss of 1 CH + 1 Keeper node
+#           → Scale to multi-shard by increasing shardsCount
+# Storage:  500 Gi per replica (3 × 500 Gi = 1.5 Ti total)
+# Resources: ~4 CPU / 16 Gi RAM per replica at peak ingest
+#
+# Pre-requisites:
+#   • Altinity ClickHouse Operator installed in your cluster
+#     (operator.enabled: true handles this via the subchart)
+#   • At least 3 schedulable nodes (anti-affinity spreads pods)
+#   • A StorageClass that supports ReadWriteOnce (most CSI drivers)
+#
+# Deploy:
+#   helm install rushobs oci://... \
+#     -f examples/clickhouse-ha.yaml \
+#     --set clickhouse.clickhouse.defaultUser.password_secret_name=my-ch-secret
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Rush components ───────────────────────────────────────────────────────────
+queryApi:
+  replicas: 2   # run 2 query-api pods for HA; sit behind a ClusterIP load balancer
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
+
+frontend:
+  replicas: 2
+
+sreAgent:
+  enabled: false   # enable + set llmApiKey when you want AI-powered root cause
+
+# ── ClickHouse — 1 shard × 3 replicas with ClickHouse Keeper ─────────────────
+clickhouse:
+  enabled: true
+
+  # ── Topology ────────────────────────────────────────────────────────────────
+  # shardsCount:   number of independent data shards
+  #                1 = all data on every replica (pure replication, max redundancy)
+  #                2 = data split across 2 shards, each replicated 3×
+  shardsCount: 1
+  replicasCount: 3   # 3 replicas per shard — quorum survives 1 failure
+
+  image:
+    repository: altinity/clickhouse-server
+    tag: "25.3.6.10034.altinitystable"
+    pullPolicy: IfNotPresent
+
+  clickhouse:
+    defaultUser:
+      # Name of a Kubernetes Secret with key "password" holding the CH password.
+      # Create it before installing:
+      #   kubectl create secret generic rushobs-clickhouse-credentials \
+      #     --from-literal=password=<your-password>
+      password_secret_name: "rushobs-clickhouse-credentials"
+      allowExternalAccess: true
+    configurationFiles:
+      rush_settings.xml: |
+        <clickhouse>
+          <custom_settings_prefixes>rush_</custom_settings_prefixes>
+        </clickhouse>
+
+  # ── Storage ─────────────────────────────────────────────────────────────────
+  # Each replica gets its own PVC. Use a StorageClass backed by fast SSDs
+  # (gp3 on AWS, premium-ssd on Azure, pd-ssd on GCP) for best performance.
+  persistence:
+    enabled: true
+    storageClass: "gp3"   # replace with your fast StorageClass
+    size: 500Gi
+
+  # ── Resources per ClickHouse pod ────────────────────────────────────────────
+  resources:
+    requests:
+      cpu: "2"
+      memory: 8Gi
+    limits:
+      cpu: "4"
+      memory: 16Gi
+
+  # ── Init scripts ────────────────────────────────────────────────────────────
+  initScripts:
+    enabled: true
+    configMapName: "rushobs-clickhouse-init"
+    alwaysRun: true
+
+  service:
+    type: ClusterIP
+
+  # ── ClickHouse Keeper ────────────────────────────────────────────────────────
+  # Keeper provides distributed coordination (replaces ZooKeeper).
+  # 3 Keeper replicas form a Raft quorum — survives loss of 1 node.
+  # Keeper pods are lightweight (128 Mi RAM each) and can share nodes
+  # with CH replicas or run on dedicated small nodes.
+  keeper:
+    enabled: true
+    replicasCount: 3
+    persistence:
+      enabled: true
+      storageClass: "gp3"   # same class as CH data; Keeper writes are small
+      size: 10Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+
+  # ── Pod anti-affinity (spread across nodes) ──────────────────────────────────
+  # Uncomment to hard-require CH replicas on different nodes.
+  # affinity:
+  #   podAntiAffinity:
+  #     requiredDuringSchedulingIgnoredDuringExecution:
+  #       - labelSelector:
+  #           matchLabels:
+  #             app: clickhouse
+  #         topologyKey: kubernetes.io/hostname
+
+  operator:
+    enabled: true
+
+# ── Collector ─────────────────────────────────────────────────────────────────
+# OTel Collector (2 replicas) + Vector DaemonSet for logs is the recommended
+# production setup. Set mode: hybrid to deploy both.
+collectors:
+  mode: hybrid   # otel for traces/metrics, vector daemonset for logs
+
+  otel:
+    kind: deployment
+    replicas: 2
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 70
+    signals:
+      traces: true
+      metrics: true
+      logs: false   # vector handles logs in hybrid mode
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: "2"
+        memory: 1Gi
+
+  vector:
+    mode: logs
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+
+# ── Rush storage / retention ──────────────────────────────────────────────────
+# In production, enable S3 tiering to keep ClickHouse disks lean.
+# Metrics/traces/logs older than N days are moved to object storage;
+# ClickHouse queries them transparently via the S3 disk.
+rushConfig:
+  storage:
+    s3:
+      enabled: true           # enable S3 cold-tier storage
+      endpoint: ""            # leave blank for AWS S3; set for MinIO/Ceph
+      bucket: "your-rush-bucket"
+      access_key_id: ""       # use IRSA / Workload Identity instead when possible
+      secret_access_key: ""
+      region: "us-east-1"
+    tiering:
+      metrics_move_after_days: 7
+      traces_move_after_days: 3
+      logs_move_after_days: 7
+  retention:
+    defaults:
+      metrics_days: 365
+      traces_days: 90
+      logs_days: 90
+    metrics:
+      - labels: { env: "dev" }
+        retain_days: 30
+      - labels: { env: "prod" }
+        retain_days: 365
+    traces:
+      - service_name: "gateway"
+        retain_days: 90
+    enforcer:
+      enabled: true
+      interval_secs: 3600
+      dry_run: false

@@ -1,0 +1,115 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Rush Observability — Single-Pod ClickHouse Example
+#
+# Use for:  local dev, staging, small teams (<5 engineers), proof-of-concept
+# Topology: 1 shard × 1 replica (standalone — no Keeper required)
+# Storage:  50 Gi (adjust to your data volume)
+# Resources: ~2 CPU / 4 Gi RAM at peak ingest
+#
+# Deploy:
+#   helm install rushobs oci://... \
+#     -f examples/clickhouse-single.yaml \
+#     --set clickhouse.clickhouse.defaultUser.password_secret_name=my-ch-secret
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Rush components ───────────────────────────────────────────────────────────
+queryApi:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+frontend:
+  replicas: 1
+
+sreAgent:
+  enabled: false   # enable + set llmApiKey when you want AI-powered root cause
+
+# ── ClickHouse — single-node standalone ───────────────────────────────────────
+clickhouse:
+  enabled: true
+
+  # Topology: 1 shard, 1 replica = simple standalone instance
+  shardsCount: 1
+  replicasCount: 1
+
+  image:
+    repository: altinity/clickhouse-server
+    tag: "25.3.6.10034.altinitystable"
+    pullPolicy: IfNotPresent
+
+  clickhouse:
+    defaultUser:
+      # Name of a Kubernetes Secret with key "password" holding the CH password.
+      # Create it before installing:
+      #   kubectl create secret generic rushobs-clickhouse-credentials \
+      #     --from-literal=password=<your-password>
+      password_secret_name: "rushobs-clickhouse-credentials"
+      allowExternalAccess: true
+    configurationFiles:
+      rush_settings.xml: |
+        <clickhouse>
+          <custom_settings_prefixes>rush_</custom_settings_prefixes>
+        </clickhouse>
+
+  # Persistent volume for ClickHouse data
+  persistence:
+    enabled: true
+    storageClass: ""   # "" = cluster default StorageClass
+    size: 50Gi         # increase as your data grows
+
+  # Resource requests for the single ClickHouse pod
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+  # Init scripts that create the observability schema on first boot
+  initScripts:
+    enabled: true
+    configMapName: "rushobs-clickhouse-init"
+    alwaysRun: true
+
+  service:
+    type: ClusterIP
+
+  # No Keeper needed for a single-replica deployment
+  keeper:
+    enabled: false
+
+  operator:
+    enabled: true
+
+# ── Collector (optional) ──────────────────────────────────────────────────────
+# Point your existing OTel collector at the ClickHouse service, or let Rush
+# deploy one for you. For a quick start, set mode: otel.
+collectors:
+  mode: none   # none | otel | vector | hybrid
+
+# ── Rush storage / retention ──────────────────────────────────────────────────
+rushConfig:
+  storage:
+    s3:
+      enabled: false   # no S3 tiering for single-pod dev deployments
+    tiering:
+      metrics_move_after_days: 0
+      traces_move_after_days: 0
+      logs_move_after_days: 0
+  retention:
+    defaults:
+      metrics_days: 30
+      traces_days: 14
+      logs_days: 14
+    metrics: []
+    traces: []
+    enforcer:
+      enabled: true
+      interval_secs: 3600
+      dry_run: false

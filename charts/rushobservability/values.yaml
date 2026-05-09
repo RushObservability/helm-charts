@@ -58,7 +58,7 @@ argocd:
 # ── frontend ──
 frontend:
   image:
-    repository: mzupan/wide-frontend
+    repository: mzupan/rush-frontend
     tag: "0.1.12"
     pullPolicy: Always
   replicas: 1
@@ -80,7 +80,7 @@ rushConfig:
     s3:
       enabled: false            # set true + fill in to enable S3 tiered storage
       endpoint: ""
-      bucket: "wide-clickhouse"
+      bucket: "rush-clickhouse"
       access_key_id: ""
       secret_access_key: ""
       region: "us-east-1"
@@ -114,6 +114,16 @@ clickhouse:
     defaultUser:
       password_secret_name: "rushobs-clickhouse-credentials"
       allowExternalAccess: true   # allow connections from other pods
+    # Custom ClickHouse server configuration files.
+    # rush_settings.xml: enables the 'rush_' custom settings prefix so that
+    # rush-api can set `rush_tenant_id` per-query for row-level security
+    # policies. Without this, getSetting('rush_tenant_id') in row policies
+    # will fail with an unknown setting error.
+    configurationFiles:
+      rush_settings.xml: |
+        <clickhouse>
+          <custom_settings_prefixes>rush_</custom_settings_prefixes>
+        </clickhouse>
   shardsCount: 1
   replicasCount: 1
   image:
