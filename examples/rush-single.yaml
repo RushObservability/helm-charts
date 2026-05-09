@@ -8,7 +8,7 @@
 #
 # Deploy:
 #   helm install rushobs oci://... \
-#     -f examples/clickhouse-single.yaml \
+#     -f examples/rush-single.yaml \
 #     --set clickhouse.clickhouse.defaultUser.password_secret_name=my-ch-secret
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -84,6 +84,10 @@ clickhouse:
   keeper:
     enabled: false
 
+  # operator.enabled — set to false if the Altinity ClickHouse Operator is
+  # already installed in your cluster (e.g. shared cluster-wide or managed
+  # by your platform team). Rush will still create the ClickHouseInstallation
+  # CR and the existing operator will reconcile it.
   operator:
     enabled: true
 

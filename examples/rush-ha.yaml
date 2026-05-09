@@ -123,6 +123,10 @@ clickhouse:
   #             app: clickhouse
   #         topologyKey: kubernetes.io/hostname
 
+  # operator.enabled — set to false if the Altinity ClickHouse Operator is
+  # already installed in your cluster (e.g. shared cluster-wide or managed
+  # by your platform team). Rush will still create the ClickHouseInstallation
+  # CR and the existing operator will reconcile it.
   operator:
     enabled: true
 

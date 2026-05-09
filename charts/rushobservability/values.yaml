@@ -143,6 +143,10 @@ clickhouse:
   keeper:
     enabled: false
   operator:
+    # Set to false if the Altinity ClickHouse Operator is already installed
+    # cluster-wide (e.g. shared by multiple teams or managed separately).
+    # Rush will still deploy the ClickHouseInstallation CRD resource; it just
+    # won't install the operator Deployment, RBAC, or CRDs again.
     enabled: true
 
 # ═══════════════════════════════════════════════════════════════════════
