@@ -1,0 +1,161 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# RustFS — in-cluster S3-compatible object storage for local development
+#
+# Apply to the rushobs namespace:
+#   kubectl apply -f orbstack/rustfs.yaml -n rushobs
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Credentials secret — keep these consistent with values-rushobs.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rustfs-credentials
+  namespace: rushobs
+stringData:
+  access-key: "rushobs-access"
+  secret-key: "rushobs-secret-key-localdev"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rustfs-data
+  namespace: rushobs
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rustfs
+  namespace: rushobs
+  labels:
+    app: rustfs
+spec:
+  selector:
+    matchLabels:
+      app: rustfs
+  serviceName: rustfs
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: rustfs
+    spec:
+      containers:
+        - name: rustfs
+          image: rustfs/rustfs:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: RUSTFS_VOLUMES
+              value: /data
+            - name: RUSTFS_ADDRESS
+              value: ":9000"
+            - name: RUSTFS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rustfs-credentials
+                  key: access-key
+            - name: RUSTFS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rustfs-credentials
+                  key: secret-key
+          ports:
+            - name: s3
+              containerPort: 9000
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: rustfs-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rustfs
+  namespace: rushobs
+  labels:
+    app: rustfs
+spec:
+  selector:
+    app: rustfs
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: 9000
+  type: ClusterIP
+
+---
+# One-shot Job: create the bucket after RustFS is ready.
+# Uses the MinIO client (mc) which is fully compatible with RustFS's S3 API.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rustfs-create-bucket
+  namespace: rushobs
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        # Wait until RustFS health endpoint responds before running mc
+        - name: wait-for-rustfs
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z rustfs.rushobs.svc.cluster.local 9000 2>/dev/null; do
+                echo "waiting for rustfs on :9000…"; sleep 3
+              done
+              echo "rustfs port open, giving it 3s to finish init…"
+              sleep 3
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          env:
+            - name: ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rustfs-credentials
+                  key: access-key
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rustfs-credentials
+                  key: secret-key
+          command:
+            - sh
+            - -c
+            - |
+              mc alias set rustfs \
+                http://rustfs.rushobs.svc.cluster.local:9000 \
+                "$ACCESS_KEY" "$SECRET_KEY" && \
+              mc mb --ignore-existing rustfs/rushobs-clickhouse && \
+              echo "bucket rushobs-clickhouse ready"
