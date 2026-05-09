@@ -1,0 +1,222 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Rush Observability — Retention Policy Examples
+#
+# Rush's retention enforcer runs on a schedule (default: every hour) and
+# deletes data older than the configured thresholds. Rules are evaluated from
+# most specific to least specific; the first matching rule wins.
+#
+# Rule matching order (most → least specific):
+#   1. Metric name + label match
+#   2. Metric name regex + label match
+#   3. Label-only match
+#   4. Metric name match only
+#   5. Global default
+#
+# This file shows three example scenarios — uncomment the one that fits:
+#
+#   A. Startup / lean ops  — short retention, no S3, keep costs minimal
+#   B. Production          — long defaults, per-env overrides, S3 cold tier
+#   C. Compliance / audit  — long retention for specific services + dry-run
+#
+# Deploy:
+#   helm install rushobs oci://... \
+#     -f examples/rush-retention.yaml \
+#     --set clickhouse.clickhouse.defaultUser.password_secret_name=my-ch-secret
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SCENARIO A — Startup / lean ops
+#
+# Keep data for 7–30 days. No S3 cold tier. All signals on one ClickHouse pod.
+# Enforcer runs every 30 minutes so disk reclaims faster on small instances.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# rushConfig:
+#   storage:
+#     s3:
+#       enabled: false
+#     tiering:
+#       metrics_move_after_days: 0
+#       traces_move_after_days: 0
+#       logs_move_after_days: 0
+#   retention:
+#     defaults:
+#       metrics_days: 30   # 30 days of metric history
+#       traces_days: 7     # traces are large — keep only a week
+#       logs_days: 7
+#     metrics: []
+#     traces: []
+#     enforcer:
+#       enabled: true
+#       interval_secs: 1800   # run every 30 min; reclaims disk faster
+#       dry_run: false
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SCENARIO B — Production multi-tenant
+#
+# Long default retention. Shorter windows for dev environments to control cost.
+# Longer windows for production services. S3 tiering keeps the local disk lean.
+# ══════════════════════════════════════════════════════════════════════════════
+
+rushConfig:
+  storage:
+    s3:
+      enabled: true
+      endpoint: ""                   # blank = AWS S3
+      bucket: "my-company-rushobs"
+      access_key_id: ""              # set via --set or IRSA (leave blank for IRSA)
+      secret_access_key: ""
+      region: "us-east-1"
+    tiering:
+      # Move cold partitions to S3 after N days; hot tier stays on local SSD
+      metrics_move_after_days: 14
+      traces_move_after_days: 7
+      logs_move_after_days: 14
+
+  retention:
+    # ── Global defaults (apply when no specific rule matches) ──────────────────
+    defaults:
+      metrics_days: 365    # 1 year of metrics by default
+      traces_days: 90      # 90 days of trace history
+      logs_days: 90
+
+    # ── Per-environment metric overrides ──────────────────────────────────────
+    # Rush matches on Prometheus-style labels attached to each metric series.
+    # Rules are checked in order; first match wins.
+    metrics:
+      # Dev/staging: keep only 14 days to avoid filling S3 with throwaway data
+      - labels: { env: "dev" }
+        retain_days: 14
+      - labels: { env: "staging" }
+        retain_days: 30
+
+      # Production infra metrics (node_*, kube_*): keep 2 years for trending
+      - name_regex: "^(node_|kube_|container_)"
+        labels: { env: "prod" }
+        retain_days: 730
+
+      # All other production metrics: 1 year
+      - labels: { env: "prod" }
+        retain_days: 365
+
+      # High-cardinality per-request metrics: keep shorter to manage storage
+      - name_regex: ".*_request_duration_.*"
+        retain_days: 30
+
+    # ── Per-service trace overrides ────────────────────────────────────────────
+    traces:
+      # Payment service: keep 1 year for fraud investigation
+      - service_name: "payment-service"
+        retain_days: 365
+
+      # Auth service: regulatory requirement (18 months)
+      - service_name: "auth-service"
+        retain_days: 548
+
+      # Background jobs generate lots of traces but aren't useful long-term
+      - service_name: "batch-worker"
+        retain_days: 14
+
+      # Canary deployments: short retention, they're noisy
+      - attribute:
+          key: "deployment.environment"
+          value: "canary"
+        retain_days: 7
+
+    enforcer:
+      enabled: true
+      interval_secs: 3600   # run hourly
+      dry_run: false
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SCENARIO C — Compliance / audit mode
+#
+# Use dry_run: true first to see what the enforcer would delete without removing
+# anything. Tail query-api logs to see the dry-run report:
+#
+#   kubectl logs -l app=rush-query-api -f | grep "retention"
+#
+# Once you're satisfied with the rules, flip dry_run: false and upgrade.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# rushConfig:
+#   storage:
+#     s3:
+#       enabled: true
+#       endpoint: ""
+#       bucket: "my-company-rushobs-audit"
+#       access_key_id: ""
+#       secret_access_key: ""
+#       region: "us-east-1"
+#     tiering:
+#       metrics_move_after_days: 30   # keep metrics hot longer for dashboards
+#       traces_move_after_days: 7
+#       logs_move_after_days: 30
+#   retention:
+#     defaults:
+#       metrics_days: 730    # 2 years default (SOC2 / HIPAA baseline)
+#       traces_days: 365     # 1 year of traces
+#       logs_days: 365
+#     metrics:
+#       # Short-lived operational noise: 30 days
+#       - name_regex: ".*_scrape_.*"
+#         retain_days: 30
+#     traces:
+#       # PCI-scoped services: 13 months (PCI DSS requirement)
+#       - service_name: "checkout-api"
+#         retain_days: 395
+#       - service_name: "billing-service"
+#         retain_days: 395
+#       # Non-critical internal tooling: 30 days
+#       - attribute:
+#           key: "service.tier"
+#           value: "internal"
+#         retain_days: 30
+#     enforcer:
+#       enabled: true
+#       interval_secs: 3600
+#       # ── Set dry_run: true to preview deletions without removing any data ──
+#       # Tail the query-api pod logs to see the report:
+#       #   kubectl logs -l app=rush-query-api -f | grep "retention\|enforcer"
+#       dry_run: true   # flip to false once rules look correct
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# RETENTION RULE REFERENCE
+#
+# Metric rules
+# ────────────
+# Each [[retention.metrics]] rule can have any combination of:
+#   name        exact metric name match          (e.g. "http_requests_total")
+#   name_regex  regex match on metric name       (e.g. "^node_.*")
+#   labels      key/value pairs that must all match the metric's label set
+#   retain_days days to keep; data older than this is deleted
+#
+# Trace rules
+# ───────────
+# Each [[retention.traces]] rule can have one of:
+#   service_name  exact service name match
+#   attribute     { key: "...", value: "..." } — matches a span attribute
+# Plus:
+#   retain_days   days to keep
+#
+# Enforcer settings
+# ─────────────────
+#   enabled        true/false — disable to pause all deletion
+#   interval_secs  how often the enforcer runs (3600 = hourly)
+#   dry_run        true = log what would be deleted but don't delete anything
+#
+# Tiering vs. retention
+# ─────────────────────
+# tiering.*_move_after_days — when ClickHouse migrates partitions to S3
+#   → data is still queryable, just read from object storage (slower)
+#   → set to 0 to disable tiering and keep everything on local disk
+#
+# retention.*_days — when Rush hard-deletes data (from both local disk and S3)
+#   → should always be >= the corresponding tiering threshold
+#   → example: move_after_days=7, retain_days=90 means:
+#              7 days on SSD → 83 more days on S3 → deleted after 90 total days
+# ──────────────────────────────────────────────────────────────────────────────
