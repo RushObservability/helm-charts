@@ -1,0 +1,146 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Rush Observability — OrbStack local dev values (RustFS storage backend)
+#
+# Deploy:
+#   helm upgrade --install rushobs ./charts/rushobservability \
+#     -n rushobs --create-namespace \
+#     -f orbstack/values-rushobs.yaml
+# ──────────────────────────────────────────────────────────────────────────────
+
+queryApi:
+  image:
+    repository: mzupan/rush-api
+    tag: "0.1.24"
+    pullPolicy: Always
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+sreAgent:
+  enabled: false
+
+frontend:
+  image:
+    repository: mzupan/rush-frontend
+    tag: "0.1.12"
+    pullPolicy: Always
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ── Rush config — RustFS storage backend ──────────────────────────────────────
+rushConfig:
+  storage:
+    s3:
+      enabled: true
+      # RustFS in-cluster endpoint (no bucket in this URL — Rush appends it)
+      endpoint: "http://rustfs.rushobs.svc.cluster.local:9000"
+      bucket: "rushobs-clickhouse"
+      access_key_id: "rushobs-access"
+      secret_access_key: "rushobs-secret-key-localdev"
+      region: "us-east-1"   # RustFS ignores this but the field is required
+    tiering:
+      # Short thresholds so tiering is exercisable in local dev
+      metrics_move_after_days: 1
+      traces_move_after_days: 1
+      logs_move_after_days: 1
+  retention:
+    defaults:
+      metrics_days: 30
+      traces_days: 30
+      logs_days: 30
+    metrics: []
+    traces: []
+    enforcer:
+      enabled: true
+      interval_secs: 3600
+      dry_run: false
+
+# ── ClickHouse ─────────────────────────────────────────────────────────────────
+clickhouse:
+  enabled: true
+  shardsCount: 1
+  replicasCount: 1
+  image:
+    repository: altinity/clickhouse-server
+    tag: "25.3.6.10034.altinitystable"
+    pullPolicy: IfNotPresent
+  clickhouse:
+    defaultUser:
+      password_secret_name: "rushobs-clickhouse-credentials"
+      allowExternalAccess: true
+    configurationFiles:
+      rush_settings.xml: |
+        <clickhouse>
+          <custom_settings_prefixes>rush_</custom_settings_prefixes>
+        </clickhouse>
+
+      # RustFS S3 disk — path-style URLs, use_environment_credentials=0
+      storage_s3.xml: |
+        <clickhouse>
+          <storage_configuration>
+            <disks>
+              <s3>
+                <type>s3</type>
+                <!-- Bucket name in path; trailing slash required -->
+                <endpoint>http://rustfs.rushobs.svc.cluster.local:9000/rushobs-clickhouse/clickhouse/</endpoint>
+                <access_key_id>rushobs-access</access_key_id>
+                <secret_access_key>rushobs-secret-key-localdev</secret_access_key>
+                <!-- Required for path-style RustFS URLs -->
+                <use_environment_credentials>0</use_environment_credentials>
+                <region>us-east-1</region>
+                <metadata_path>/var/lib/clickhouse/disks/s3/</metadata_path>
+              </s3>
+              <s3_cache>
+                <type>cache</type>
+                <disk>s3</disk>
+                <path>/var/lib/clickhouse/s3_cache/</path>
+                <!-- 2 Gi local read cache (small for dev) -->
+                <max_size>2147483648</max_size>
+              </s3_cache>
+            </disks>
+            <policies>
+              <tiered>
+                <volumes>
+                  <hot>
+                    <disk>default</disk>
+                    <!-- Parts under 256 Mi stay on local disk -->
+                    <max_data_part_size_bytes>268435456</max_data_part_size_bytes>
+                  </hot>
+                  <cold>
+                    <disk>s3_cache</disk>
+                  </cold>
+                </volumes>
+                <move_factor>0.2</move_factor>
+              </tiered>
+            </policies>
+          </storage_configuration>
+        </clickhouse>
+
+  persistence:
+    enabled: true
+    storageClass: ""   # OrbStack default
+    size: 10Gi
+
+  initScripts:
+    enabled: true
+    configMapName: "rushobs-clickhouse-init"
+    alwaysRun: true
+
+  keeper:
+    enabled: false
+  operator:
+    enabled: true
+
+collectors:
+  mode: none
