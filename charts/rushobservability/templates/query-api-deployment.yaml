@@ -46,6 +46,13 @@ spec:
             - name: ARGOCD_NAMESPACE
               value: {{ .Values.argocd.namespace | quote }}
             {{- end }}
+            {{- if .Values.sreAgent.enabled }}
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.sreAgent.llmApiKeySecret.name }}
+                  key: {{ .Values.sreAgent.llmApiKeySecret.key }}
+            {{- end }}
             {{- range $key, $val := .Values.queryApi.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
