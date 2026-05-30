@@ -51,8 +51,13 @@ sreAgent:
     port: 8081
 
 # ── anomaly engine ──
+# The anomaly engine evaluates rules and sends notifications. By default the
+# query-api runs it in-process (fine for a single query-api replica). If you
+# scale queryApi.replicas > 1, enable this dedicated single-replica Deployment —
+# the chart then sets RUSH_RUN_ANOMALY_ENGINE=false on the API pods so rules are
+# evaluated exactly once (no duplicate alerts).
 anomalyEngine:
-  enabled: false                     # single replica — safe to run alongside multiple api pods
+  enabled: false                     # set true when running multiple query-api pods
   image:
     repository: mzupan/rush-api
     tag: "0.1.32"

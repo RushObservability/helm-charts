@@ -42,6 +42,10 @@ spec:
                   key: password
             - name: RUSH_CONFIG
               value: /etc/rush/rush.toml
+            # Run the anomaly engine in-process only when there is no dedicated
+            # anomaly-engine Deployment, so rules aren't evaluated twice.
+            - name: RUSH_RUN_ANOMALY_ENGINE
+              value: {{ not .Values.anomalyEngine.enabled | quote }}
             {{- if .Values.argocd.enabled }}
             - name: ARGOCD_NAMESPACE
               value: {{ .Values.argocd.namespace | quote }}

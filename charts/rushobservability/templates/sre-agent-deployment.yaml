@@ -31,6 +31,8 @@ spec:
               value: {{ .Values.sreAgent.port | quote }}
             - name: CLICKHOUSE_URL
               value: "http://clickhouse-{{ .Release.Name }}-clickhouse:8123"
+            - name: CLICKHOUSE_DATABASE
+              value: observability
             - name: CLICKHOUSE_USER
               valueFrom:
                 secretKeyRef:
@@ -41,8 +43,6 @@ spec:
                 secretKeyRef:
                   name: rushobs-clickhouse-credentials
                   key: password
-            - name: RUSH_CONFIG_DB
-              value: /tmp/rush_config.db
             # URL of query-api used to fetch user-defined custom skills.
             # query-api owns the custom_skills table; sre-agent is a read-only
             # HTTP consumer so the two services don't need a shared volume.
