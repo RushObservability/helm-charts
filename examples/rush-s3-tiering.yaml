@@ -82,10 +82,10 @@
 #               <tiered>
 #                 <volumes>
 #                   <!-- New data and parts under 1 Gi stay on fast local SSD -->
-#                   <hot>
+#                   <default>
 #                     <disk>default</disk>
 #                     <max_data_part_size_bytes>1073741824</max_data_part_size_bytes>
-#                   </hot>
+#                   </default>
 #                   <!-- Older / larger parts move to S3 via the cache disk -->
 #                   <cold>
 #                     <disk>s3_cache</disk>
@@ -185,10 +185,10 @@
 #             <policies>
 #               <tiered>
 #                 <volumes>
-#                   <hot>
+#                   <default>
 #                     <disk>default</disk>
 #                     <max_data_part_size_bytes>1073741824</max_data_part_size_bytes>
-#                   </hot>
+#                   </default>
 #                   <cold>
 #                     <disk>s3_cache</disk>
 #                   </cold>
@@ -293,11 +293,18 @@ clickhouse:
             <policies>
               <tiered>
                 <volumes>
-                  <hot>
+                  <!-- The hot volume MUST be named `default` (not `hot`): the
+                       tables are first created on the built-in `default` policy,
+                       and ClickHouse only allows ALTER MODIFY SETTING
+                       storage_policy='tiered' if the new policy contains a volume
+                       named `default`. Renaming this to `hot` breaks tiering with
+                       "New storage policy `tiered` shall contain volumes of the
+                       old storage policy `default`". -->
+                  <default>
                     <disk>default</disk>
                     <!-- Parts under 1 Gi stay on fast local disk -->
                     <max_data_part_size_bytes>1073741824</max_data_part_size_bytes>
-                  </hot>
+                  </default>
                   <cold>
                     <disk>s3_cache</disk>
                   </cold>
@@ -402,10 +409,10 @@ rushConfig:
 #             <policies>
 #               <tiered>
 #                 <volumes>
-#                   <hot>
+#                   <default>
 #                     <disk>default</disk>
 #                     <max_data_part_size_bytes>1073741824</max_data_part_size_bytes>
-#                   </hot>
+#                   </default>
 #                   <cold>
 #                     <disk>s3_cache</disk>
 #                   </cold>
