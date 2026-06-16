@@ -57,6 +57,14 @@ spec:
                   name: {{ .Values.sreAgent.llmApiKeySecret.name }}
                   key: {{ .Values.sreAgent.llmApiKeySecret.key }}
             {{- end }}
+            {{- if .Values.enterprise.license.enabled }}
+            # Commercial license (Ed25519-signed token), verified offline by the API.
+            - name: RUSH_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.enterprise.license.secret.name }}
+                  key: {{ .Values.enterprise.license.secret.key }}
+            {{- end }}
             {{- range $key, $val := .Values.queryApi.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}

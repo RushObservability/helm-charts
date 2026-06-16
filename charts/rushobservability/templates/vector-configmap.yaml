@@ -103,24 +103,24 @@ data:
           del(.stream)
 
     sinks:
-      clickhouse_logs:
-        type: clickhouse
+      # Send parsed logs to query-api over HTTP — query-api is the only writer
+      # to ClickHouse (it owns the durable disk spool + 429 backpressure).
+      rush_api_logs:
+        type: http
         inputs:
           - parse_logs
-        endpoint: {{ $chEndpoint | quote }}
-        database: {{ $chDatabase | quote }}
-        table: "otel_logs"
-        auth:
-          strategy: basic
-          user: "${CLICKHOUSE_USER}"
-          password: "${CLICKHOUSE_PASSWORD}"
+        uri: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}/api/v1/ingest/logs"
+        method: post
         encoding:
-          timestamp_format: unix
+          codec: json
         batch:
           max_events: 1000
           timeout_secs: 5
+        request:
+          # Retry on query-api 429 backpressure so nothing is lost while the spool drains.
+          retry_attempts: 10
         healthcheck:
-          enabled: true
+          enabled: false
       {{- if $fullOtel }}
       # full-otel sub-mode forwards traces & metrics received via OTLP on
       # through to the OTel-collector sink (traces/metrics use distinct
