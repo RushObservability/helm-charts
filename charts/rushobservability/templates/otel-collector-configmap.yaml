@@ -42,19 +42,19 @@ data:
               - set(attributes["host.name"], resource.attributes["host.name"])
 
     exporters:
-      clickhouse:
-        endpoint: tcp://{{ include "rush.clickhouseService" . }}:9000
-        database: {{ .Values.queryApi.env.CLICKHOUSE_DATABASE | default "observability" | quote }}
-        username: "${env:CLICKHOUSE_USER}"
-        password: "${env:CLICKHOUSE_PASSWORD}"
-        traces_table_name: otel_traces
-        logs_table_name: otel_logs
-        create_schema: false
+      # Send OTLP to query-api over HTTP — query-api is the only writer to
+      # ClickHouse (it owns the durable disk spool + 429 backpressure).
+      # otlphttp posts protobuf to {endpoint}/v1/{traces,logs,metrics}.
+      otlphttp:
+        endpoint: http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}
+        encoding: proto
         timeout: 30s
         retry_on_failure:
           enabled: true
           initial_interval: 5s
           max_interval: 60s
+        # Buffer + retry on query-api 429 backpressure so nothing is lost while
+        # the spool drains.
         sending_queue:
           enabled: true
           num_consumers: 10
@@ -71,19 +71,19 @@ data:
         traces:
           receivers: [otlp]
           processors: [memory_limiter, resource, transform/flatten, batch]
-          exporters: [clickhouse]
+          exporters: [otlphttp]
         {{- end }}
         {{- if .Values.collectors.otel.signals.metrics }}
         metrics:
           receivers: [otlp]
           processors: [memory_limiter, resource, batch]
-          exporters: [clickhouse]
+          exporters: [otlphttp]
         {{- end }}
         {{- if .Values.collectors.otel.signals.logs }}
         logs:
           receivers: [otlp]
           processors: [memory_limiter, resource, batch]
-          exporters: [clickhouse]
+          exporters: [otlphttp]
         {{- end }}
     {{- end }}
 {{- end }}

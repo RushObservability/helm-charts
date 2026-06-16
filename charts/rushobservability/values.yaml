@@ -20,6 +20,50 @@ queryApi:
     type: ClusterIP
     port: 8080
 
+# ══ Enterprise (commercial, license-gated) ══════════════════════════════
+# Groups the commercial license and the paid add-ons it unlocks. Free
+# integrations (ArgoCD) and core features (sre-agent) stay top-level.
+enterprise:
+
+  # ── Commercial license ──
+  # When enabled, query-api reads RUSH_LICENSE_KEY from the named Secret and
+  # verifies it offline. Create the secret with your minted license token:
+  #   kubectl create secret generic rush-license --from-literal=license-key='<token>'
+  license:
+    enabled: false
+    secret:
+      name: rush-license
+      key: license-key
+
+  # ── postgres collector (paid add-on) ──
+  # Monitors an external Postgres and ships metrics + query stats into Rush over
+  # OTLP. Requires a license with the "postgres" entitlement — RUSH_LICENSE_KEY is
+  # injected from .Values.enterprise.license.secret, so create that secret too.
+  # Provide the Postgres DSN and the tenant ingest API key via a Secret:
+  #   kubectl create secret generic rush-pg-collector \
+  #     --from-literal=dsn='host=… user=rush_monitor password=… dbname=…' \
+  #     --from-literal=api-key='rush_xxx'
+  postgresCollector:
+    enabled: false
+    image:
+      repository: mzupan/postgres-collector
+      tag: "0.1.0"
+      pullPolicy: Always
+    secret:
+      name: rush-pg-collector
+      dsnKey: dsn
+      apiKeyKey: api-key
+    env:
+      COLLECTOR_ENVIRONMENT: production
+      RUST_LOG: info
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: "500m"
+        memory: 256Mi
+
 # ── sre-agent ──
 sreAgent:
   enabled: false                     # disabled by default — requires LLM_API_KEY
@@ -171,6 +215,12 @@ clickhouse:
     # Rush will still deploy the ClickHouseInstallation CRD resource; it just
     # won't install the operator Deployment, RBAC, or CRDs again.
     enabled: true
+    # Name applied to the operator's resources (Deployment/pod, RBAC, Secret,
+    # ServiceMonitor, dashboards). Without this, the Altinity subchart names them
+    # "<release>-operator" (e.g. rushobs-operator). Pin it to "clickhouse-operator"
+    # so the operator is recognizable regardless of release name. Set to "" to
+    # restore the release-prefixed default.
+    fullnameOverride: clickhouse-operator
 
 # ═══════════════════════════════════════════════════════════════════════
 # Data collectors (optional)
