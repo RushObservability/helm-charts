@@ -1,4 +1,4 @@
-{{- if .Values.enterprise.postgresCollector.enabled }}
+{{- if .Values.enterprise.license.integrations.postgresCollector.enabled }}
 # Paid Postgres monitoring add-on. Self-gates on the license: requires
 # RUSH_LICENSE_KEY (from .Values.enterprise.license.secret) with the "postgres" entitlement,
 # or the container exits. Single replica — running two would double-count metrics.
@@ -23,19 +23,19 @@ spec:
     spec:
       containers:
         - name: postgres-collector
-          image: "{{ .Values.enterprise.postgresCollector.image.repository }}:{{ .Values.enterprise.postgresCollector.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.enterprise.postgresCollector.image.pullPolicy }}
+          image: "{{ .Values.enterprise.license.integrations.postgresCollector.image.repository }}:{{ .Values.enterprise.license.integrations.postgresCollector.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.enterprise.license.integrations.postgresCollector.image.pullPolicy }}
           env:
             - name: PG_DSN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.enterprise.postgresCollector.secret.name }}
-                  key: {{ .Values.enterprise.postgresCollector.secret.dsnKey }}
+                  name: {{ .Values.enterprise.license.integrations.postgresCollector.secret.name }}
+                  key: {{ .Values.enterprise.license.integrations.postgresCollector.secret.dsnKey }}
             - name: RUSH_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.enterprise.postgresCollector.secret.name }}
-                  key: {{ .Values.enterprise.postgresCollector.secret.apiKeyKey }}
+                  name: {{ .Values.enterprise.license.integrations.postgresCollector.secret.name }}
+                  key: {{ .Values.enterprise.license.integrations.postgresCollector.secret.apiKeyKey }}
             # License token (Ed25519 JWT) — verified offline; needs "postgres" entitlement.
             - name: RUSH_LICENSE_KEY
               valueFrom:
@@ -44,10 +44,10 @@ spec:
                   key: {{ .Values.enterprise.license.secret.key }}
             - name: RUSH_OTLP_ENDPOINT
               value: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.port }}"
-            {{- range $key, $val := .Values.enterprise.postgresCollector.env }}
+            {{- range $key, $val := .Values.enterprise.license.integrations.postgresCollector.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
           resources:
-            {{- toYaml .Values.enterprise.postgresCollector.resources | nindent 12 }}
+            {{- toYaml .Values.enterprise.license.integrations.postgresCollector.resources | nindent 12 }}
 {{- end }}
