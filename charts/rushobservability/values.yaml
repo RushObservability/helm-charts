@@ -35,34 +35,37 @@ enterprise:
       name: rush-license
       key: license-key
 
-  # ── postgres collector (paid add-on) ──
-  # Monitors an external Postgres and ships metrics + query stats into Rush over
-  # OTLP. Requires a license with the "postgres" entitlement — RUSH_LICENSE_KEY is
-  # injected from .Values.enterprise.license.secret, so create that secret too.
-  # Provide the Postgres DSN and the tenant ingest API key via a Secret:
-  #   kubectl create secret generic rush-pg-collector \
-  #     --from-literal=dsn='host=… user=rush_monitor password=… dbname=…' \
-  #     --from-literal=api-key='rush_xxx'
-  postgresCollector:
-    enabled: false
-    image:
-      repository: mzupan/postgres-collector
-      tag: "0.1.0"
-      pullPolicy: Always
-    secret:
-      name: rush-pg-collector
-      dsnKey: dsn
-      apiKeyKey: api-key
-    env:
-      COLLECTOR_ENVIRONMENT: production
-      RUST_LOG: info
-    resources:
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      limits:
-        cpu: "500m"
-        memory: 256Mi
+    # ── Integrations unlocked by the license ──
+    integrations:
+
+      # ── postgres collector (paid add-on) ──
+      # Monitors an external Postgres and ships metrics + query stats into Rush over
+      # OTLP. Requires a license with the "postgres" entitlement — RUSH_LICENSE_KEY is
+      # injected from .Values.enterprise.license.secret, so create that secret too.
+      # Provide the Postgres DSN and the tenant ingest API key via a Secret:
+      #   kubectl create secret generic rush-pg-collector \
+      #     --from-literal=dsn='host=… user=rush_monitor password=… dbname=…' \
+      #     --from-literal=api-key='rush_xxx'
+      postgresCollector:
+        enabled: false
+        image:
+          repository: mzupan/postgres-collector
+          tag: "0.1.0"
+          pullPolicy: Always
+        secret:
+          name: rush-pg-collector
+          dsnKey: dsn
+          apiKeyKey: api-key
+        env:
+          COLLECTOR_ENVIRONMENT: production
+          RUST_LOG: info
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: "500m"
+            memory: 256Mi
 
 # ── sre-agent ──
 sreAgent:
