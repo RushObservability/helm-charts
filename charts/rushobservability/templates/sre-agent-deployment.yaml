@@ -62,6 +62,10 @@ spec:
             - name: ARGOCD_NAMESPACE
               value: {{ .Values.argocd.namespace | quote }}
             {{- end }}
+            {{- if .Values.fluxcd.enabled }}
+            - name: FLUXCD_NAMESPACE
+              value: {{ .Values.fluxcd.namespace | quote }}
+            {{- end }}
             {{- range $key, $val := .Values.sreAgent.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
