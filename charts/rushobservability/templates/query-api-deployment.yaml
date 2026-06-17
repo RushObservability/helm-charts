@@ -50,6 +50,10 @@ spec:
             - name: ARGOCD_NAMESPACE
               value: {{ .Values.argocd.namespace | quote }}
             {{- end }}
+            {{- if .Values.fluxcd.enabled }}
+            - name: FLUXCD_NAMESPACE
+              value: {{ .Values.fluxcd.namespace | quote }}
+            {{- end }}
             {{- if .Values.sreAgent.enabled }}
             - name: LLM_API_KEY
               valueFrom:

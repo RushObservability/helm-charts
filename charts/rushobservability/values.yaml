@@ -125,6 +125,12 @@ argocd:
   enabled: false                     # enable ArgoCD CRD reading
   namespace: argocd                  # namespace where ArgoCD apps live
 
+# ── fluxcd integration (Flux v2 / GitOps Toolkit) ──
+# Free integration: reads Kustomizations, HelmReleases, and Sources cluster-wide.
+fluxcd:
+  enabled: false                     # enable Flux v2 CRD reading
+  namespace: flux-system             # default Flux namespace (resources read cluster-wide)
+
 # ── frontend ──
 frontend:
   image:
