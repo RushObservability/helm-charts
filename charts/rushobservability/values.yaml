@@ -131,6 +131,11 @@ fluxcd:
   enabled: false                     # enable Flux v2 CRD reading
   namespace: flux-system             # default Flux namespace (resources read cluster-wide)
 
+# ── kubernetes integration (read-only cluster browser) ──
+# Free integration: lists core/apps/batch/networking resources cluster-wide (read-only).
+kubernetes:
+  enabled: false                     # enable the read-only Kubernetes resource browser
+
 # ── frontend ──
 frontend:
   image:
