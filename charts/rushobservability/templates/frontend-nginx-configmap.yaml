@@ -34,6 +34,25 @@ data:
             proxy_cache off;
             proxy_read_timeout 300s;
         }
+        # SRE Agent — session history + investigation templates. These paths are
+        # owned by the agent (not query-api); without these locations they fall
+        # through to the /api/ block → query-api → 404, and the SRE Agent page's
+        # availability probe (GET /api/v1/sessions) reports the agent as down.
+        # No URI on proxy_pass → the full original request URI passes through, so
+        # /api/v1/sessions, /api/v1/sessions/{id}, and query strings all forward.
+        location /api/v1/sessions {
+            proxy_pass http://{{ include "rush.fullname" . }}-sre-agent:{{ .Values.sreAgent.service.port }};
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_read_timeout 300s;
+        }
+        location /api/v1/investigation-templates {
+            proxy_pass http://{{ include "rush.fullname" . }}-sre-agent:{{ .Values.sreAgent.service.port }};
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
 {{- end }}
 
         location /api/ {

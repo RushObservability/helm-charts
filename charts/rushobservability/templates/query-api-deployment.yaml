@@ -54,6 +54,10 @@ spec:
             - name: FLUXCD_NAMESPACE
               value: {{ .Values.fluxcd.namespace | quote }}
             {{- end }}
+            {{- if .Values.kubernetes.enabled }}
+            - name: KUBERNETES_ENABLED
+              value: "true"
+            {{- end }}
             {{- if .Values.sreAgent.enabled }}
             - name: LLM_API_KEY
               valueFrom:

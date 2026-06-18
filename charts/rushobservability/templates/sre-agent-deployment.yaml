@@ -66,6 +66,10 @@ spec:
             - name: FLUXCD_NAMESPACE
               value: {{ .Values.fluxcd.namespace | quote }}
             {{- end }}
+            {{- if .Values.kubernetes.enabled }}
+            - name: KUBERNETES_ENABLED
+              value: "true"
+            {{- end }}
             {{- range $key, $val := .Values.sreAgent.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
