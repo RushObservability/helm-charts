@@ -205,11 +205,63 @@ clickhouse:
         <clickhouse>
           <custom_settings_prefixes>rush_</custom_settings_prefixes>
         </clickhouse>
+    # ClickHouse server image. Upstream GA build: the `text` (full-text inverted) index
+    # used for log/needle search is GA in 26.2; Altinity's stable line stops at 25.8.
+    # The Altinity operator runs upstream server images fine. Pin a patch for reproducibility.
+    image:
+      repository: clickhouse/clickhouse-server
+      tag: "26.2.19.43"
+      pullPolicy: IfNotPresent
+    # Bound ClickHouse memory. With NO limit the server sizes max_server_memory_usage to
+    # ~90% of the whole node and the cgroup working-set grows unbounded. A hard limit caps
+    # it and makes CH self-throttle instead of being OOM-killed. 8Gi is a conservative
+    # baseline — SCALE WITH YOUR NODE and scale the cache sizes + memory profile below
+    # proportionally. No CPU limit on purpose (merges/queries benefit from CPU burst).
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "8Gi"
+      limits:
+        memory: "8Gi"
+    # Server config (→ config.d/extra_config.xml). REQUIRED: the `tiered` storage policy —
+    # migrations create tables with storage_policy='tiered'; without it CREATE TABLE fails
+    # ("Unknown storage policy 'tiered'"). The single local-disk volume is the no-S3
+    # baseline; add an S3 cold volume here to enable tiering. Cache sizes are right-sized
+    # for the 8Gi limit above (the defaults reserve mark 5Gi + uncompressed 8Gi — more than
+    # the whole budget); scale them up with the memory limit.
+    extraConfig: |
+      <clickhouse>
+        <mark_cache_size>2147483648</mark_cache_size>
+        <uncompressed_cache_size>134217728</uncompressed_cache_size>
+        <storage_configuration>
+          <policies>
+            <tiered>
+              <volumes>
+                <hot>
+                  <disk>default</disk>
+                </hot>
+              </volumes>
+            </tiered>
+          </policies>
+        </storage_configuration>
+      </clickhouse>
+    # Per-query / per-user memory ceilings (default profile). Caps one query below the
+    # server budget so it fails gracefully (MEMORY_LIMIT_EXCEEDED) instead of OOM-killing
+    # the pod; GROUP BY/ORDER BY still spill to disk first. Scale with the memory limit.
+    extraUsers: |
+      <clickhouse>
+        <profiles>
+          <default>
+            <max_memory_usage>5368709120</max_memory_usage>
+            <max_memory_usage_for_user>6442450944</max_memory_usage_for_user>
+          </default>
+        </profiles>
+      </clickhouse>
   shardsCount: 1
   replicasCount: 1
   image:
-    repository: altinity/clickhouse-server
-    tag: "25.3.6.10034.altinitystable"
+    repository: clickhouse/clickhouse-server
+    tag: "26.2.19.43"
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
