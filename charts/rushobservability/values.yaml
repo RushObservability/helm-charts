@@ -6,6 +6,16 @@ queryApi:
     pullPolicy: Always
   replicas: 1
   port: 8080
+  # ── Bootstrap secrets (admin password + audit HMAC key) ──
+  # Leave blank to AUTO-GENERATE on first install and preserve across upgrades
+  # (stored in the <release>-bootstrap Secret — ArgoCD-style). Set a value to
+  # pin/preset it, or point existingSecret at your own Secret to bring your own.
+  adminPassword: ""        # INITIAL_ADMIN_PASSWORD — first-boot admin seed
+  auditHmacSecret: ""      # RUSH_AUDIT_HMAC_SECRET — audit hash-chain key; MUST stay stable
+  # Use a pre-created Secret instead of the auto-generated one. When set, the
+  # chart creates no bootstrap Secret and reads these keys from yours:
+  #   initial-admin-password, audit-hmac-secret
+  existingSecret: ""
   env:
     CLICKHOUSE_DATABASE: observability
     RUST_LOG: rush_api=info,tower_http=info
@@ -120,6 +130,19 @@ anomalyEngine:
       cpu: "1"
       memory: 512Mi
 
+# ── internal stats engine ──
+# Cadence (seconds) for the rush_stats_* gauges the API emits about itself. 15s keeps
+# rate()/short windows usable; raise it to cut the (tiny) sample volume.
+statsEngine:
+  intervalSecs: 15
+
+# ── PromQL query behavior ──
+# Staleness/lookback (seconds): how long a metric's last value is carried forward in
+# range queries. Default 300 (Prometheus 5m). Lower it so a stopped series' flat tail
+# ends sooner; keep it >= your slowest scrape interval or live series will show gaps.
+promql:
+  lookbackSecs: 300
+
 # ── argocd integration ──
 argocd:
   enabled: false                     # enable ArgoCD CRD reading
@@ -136,12 +159,24 @@ fluxcd:
 kubernetes:
   enabled: false                     # enable the read-only Kubernetes resource browser
 
+# ── cloudwatch integration (AWS CloudWatch Logs ingest via Kinesis Firehose) ──
+# Free integration: ingests CloudWatch Logs pushed through a Kinesis Data Firehose
+# HTTP endpoint. Tenant routing via access-key header or tenant URL path.
+cloudwatch:
+  enabled: false                     # enable CloudWatch Logs ingest endpoints
+
 # ── frontend ──
 frontend:
   image:
     repository: mzupan/rush-frontend
     tag: "0.1.12"
     pullPolicy: Always
+  # Public base URL (scheme + host, no trailing slash) of the Rush API as seen from
+  # outside the cluster. Surfaced to the UI wherever it shows or reaches the API by
+  # its public address — e.g. the CloudWatch ingest endpoint AWS Firehose must POST
+  # to. Set this when the public API host differs from where admins load the UI
+  # (e.g. internal UI + public ingest endpoint). Empty → the UI uses its own origin.
+  apiBaseUrl: ""
   replicas: 1
   resources:
     requests:
