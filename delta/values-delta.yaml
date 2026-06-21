@@ -1,0 +1,89 @@
+# Rush Observability — delta cluster (witnessai.teleport.sh-delta)
+# Fresh install into the `rushobs` namespace. Images built from current source
+# and pushed to Docker Hub (tag delta-20260616). ClickHouse on ebs-csi @ 500Gi.
+#
+# Install:
+#   helm upgrade --install rushobs helm-charts/charts/rushobservability \
+#     -n rushobs --create-namespace -f helm-charts/delta/values-delta.yaml
+
+# ── query-api ──
+queryApi:
+  image:
+    repository: mzupan/rush-api
+    tag: "delta-20260620a"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  # Admin password + audit HMAC key are now auto-generated and preserved in the
+  # <release>-bootstrap Secret (see queryApi.adminPassword / auditHmacSecret /
+  # existingSecret in the chart). Do NOT put INITIAL_ADMIN_PASSWORD here.
+  env:
+    CLICKHOUSE_DATABASE: observability
+    RUST_LOG: rush_api=info,tower_http=info
+    # Container runs as non-root (appuser); the default ./data/spool isn't writable
+    # and the chart mounts no spool volume. /tmp is world-writable (ephemeral buffer).
+    RUSH_SPOOL_DIR: "/tmp/rush-spool"
+    # Accessed over plain HTTP (kubectl port-forward, no TLS) → browsers reject the
+    # hardened __Host-/Secure session cookie, logging the user out on every reload.
+    # Relax to a plain HttpOnly cookie. Remove this once served over HTTPS.
+    RUSH_INSECURE_COOKIES: "true"
+
+# Single query-api replica runs the anomaly engine in-process; no separate pod.
+anomalyEngine:
+  enabled: false
+  image:
+    repository: mzupan/rush-api
+    tag: "delta-20260616"
+
+# ── frontend ──
+frontend:
+  image:
+    repository: mzupan/rush-frontend
+    tag: "delta-20260620f"
+    pullPolicy: IfNotPresent
+
+# SRE agent. LLM_API_KEY comes from the `rush-o11y-sre-llm` secret (api-key) —
+# seeded with a placeholder; set the real OpenAI key there (see notes) + restart.
+sreAgent:
+  enabled: true
+  image:
+    repository: mzupan/sre-agent
+    tag: "delta-20260619"
+    pullPolicy: IfNotPresent
+  env:
+    CLICKHOUSE_DATABASE: observability
+    RUST_LOG: sre_agent=info,tower_http=info
+    LLM_BASE_URL: "https://api.openai.com"
+    LLM_MODEL: "gpt-4o"
+  llmApiKeySecret:
+    name: rush-o11y-sre-llm
+    key: api-key
+
+# ── ClickHouse (Altinity subchart) ──
+# The image (26.2), memory limit, cache sizing, tiered storage policy, and per-query
+# memory profile are now CHART DEFAULTS (see charts/rushobservability/values.yaml) — they
+# no longer need to be set here. Only the delta-specific bits remain: the EBS CSI storage
+# class and the 500Gi volume size. (Bump `clickhouse.clickhouse.resources` here if delta
+# nodes warrant more than the 8Gi default.)
+clickhouse:
+  clickhouse:
+    persistence:
+      enabled: true
+      size: 500Gi
+      storageClass: "ebs-csi"
+
+# query-api ingests OTLP/logs directly; no in-cluster collector deployed.
+# Vector (existing monitoring/vector daemonset) will ship logs to query-api.
+collectors:
+  mode: none
+
+# Free integrations toggled in-app; enterprise add-ons off.
+enterprise:
+  license:
+    enabled: false
+argocd:
+  enabled: true
+  namespace: argocd
+fluxcd:
+  enabled: false
+kubernetes:
+  enabled: true
