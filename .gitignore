@@ -1,0 +1,6 @@
+# Never commit secret-bearing files — supply secrets via Kubernetes Secrets or
+# `helm --set` instead. (delta/values-delta.yaml is tracked; keep secrets out of it.)
+values-*.local.yaml
+*.local.yaml
+*.env
+.env

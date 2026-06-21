@@ -46,6 +46,12 @@ spec:
             # anomaly-engine Deployment, so rules aren't evaluated twice.
             - name: RUSH_RUN_ANOMALY_ENGINE
               value: {{ not .Values.anomalyEngine.enabled | quote }}
+            # Emit cadence for internal rush_stats_* gauges (15s keeps rate() usable).
+            - name: RUSH_STATS_INTERVAL_SECS
+              value: {{ .Values.statsEngine.intervalSecs | default 15 | quote }}
+            # PromQL staleness/lookback: how long a metric's last value carries forward.
+            - name: RUSH_PROM_LOOKBACK_SECS
+              value: {{ .Values.promql.lookbackSecs | default 300 | quote }}
             {{- if .Values.argocd.enabled }}
             - name: ARGOCD_NAMESPACE
               value: {{ .Values.argocd.namespace | quote }}
@@ -56,6 +62,10 @@ spec:
             {{- end }}
             {{- if .Values.kubernetes.enabled }}
             - name: KUBERNETES_ENABLED
+              value: "true"
+            {{- end }}
+            {{- if .Values.cloudwatch.enabled }}
+            - name: CLOUDWATCH_ENABLED
               value: "true"
             {{- end }}
             {{- if .Values.sreAgent.enabled }}
@@ -73,6 +83,20 @@ spec:
                   name: {{ .Values.enterprise.license.secret.name }}
                   key: {{ .Values.enterprise.license.secret.key }}
             {{- end }}
+            {{- $bootstrapSecret := .Values.queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
+            # First-boot admin seed + audit-log HMAC key. Auto-generated and
+            # preserved across upgrades by query-api-secret.yaml (or supply your
+            # own via queryApi.existingSecret). Never hard-code these in values.
+            - name: INITIAL_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: initial-admin-password
+            - name: RUSH_AUDIT_HMAC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: audit-hmac-secret
             {{- range $key, $val := .Values.queryApi.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}

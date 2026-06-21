@@ -17,6 +17,15 @@ data:
             add_header Cache-Control "no-cache, no-store, must-revalidate";
         }
 
+        # Runtime config served to the SPA. API_PUBLIC_URL is substituted from the
+        # container env at start; empty by default (UI falls back to its own
+        # origin). Exact match wins over the static .js rule; never cached.
+        location = /runtime-config.js {
+            default_type application/javascript;
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+            return 200 'window.__RUSH_CONFIG__={"apiBaseUrl":"${API_PUBLIC_URL}"};';
+        }
+
         location ~* \.(js|css|woff2?|ttf|eot|svg|png|jpg|gif|ico)$ {
             root /usr/share/nginx/html;
             expires 1y;

@@ -22,6 +22,19 @@ Reach the UI with:
   kubectl -n {{ $ns }} port-forward svc/{{ $fullName }}-frontend 8080:80
   open http://localhost:8080
 
+Admin login (user "admin"):
+{{- if .Values.queryApi.existingSecret }}
+  Password comes from your Secret "{{ .Values.queryApi.existingSecret }}" (key initial-admin-password).
+{{- else if .Values.queryApi.adminPassword }}
+  Password was preset via queryApi.adminPassword.
+{{- else }}
+  An initial password was auto-generated. Retrieve it with:
+    kubectl -n {{ $ns }} get secret {{ $fullName }}-bootstrap \
+      -o jsonpath="{.data.initial-admin-password}" | base64 -d ; echo
+{{- end }}
+  Change it after first login. The audit-log HMAC key lives in the same Secret
+  (key audit-hmac-secret) — keep it stable; rotating it breaks the audit chain.
+
 ────────────────────────────────────────────────────────────────────
   Data ingestion — collectors.mode = "{{ $mode }}"
 ────────────────────────────────────────────────────────────────────

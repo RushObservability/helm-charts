@@ -29,6 +29,11 @@ spec:
           env:
             - name: QUERY_API_HOST
               value: "{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}"
+            # Public base URL (scheme+host, no trailing slash) of the Rush API as
+            # seen from outside the cluster, surfaced to the UI (e.g. the CloudWatch
+            # ingest endpoint AWS Firehose posts to). Empty → UI uses its origin.
+            - name: API_PUBLIC_URL
+              value: "{{ .Values.frontend.apiBaseUrl | default "" }}"
           volumeMounts:
             - name: nginx-config
               mountPath: /etc/nginx/templates/default.conf.template
