@@ -189,21 +189,29 @@ frontend:
     type: ClusterIP
     port: 80
 
-# ── rush.toml config ──
-# Rendered into a ConfigMap and mounted into query-api at /etc/rush/rush.toml
-rushConfig:
+# ── Storage / S3 tiering — SINGLE source of truth ──
+# Lives under `global` so ONE block drives both the query-api rush.toml AND the
+# ClickHouse subchart's storage config. (Helm only shares values with subcharts
+# via `global`; the clickhouse dependency cannot see `rushConfig`.) Enable S3
+# tiering with just this block — the chart auto-generates the ClickHouse S3 disk
+# + cold volume (see clickhouse.clickhouse.extraConfig). No hand-written XML.
+global:
   storage:
     s3:
       enabled: false            # set true + fill in to enable S3 tiered storage
-      endpoint: ""
+      endpoint: ""              # blank = AWS S3 native; set for MinIO/RustFS/etc.
       bucket: "rush-clickhouse"
-      access_key_id: ""
+      access_key_id: ""         # leave blank for keyless (IRSA / EKS Pod Identity)
       secret_access_key: ""
       region: "us-east-1"
     tiering:
       metrics_move_after_days: 3   # 0 = disabled, keep on local disk only
       traces_move_after_days: 3
       logs_move_after_days: 7
+
+# ── rush.toml config ──
+# Rendered into a ConfigMap and mounted into query-api at /etc/rush/rush.toml
+rushConfig:
   retention:
     defaults:
       metrics_days: 30
@@ -258,28 +266,21 @@ clickhouse:
         memory: "8Gi"
       limits:
         memory: "8Gi"
-    # Server config (→ config.d/extra_config.xml). REQUIRED: the `tiered` storage policy —
-    # migrations create tables with storage_policy='tiered'; without it CREATE TABLE fails
-    # ("Unknown storage policy 'tiered'"). The single local-disk volume is the no-S3
-    # baseline; add an S3 cold volume here to enable tiering. Cache sizes are right-sized
-    # for the 8Gi limit above (the defaults reserve mark 5Gi + uncompressed 8Gi — more than
-    # the whole budget); scale them up with the memory limit.
+    # Cache sizes in bytes — right-size with the memory limit above. Referenced by
+    # the auto-generated extraConfig below (defaults suit the 8Gi baseline).
+    markCacheSize: 2147483648          # 2 GiB
+    uncompressedCacheSize: 134217728   # 128 MiB
+    s3CacheSize: 21474836480           # 20 GiB local cache for S3-tiered reads
+    # Server config (→ config.d/extra_config.xml) is AUTO-GENERATED from
+    # global.storage.s3 by the rush.clickhouseExtraConfig template:
+    #   • always emits the `tiered` storage policy (REQUIRED — migrations create
+    #     tables with storage_policy='tiered'; without it CREATE TABLE fails);
+    #   • when global.storage.s3.enabled, also adds the S3 disk + cache + cold
+    #     volume (keyless if no access keys are set).
+    # Enable tiering with ONLY the global.storage.s3 block — no hand-written XML.
+    # Override this string only for advanced ClickHouse storage customization.
     extraConfig: |
-      <clickhouse>
-        <mark_cache_size>2147483648</mark_cache_size>
-        <uncompressed_cache_size>134217728</uncompressed_cache_size>
-        <storage_configuration>
-          <policies>
-            <tiered>
-              <volumes>
-                <hot>
-                  <disk>default</disk>
-                </hot>
-              </volumes>
-            </tiered>
-          </policies>
-        </storage_configuration>
-      </clickhouse>
+      {{- include "rush.clickhouseExtraConfig" . }}
     # Per-query / per-user memory ceilings (default profile). Caps one query below the
     # server budget so it fails gracefully (MEMORY_LIMIT_EXCEEDED) instead of OOM-killing
     # the pod; GROUP BY/ORDER BY still spill to disk first. Scale with the memory limit.

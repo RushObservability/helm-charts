@@ -7,19 +7,19 @@ metadata:
     {{- include "rush.labels" . | nindent 4 }}
 data:
   rush.toml: |
-    {{- if .Values.rushConfig.storage.s3.enabled }}
+    {{- if .Values.global.storage.s3.enabled }}
     [storage.s3]
-    endpoint = {{ .Values.rushConfig.storage.s3.endpoint | quote }}
-    bucket = {{ .Values.rushConfig.storage.s3.bucket | quote }}
-    access_key_id = {{ .Values.rushConfig.storage.s3.access_key_id | quote }}
-    secret_access_key = {{ .Values.rushConfig.storage.s3.secret_access_key | quote }}
-    region = {{ .Values.rushConfig.storage.s3.region | quote }}
+    endpoint = {{ .Values.global.storage.s3.endpoint | quote }}
+    bucket = {{ .Values.global.storage.s3.bucket | quote }}
+    access_key_id = {{ .Values.global.storage.s3.access_key_id | quote }}
+    secret_access_key = {{ .Values.global.storage.s3.secret_access_key | quote }}
+    region = {{ .Values.global.storage.s3.region | quote }}
     {{- end }}
 
     [storage.tiering]
-    metrics_move_after_days = {{ .Values.rushConfig.storage.tiering.metrics_move_after_days }}
-    traces_move_after_days = {{ .Values.rushConfig.storage.tiering.traces_move_after_days }}
-    logs_move_after_days = {{ .Values.rushConfig.storage.tiering.logs_move_after_days }}
+    metrics_move_after_days = {{ .Values.global.storage.tiering.metrics_move_after_days }}
+    traces_move_after_days = {{ .Values.global.storage.tiering.traces_move_after_days }}
+    logs_move_after_days = {{ .Values.global.storage.tiering.logs_move_after_days }}
 
     [retention.defaults]
     metrics_days = {{ .Values.rushConfig.retention.defaults.metrics_days }}
