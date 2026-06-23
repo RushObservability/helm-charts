@@ -45,6 +45,15 @@ through `tpl`. Reads `.Values.global.storage` (shared with subcharts via global)
 {{- define "rush.clickhouseExtraConfig" -}}
 {{- $s3 := .Values.global.storage.s3 -}}
 <clickhouse>
+  <!-- The operator's default log level is `debug`, which writes every executed
+       query (full SQL, including user search terms) to the server log as
+       `<Debug> executeQuery`. Vector tails that log back into the `logs` table,
+       so each search re-ingested its own term and became searchable. `information`
+       keeps warnings/errors but drops the per-query debug spam. Override via
+       clickhouse.clickhouse.logLevel. -->
+  <logger>
+    <level>{{ .Values.clickhouse.logLevel | default "information" }}</level>
+  </logger>
   <mark_cache_size>{{ .Values.clickhouse.markCacheSize | int64 }}</mark_cache_size>
   <uncompressed_cache_size>{{ .Values.clickhouse.uncompressedCacheSize | int64 }}</uncompressed_cache_size>
   <storage_configuration>

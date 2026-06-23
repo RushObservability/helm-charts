@@ -36,6 +36,11 @@ data:
           address: 0.0.0.0:4317
         http:
           address: 0.0.0.0:4318
+        # Decode OTLP natively so logs/traces/metrics forward straight to Rush's
+        # OTLP endpoints via the opentelemetry sink (no remap). Requires Vector
+        # >= 0.51. With OTLP decoding, metrics arrive as OTLP-preserving log events
+        # — fine for pass-through forwarding (metric transforms are not available).
+        use_otlp_decoding: true
       {{- end }}
 
     transforms:
@@ -122,23 +127,49 @@ data:
         healthcheck:
           enabled: false
       {{- if $fullOtel }}
-      # full-otel sub-mode forwards traces & metrics received via OTLP on
-      # through to the OTel-collector sink (traces/metrics use distinct
-      # ClickHouse tables which Vector does not currently write to
-      # directly — forward them to the Rush OTel collector, or disable
-      # these pipelines). The sinks below are intentionally opinionated:
-      # traces go to console so you see the wire format during setup,
-      # switch to an otlp sink if you run a downstream collector.
-      console_traces:
-        type: console
+      # full-otel sub-mode: traces, metrics, and OTLP logs received on 4317/4318 are
+      # forwarded straight to Rush's native OTLP/HTTP endpoints (query-api owns the
+      # spool + metric firewall). Uses the opentelemetry sink with codec=otlp, which
+      # re-emits the OTLP-decoded events unchanged. (Vector >= 0.51.)
+      rush_otlp_traces:
+        type: opentelemetry
         inputs: ["otlp.traces"]
-        encoding:
-          codec: json
-      console_metrics:
-        type: console
+        protocol:
+          type: http
+          uri: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}/v1/traces"
+          method: post
+          encoding:
+            codec: otlp
+        request:
+          retry_attempts: 10
+        healthcheck:
+          enabled: false
+      rush_otlp_metrics:
+        type: opentelemetry
         inputs: ["otlp.metrics"]
-        encoding:
-          codec: json
+        protocol:
+          type: http
+          uri: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}/v1/metrics"
+          method: post
+          encoding:
+            codec: otlp
+        request:
+          retry_attempts: 10
+        healthcheck:
+          enabled: false
+      rush_otlp_logs:
+        type: opentelemetry
+        inputs: ["otlp.logs"]
+        protocol:
+          type: http
+          uri: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}/v1/logs"
+          method: post
+          encoding:
+            codec: otlp
+        request:
+          retry_attempts: 10
+        healthcheck:
+          enabled: false
       {{- end }}
     {{- end }}
 {{- end }}
