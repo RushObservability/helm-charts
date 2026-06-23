@@ -271,6 +271,12 @@ clickhouse:
     markCacheSize: 2147483648          # 2 GiB
     uncompressedCacheSize: 134217728   # 128 MiB
     s3CacheSize: 21474836480           # 20 GiB local cache for S3-tiered reads
+    # Server log level (→ config.d/extra_config.xml <logger><level>). The operator
+    # defaults to `debug`, which logs every executed query (full SQL, incl. user
+    # search terms) — and Vector tails that back into the logs store. `information`
+    # keeps warnings/errors without the per-query spam. Set `debug`/`trace` to
+    # troubleshoot. Valid: none|fatal|error|warning|information|debug|trace.
+    logLevel: information
     # Server config (→ config.d/extra_config.xml) is AUTO-GENERATED from
     # global.storage.s3 by the rush.clickhouseExtraConfig template:
     #   • always emits the `tiered` storage policy (REQUIRED — migrations create
@@ -401,11 +407,16 @@ collectors:
   vector:
     image:
       repository: timberio/vector
-      tag: "0.45.0-distroless-libc"
+      # 0.51+ adds native OTLP decoding + an opentelemetry sink (encoding.codec: otlp),
+      # which lets full-otel mode forward received OTLP traces/metrics/logs straight to
+      # Rush's OTLP endpoints. 0.56 is the current stable.
+      tag: "0.56.0-distroless-libc"
       pullPolicy: IfNotPresent
 
     # logs       — kubernetes_logs source only (DaemonSet)
-    # full-otel  — kubernetes_logs + OTLP receivers on 4317/4318
+    # full-otel  — kubernetes_logs + OTLP receivers on 4317/4318 that forward
+    #              received traces/metrics/logs straight to Rush's OTLP endpoints
+    #              (/v1/traces, /v1/metrics, /v1/logs). Acts as a single OTLP gateway.
     mode: logs
 
     resources:
