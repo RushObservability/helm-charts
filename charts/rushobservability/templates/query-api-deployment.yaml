@@ -74,6 +74,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.sreAgent.llmApiKeySecret.name }}
                   key: {{ .Values.sreAgent.llmApiKeySecret.key }}
+            # query-api fronts the SRE agent: it authenticates + injects the
+            # caller's tenant, then forwards /investigate, /sessions, and
+            # /investigation-templates to the agent at this URL.
+            - name: SRE_AGENT_URL
+              value: "http://{{ include "rush.fullname" . }}-sre-agent:{{ .Values.sreAgent.service.port }}"
             {{- end }}
             {{- if .Values.enterprise.license.enabled }}
             # Commercial license (Ed25519-signed token), verified offline by the API.
