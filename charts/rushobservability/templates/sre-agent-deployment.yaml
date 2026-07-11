@@ -19,6 +19,10 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       serviceAccountName: {{ include "rush.fullname" . }}-query-api
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: sre-agent
           image: "{{ .Values.sreAgent.image.repository }}:{{ .Values.sreAgent.image.tag | default .Chart.AppVersion }}"
@@ -26,9 +30,15 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.sreAgent.port }}
+          {{- $bootstrapSecret := .Values.queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
           env:
             - name: SRE_AGENT_PORT
               value: {{ .Values.sreAgent.port | quote }}
+            - name: SRE_AGENT_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: sre-agent-internal-token
             - name: CLICKHOUSE_URL
               value: "http://clickhouse-{{ .Release.Name }}-clickhouse:8123"
             - name: CLICKHOUSE_DATABASE
@@ -76,6 +86,11 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.sreAgent.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           readinessProbe:
             httpGet:
               path: /healthz

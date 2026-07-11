@@ -86,6 +86,8 @@ sreAgent:
     pullPolicy: Always
   replicas: 1
   port: 8081
+  # Leave blank to auto-generate and preserve a token in the bootstrap Secret.
+  internalAuthToken: ""
   env:
     CLICKHOUSE_DATABASE: observability
     RUST_LOG: sre_agent=info,tower_http=info
@@ -106,6 +108,8 @@ sreAgent:
   service:
     type: ClusterIP
     port: 8081
+  networkPolicy:
+    enabled: true
 
 # ── anomaly engine ──
 # The anomaly engine evaluates rules and sends notifications. By default the
