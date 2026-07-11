@@ -30,9 +30,9 @@ helm install rush rush/rushobservability --namespace observability --create-name
 
 Charts are published on tag by [chart-releaser](.github/workflows/release-charts.yml).
 
-## Bootstrap secrets (admin password & audit HMAC key)
+## Bootstrap secrets (admin password, audit HMAC key & SRE-agent token)
 
-The chart needs two secrets: the **initial admin password** (`INITIAL_ADMIN_PASSWORD`, seeds the `admin` user on first boot) and the **audit-log HMAC key** (`RUSH_AUDIT_HMAC_SECRET`, keys the tamper-evident audit hash-chain). You have three options:
+The chart needs three secrets: the **initial admin password** (`INITIAL_ADMIN_PASSWORD`, seeds the `admin` user on first boot), the **audit-log HMAC key** (`RUSH_AUDIT_HMAC_SECRET`, keys the tamper-evident audit hash-chain), and an internal **SRE-agent token** (`SRE_AGENT_INTERNAL_TOKEN`, which only query-api may use to call the agent). You have three options:
 
 **1. Auto-generate (default).** Leave them blank and the chart generates a random admin password (24 chars) and HMAC key (64 chars) on first install, stores them in the `<release>-bootstrap` Secret, and **preserves them across upgrades** (and `helm uninstall`). Retrieve the generated admin password:
 
@@ -46,7 +46,8 @@ kubectl -n <namespace> get secret <release>-bootstrap \
 ```bash
 helm install rush rush/rushobservability \
   --set queryApi.adminPassword="$(openssl rand -base64 18)" \
-  --set queryApi.auditHmacSecret="$(openssl rand -hex 32)"
+    --set queryApi.auditHmacSecret="$(openssl rand -hex 32)" \
+    --set sreAgent.internalAuthToken="$(openssl rand -hex 32)"
 ```
 
 **3. Bring your own Secret.** Create it **before** install, in the release namespace, with exactly these two keys, then point the chart at it with `queryApi.existingSecret` (the chart then creates no Secret of its own):
@@ -54,7 +55,8 @@ helm install rush rush/rushobservability \
 ```bash
 kubectl create secret generic rush-bootstrap -n <namespace> \
   --from-literal=initial-admin-password="$(openssl rand -base64 18)" \
-  --from-literal=audit-hmac-secret="$(openssl rand -hex 32)"
+  --from-literal=audit-hmac-secret="$(openssl rand -hex 32)" \
+  --from-literal=sre-agent-internal-token="$(openssl rand -hex 32)"
 
 helm install rush rush/rushobservability -n <namespace> \
   --set queryApi.existingSecret=rush-bootstrap
@@ -72,6 +74,7 @@ type: Opaque
 stringData:
   initial-admin-password: "choose-a-strong-password"
   audit-hmac-secret: "<random string, ≥ 32 bytes — e.g. `openssl rand -hex 32`>"
+  sre-agent-internal-token: "<random string — e.g. `openssl rand -hex 32`>"
 ```
 
 > **`audit-hmac-secret` must be ≥ 32 bytes.** It's used directly as the HMAC-SHA256 key (literal UTF-8 bytes — not hex-decoded), so the string's character count *is* the byte length; `openssl rand -hex 32` yields 64 bytes. A shorter/empty key makes the audit chain forgeable (query-api logs a warning). **Keep this value stable forever** — changing it makes all prior audit rows fail verification. `initial-admin-password` only seeds the admin user on first boot; changing it later does not rotate an existing admin.

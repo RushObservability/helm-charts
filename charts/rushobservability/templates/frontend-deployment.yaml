@@ -19,6 +19,9 @@ spec:
       annotations:
         checksum/nginx-config: {{ include (print $.Template.BasePath "/frontend-nginx-configmap.yaml") . | sha256sum }}
     spec:
+      # The stock nginx image starts as root to render its runtime template and
+      # bind port 80. It does not need a Kubernetes API token.
+      automountServiceAccountToken: false
       containers:
         - name: frontend
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"

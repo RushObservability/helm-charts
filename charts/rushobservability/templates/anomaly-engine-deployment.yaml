@@ -20,6 +20,11 @@ spec:
       annotations:
         checksum/rush-config: {{ include (print $.Template.BasePath "/rush-config-configmap.yaml") . | sha256sum }}
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: anomaly-engine
           image: "{{ .Values.anomalyEngine.image.repository }}:{{ .Values.anomalyEngine.image.tag | default .Chart.AppVersion }}"
@@ -50,6 +55,11 @@ spec:
               readOnly: true
           resources:
             {{- toYaml .Values.anomalyEngine.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
       volumes:
         - name: rush-config
           configMap:
