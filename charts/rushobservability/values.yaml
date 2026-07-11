@@ -252,12 +252,12 @@ clickhouse:
         <clickhouse>
           <custom_settings_prefixes>rush_</custom_settings_prefixes>
         </clickhouse>
-    # ClickHouse server image. Upstream GA build: the `text` (full-text inverted) index
-    # used for log/needle search is GA in 26.2; Altinity's stable line stops at 25.8.
-    # The Altinity operator runs upstream server images fine. Pin a patch for reproducibility.
+    # ClickHouse server image. The 26.6 line adds the direct-read and dictionary-assisted
+    # LIKE capabilities used by log search. The Altinity operator runs upstream server
+    # images fine. Pin a patch for reproducibility.
     image:
       repository: clickhouse/clickhouse-server
-      tag: "26.2.19.43"
+      tag: "26.6.1.1193"
       pullPolicy: IfNotPresent
     # Bound ClickHouse memory. With NO limit the server sizes max_server_memory_usage to
     # ~90% of the whole node and the cgroup working-set grows unbounded. A hard limit caps
@@ -307,7 +307,7 @@ clickhouse:
   replicasCount: 1
   image:
     repository: clickhouse/clickhouse-server
-    tag: "26.2.19.43"
+    tag: "26.6.1.1193"
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
