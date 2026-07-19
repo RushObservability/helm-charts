@@ -1,0 +1,86 @@
+{{- if .Values.sreAgent.enabled }}
+{{- if .Values.sreAgent.kube.allowClusterScopedForAdmins }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "rush.fullname" . }}-sre-agent-cluster-reader
+  labels:
+    app.kubernetes.io/component: sre-agent
+    {{- include "rush.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "namespaces"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "rush.fullname" . }}-sre-agent-cluster-reader
+  labels:
+    app.kubernetes.io/component: sre-agent
+    {{- include "rush.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "rush.fullname" . }}-sre-agent
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "rush.fullname" . }}-sre-agent-cluster-reader
+{{- end }}
+{{- if .Values.sreAgent.kube.tenantNamespaces }}
+{{- range $tenant, $namespaces := .Values.sreAgent.kube.tenantNamespaces }}
+{{- range $namespace := $namespaces }}
+{{- $suffix := sha256sum (printf "%s/%s" $tenant $namespace) | trunc 12 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "rush.fullname" $ }}-sre-{{ $suffix }}
+  namespace: {{ $namespace | quote }}
+  labels:
+    app.kubernetes.io/component: sre-agent
+    {{- include "rush.labels" $ | nindent 4 }}
+rules:
+  # Keep this role limited to the read-only, namespaced resources used by the
+  # agent. Secrets, pod logs, nodes, and namespace enumeration are excluded.
+  - apiGroups: [""]
+    resources: ["pods", "services", "endpoints", "configmaps", "events", "persistentvolumeclaims", "replicationcontrollers", "serviceaccounts"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "rush.fullname" $ }}-sre-{{ $suffix }}
+  namespace: {{ $namespace | quote }}
+  labels:
+    app.kubernetes.io/component: sre-agent
+    {{- include "rush.labels" $ | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "rush.fullname" $ }}-sre-agent
+    namespace: {{ $.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "rush.fullname" $ }}-sre-{{ $suffix }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

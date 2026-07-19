@@ -18,11 +18,9 @@ spec:
         app.kubernetes.io/component: sre-agent
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
-      serviceAccountName: {{ include "rush.fullname" . }}-query-api
+      serviceAccountName: {{ include "rush.fullname" . }}-sre-agent
       securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+        {{- toYaml .Values.sreAgent.podSecurityContext | nindent 8 }}
       containers:
         - name: sre-agent
           image: "{{ .Values.sreAgent.image.repository }}:{{ .Values.sreAgent.image.tag | default .Chart.AppVersion }}"
@@ -58,6 +56,20 @@ spec:
             # HTTP consumer so the two services don't need a shared volume.
             - name: QUERY_API_URL
               value: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.port }}"
+            {{- if .Values.sreAgent.githubApp.enabled }}
+            - name: GITHUB_APP_ID
+              value: {{ required "sreAgent.githubApp.appId is required when GitHub App access is enabled" .Values.sreAgent.githubApp.appId | quote }}
+            {{- if .Values.sreAgent.githubApp.defaultInstallationId }}
+            - name: GITHUB_APP_INSTALLATION_ID
+              value: {{ .Values.sreAgent.githubApp.defaultInstallationId | quote }}
+            {{- end }}
+            - name: GITHUB_API_URL
+              value: {{ .Values.sreAgent.githubApp.apiUrl | quote }}
+            - name: GITHUB_APP_PRIVATE_KEY_PATH
+              value: /var/run/rush-github/private-key.pem
+            - name: REPOSITORY_CACHE_DIR
+              value: /var/run/rush-repositories
+            {{- end }}
             - name: LLM_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -80,6 +92,10 @@ spec:
             - name: KUBERNETES_ENABLED
               value: "true"
             {{- end }}
+            - name: SRE_AGENT_KUBE_TENANT_NAMESPACES
+              value: {{ .Values.sreAgent.kube.tenantNamespaces | toJson | quote }}
+            - name: SRE_AGENT_KUBE_ALLOW_CLUSTER_SCOPED
+              value: {{ .Values.sreAgent.kube.allowClusterScopedForAdmins | quote }}
             {{- range $key, $val := .Values.sreAgent.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
@@ -91,6 +107,14 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          {{- if .Values.sreAgent.githubApp.enabled }}
+          volumeMounts:
+            - name: github-app-private-key
+              mountPath: /var/run/rush-github
+              readOnly: true
+            - name: repository-cache
+              mountPath: /var/run/rush-repositories
+          {{- end }}
           readinessProbe:
             httpGet:
               path: /healthz
@@ -103,4 +127,17 @@ spec:
               port: http
             initialDelaySeconds: 10
             periodSeconds: 10
+      {{- if .Values.sreAgent.githubApp.enabled }}
+      volumes:
+        - name: github-app-private-key
+          secret:
+            secretName: {{ required "sreAgent.githubApp.privateKeySecret.name is required when GitHub App access is enabled" .Values.sreAgent.githubApp.privateKeySecret.name }}
+            items:
+              - key: {{ .Values.sreAgent.githubApp.privateKeySecret.key }}
+                path: private-key.pem
+                mode: 0440
+        - name: repository-cache
+          emptyDir:
+            sizeLimit: {{ .Values.sreAgent.githubApp.cacheSizeLimit }}
+      {{- end }}
 {{- end }}

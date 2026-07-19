@@ -19,8 +19,10 @@ spec:
       annotations:
         checksum/nginx-config: {{ include (print $.Template.BasePath "/frontend-nginx-configmap.yaml") . | sha256sum }}
     spec:
-      # The stock nginx image starts as root to render its runtime template and
-      # bind port 80. It does not need a Kubernetes API token.
+      # The frontend serves static files and proxies /api. It needs no Kubernetes
+      # API token. Port is configurable: the stock nginx image binds 80 (as root
+      # to render its template); the Chainguard image runs non-root and binds 8080
+      # — set frontend.containerPort accordingly (default 80).
       automountServiceAccountToken: false
       containers:
         - name: frontend
@@ -28,7 +30,7 @@ spec:
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: {{ .Values.frontend.containerPort | default 80 }}
           env:
             - name: QUERY_API_HOST
               value: "{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}"

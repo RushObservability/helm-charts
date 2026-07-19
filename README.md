@@ -79,6 +79,58 @@ stringData:
 
 > **`audit-hmac-secret` must be ≥ 32 bytes.** It's used directly as the HMAC-SHA256 key (literal UTF-8 bytes — not hex-decoded), so the string's character count *is* the byte length; `openssl rand -hex 32` yields 64 bytes. A shorter/empty key makes the audit chain forgeable (query-api logs a warning). **Keep this value stable forever** — changing it makes all prior audit rows fail verification. `initial-admin-password` only seeds the admin user on first boot; changing it later does not rotate an existing admin.
 
+## Read-only GitHub App access for the SRE agent
+
+No webhooks are required. Create a GitHub App with only **Repository permissions
+→ Contents: Read-only**, install it on selected repositories, and save its PEM
+private key in a Kubernetes Secret:
+
+```bash
+kubectl -n <namespace> create secret generic rush-github-app \
+  --from-file=private-key.pem=/path/to/github-app.private-key.pem
+```
+
+Enable the integration with values (the numeric installation ID is optional
+here when each service link supplies its own):
+
+```yaml
+sreAgent:
+  githubApp:
+    enabled: true
+    appId: "123456"
+    defaultInstallationId: "654321"
+    privateKeySecret:
+      name: rush-github-app
+      key: private-key.pem
+```
+
+The key is mounted read-only, source archives use a size-limited `emptyDir`, and
+the agent requests short-lived installation tokens scoped to `contents: read`
+and the single linked repository. Configure service-to-repository links in
+Settings; repository scripts and Git hooks are never executed.
+
+## Scope SRE-agent Kubernetes access
+
+Kubernetes access is deny-by-default for the agent. Map Rush tenants to the
+namespaces they may inspect, and the chart creates a dedicated service account
+with read-only RoleBindings in only those namespaces:
+
+```yaml
+sreAgent:
+  enabled: true
+  kube:
+    tenantNamespaces:
+      acme: [acme-prod, acme-staging]
+      "*": [shared-observability]
+    allowClusterScopedForAdmins: false
+```
+
+By default the agent has no Secrets, pod-log, node, or namespace-enumeration
+permissions. Set `allowClusterScopedForAdmins: true` only when node-level
+diagnostics are required; this adds read-only nodes/namespaces RBAC, but the
+agent still requires the `kube_cluster` scope, which query-api grants only to
+administrators.
+
 ## Profiles
 
 Worked example values in [`examples/`](examples) — start from the one closest to your setup:
