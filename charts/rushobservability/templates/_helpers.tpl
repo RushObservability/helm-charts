@@ -56,6 +56,13 @@ through `tpl`. Reads `.Values.global.storage` (shared with subcharts via global)
   </logger>
   <mark_cache_size>{{ .Values.clickhouse.markCacheSize | int64 }}</mark_cache_size>
   <uncompressed_cache_size>{{ .Values.clickhouse.uncompressedCacheSize | int64 }}</uncompressed_cache_size>
+  <!-- Text-index cache budgets (26.6+). ClickHouse defaults are 1+1+2 GiB — too
+       large next to the 2 GiB mark cache inside the 8Gi memory baseline. Queries
+       only use these global caches because the default profile (extraUsers) sets
+       use_text_index_{tokens,header,postings,dictionary}_cache=1. -->
+  <text_index_tokens_cache_size>{{ .Values.clickhouse.textIndexTokensCacheSize | int64 }}</text_index_tokens_cache_size>
+  <text_index_header_cache_size>{{ .Values.clickhouse.textIndexHeaderCacheSize | int64 }}</text_index_header_cache_size>
+  <text_index_postings_cache_size>{{ .Values.clickhouse.textIndexPostingsCacheSize | int64 }}</text_index_postings_cache_size>
   <storage_configuration>
     {{- if $s3.enabled }}
     <disks>

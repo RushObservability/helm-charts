@@ -93,11 +93,26 @@ sreAgent:
     RUST_LOG: sre_agent=info,tower_http=info
     LLM_BASE_URL: "https://api.openai.com"
     LLM_MODEL: "gpt-4o"
+  # Kubernetes access is deny-by-default for the agent. Map each Rush tenant
+  # to the namespaces it may inspect; the chart serializes this map into the
+  # agent's namespace policy. Example: { acme: [acme-prod], '*': [shared] }
+  kube:
+    tenantNamespaces: {}
+    allowClusterScopedForAdmins: false
   # LLM API key — provide via --set or external secret
   # llmApiKey: "sk-..."
   llmApiKeySecret:
     name: ""                         # existing secret name (overrides llmApiKey)
     key: "api-key"
+  githubApp:
+    enabled: false
+    appId: ""                        # numeric GitHub App ID (not the client ID)
+    defaultInstallationId: ""        # optional; links can store their own installation ID
+    apiUrl: "https://api.github.com" # override for GitHub Enterprise Server
+    privateKeySecret:
+      name: ""                       # existing Secret containing the App's PEM private key
+      key: "private-key.pem"
+    cacheSizeLimit: 1Gi               # ephemeral, tenant-keyed source snapshots
   resources:
     requests:
       cpu: 100m
@@ -105,6 +120,12 @@ sreAgent:
     limits:
       cpu: "1"
       memory: 512Mi
+  podSecurityContext:
+    runAsNonRoot: true
+    fsGroup: 65532
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
   service:
     type: ClusterIP
     port: 8081
@@ -181,6 +202,10 @@ frontend:
   # to. Set this when the public API host differs from where admins load the UI
   # (e.g. internal UI + public ingest endpoint). Empty → the UI uses its own origin.
   apiBaseUrl: ""
+  # Container port nginx listens on. The stock nginx image (default) binds 80;
+  # the non-root Chainguard nginx image binds 8080 — set 8080 when using it.
+  # The Service targetPort follows this via the named "http" port.
+  containerPort: 80
   replicas: 1
   resources:
     requests:
@@ -247,6 +272,12 @@ clickhouse:
     # rush-api can set `rush_tenant_id` per-query for row-level security
     # policies. Without this, getSetting('rush_tenant_id') in row policies
     # will fail with an unknown setting error.
+    # NOTE: this configurationFiles block is NOT consumed by the Altinity subchart
+    # (its chi.yaml only renders extraConfig → config.d and extraUsers → users.d),
+    # so custom_settings_prefixes never reaches ClickHouse — which is why query-api
+    # logs "ClickHouse does not accept rush_tenant_id custom setting" and row
+    # policies run permissive. Kept for documentation until wired into extraConfig
+    # (a tenancy-enforcement behavior change that needs its own rollout).
     configurationFiles:
       rush_settings.xml: |
         <clickhouse>
@@ -275,6 +306,12 @@ clickhouse:
     markCacheSize: 2147483648          # 2 GiB
     uncompressedCacheSize: 134217728   # 128 MiB
     s3CacheSize: 21474836480           # 20 GiB local cache for S3-tiered reads
+    # Text-index caches (26.6+): tokens/header/postings deserialized from the logs
+    # `text` search index. Queries opt in via the default profile (extraUsers below);
+    # sized down from ClickHouse's 1+1+2 GiB defaults to fit the 8Gi baseline.
+    textIndexTokensCacheSize: 268435456    # 256 MiB
+    textIndexHeaderCacheSize: 536870912    # 512 MiB
+    textIndexPostingsCacheSize: 1073741824 # 1 GiB
     # Server log level (→ config.d/extra_config.xml <logger><level>). The operator
     # defaults to `debug`, which logs every executed query (full SQL, incl. user
     # search terms) — and Vector tails that back into the logs store. `information`
@@ -300,6 +337,18 @@ clickhouse:
           <default>
             <max_memory_usage>5368709120</max_memory_usage>
             <max_memory_usage_for_user>6442450944</max_memory_usage_for_user>
+            <!-- Use the GLOBAL text-index caches (tokens/header/postings/dictionary).
+                 These query settings default to 0 in 26.6, which silently gives every
+                 query a throwaway per-query cache: misses are counted, nothing is ever
+                 retained, and repeated log searches re-read the text index from disk
+                 (measured: 0 cache hits ever; enabling these turned identical repeat
+                 searches from cold-disk index analysis into cache hits). The global
+                 caches are bounded by the text_index_*_cache_size server settings
+                 (1+1+2 GiB defaults), SLRU-evicted, and shrink under memory pressure. -->
+            <use_text_index_tokens_cache>1</use_text_index_tokens_cache>
+            <use_text_index_header_cache>1</use_text_index_header_cache>
+            <use_text_index_postings_cache>1</use_text_index_postings_cache>
+            <use_text_index_dictionary_cache>1</use_text_index_dictionary_cache>
           </default>
         </profiles>
       </clickhouse>

@@ -8,7 +8,7 @@ metadata:
 data:
   default.conf.template: |
     server {
-        listen 80;
+        listen {{ .Values.frontend.containerPort | default 80 }};
 
         # Browser-facing defenses belong here (the Rust API headers do not
         # protect static SPA responses). TLS termination should add HSTS.
