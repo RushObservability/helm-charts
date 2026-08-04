@@ -38,19 +38,19 @@ spec:
                   name: {{ $bootstrapSecret }}
                   key: sre-agent-internal-token
             - name: CLICKHOUSE_URL
-              value: "http://clickhouse-{{ .Release.Name }}-clickhouse:8123"
+              value: {{ include "rush.clickhouseUrl" . | quote }}
             - name: CLICKHOUSE_DATABASE
               value: observability
             - name: CLICKHOUSE_USER
               valueFrom:
                 secretKeyRef:
-                  name: rushobs-clickhouse-credentials
-                  key: user
+                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
+                  key: {{ include "rush.clickhouseUserKey" . }}
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: rushobs-clickhouse-credentials
-                  key: password
+                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
+                  key: {{ include "rush.clickhousePasswordKey" . }}
             # URL of query-api used to fetch user-defined custom skills.
             # query-api owns the custom_skills table; sre-agent is a read-only
             # HTTP consumer so the two services don't need a shared volume.
@@ -59,10 +59,8 @@ spec:
             {{- if .Values.sreAgent.githubApp.enabled }}
             - name: GITHUB_APP_ID
               value: {{ required "sreAgent.githubApp.appId is required when GitHub App access is enabled" .Values.sreAgent.githubApp.appId | quote }}
-            {{- if .Values.sreAgent.githubApp.defaultInstallationId }}
-            - name: GITHUB_APP_INSTALLATION_ID
-              value: {{ .Values.sreAgent.githubApp.defaultInstallationId | quote }}
-            {{- end }}
+            - name: SRE_AGENT_GITHUB_REPOSITORY_POLICY
+              value: {{ .Values.sreAgent.githubApp.tenantRepositories | toJson | quote }}
             - name: GITHUB_API_URL
               value: {{ .Values.sreAgent.githubApp.apiUrl | quote }}
             - name: GITHUB_APP_PRIVATE_KEY_PATH
@@ -70,7 +68,7 @@ spec:
             - name: REPOSITORY_CACHE_DIR
               value: /var/run/rush-repositories
             {{- end }}
-            - name: LLM_API_KEY
+            - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   {{- if .Values.sreAgent.llmApiKeySecret.name }}

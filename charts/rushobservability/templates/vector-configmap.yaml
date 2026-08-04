@@ -122,6 +122,10 @@ data:
           max_events: 1000
           timeout_secs: 5
         request:
+          {{- if .Values.collectors.ingestApiKeySecret.name }}
+          headers:
+            Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
+          {{- end }}
           # Retry on query-api 429 backpressure so nothing is lost while the spool drains.
           retry_attempts: 10
         healthcheck:
@@ -141,6 +145,10 @@ data:
           encoding:
             codec: otlp
         request:
+          {{- if .Values.collectors.ingestApiKeySecret.name }}
+          headers:
+            Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
+          {{- end }}
           retry_attempts: 10
         healthcheck:
           enabled: false
@@ -154,6 +162,10 @@ data:
           encoding:
             codec: otlp
         request:
+          {{- if .Values.collectors.ingestApiKeySecret.name }}
+          headers:
+            Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
+          {{- end }}
           retry_attempts: 10
         healthcheck:
           enabled: false
@@ -167,6 +179,10 @@ data:
           encoding:
             codec: otlp
         request:
+          {{- if .Values.collectors.ingestApiKeySecret.name }}
+          headers:
+            Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
+          {{- end }}
           retry_attempts: 10
         healthcheck:
           enabled: false

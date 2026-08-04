@@ -6,6 +6,12 @@ queryApi:
     pullPolicy: Always
   replicas: 1
   port: 8080
+  # The preStop hook makes readiness fail before termination and lets query-api
+  # flush in-memory batches plus drain its durable ingest queue. Increase this
+  # for large backlogs or a ClickHouse recovery window.
+  gracefulShutdown:
+    enabled: true
+  terminationGracePeriodSeconds: 120
   # ── Bootstrap secrets (admin password + audit HMAC key) ──
   # Leave blank to AUTO-GENERATE on first install and preserve across upgrades
   # (stored in the <release>-bootstrap Secret — ArgoCD-style). Set a value to
@@ -16,6 +22,11 @@ queryApi:
   # chart creates no bootstrap Secret and reads these keys from yours:
   #   initial-admin-password, audit-hmac-secret
   existingSecret: ""
+  # Authentication is fail-closed by default. The anonymous-default switch is
+  # only for local development; enabling it leaves /readyz unhealthy in a
+  # production environment.
+  environment: production
+  allowAnonymousDefault: false
   env:
     CLICKHOUSE_DATABASE: observability
     RUST_LOG: rush_api=info,tower_http=info
@@ -29,6 +40,12 @@ queryApi:
   service:
     type: ClusterIP
     port: 8080
+  networkPolicy:
+    # Allows HTTP from this release namespace and restricts egress to DNS plus
+    # the ports used for Kubernetes/HTTPS, ClickHouse, SRE-agent, and SMTP.
+    enabled: true
+    extraIngress: []
+    extraEgress: []
 
 # ══ Enterprise (commercial, license-gated) ══════════════════════════════
 # Groups the commercial license and the paid add-ons it unlocks. Free
@@ -79,7 +96,7 @@ enterprise:
 
 # ── sre-agent ──
 sreAgent:
-  enabled: false                     # disabled by default — requires LLM_API_KEY
+  enabled: false                     # disabled by default — requires OPENAI_API_KEY
   image:
     repository: mzupan/sre-agent
     tag: "0.1.0"
@@ -91,8 +108,7 @@ sreAgent:
   env:
     CLICKHOUSE_DATABASE: observability
     RUST_LOG: sre_agent=info,tower_http=info
-    LLM_BASE_URL: "https://api.openai.com"
-    LLM_MODEL: "gpt-4o"
+    OPENAI_BASE_URL: "https://api.openai.com"
   # Kubernetes access is deny-by-default for the agent. Map each Rush tenant
   # to the namespaces it may inspect; the chart serializes this map into the
   # agent's namespace policy. Example: { acme: [acme-prod], '*': [shared] }
@@ -107,8 +123,16 @@ sreAgent:
   githubApp:
     enabled: false
     appId: ""                        # numeric GitHub App ID (not the client ID)
-    defaultInstallationId: ""        # optional; links can store their own installation ID
     apiUrl: "https://api.github.com" # override for GitHub Enterprise Server
+    # Operator-owned, deny-by-default repository grants. Browser/API callers
+    # cannot supply these IDs. GitHub repository IDs are available from the
+    # GitHub API (GET /repos/{owner}/{repo}).
+    # tenantRepositories:
+    #   acme:
+    #     - repository: acme/api
+    #       installationId: 654321
+    #       repositoryId: 123456789
+    tenantRepositories: {}
     privateKeySecret:
       name: ""                       # existing Secret containing the App's PEM private key
       key: "private-key.pem"
@@ -169,20 +193,31 @@ promql:
   lookbackSecs: 300
 
 # ── argocd integration ──
+# Infrastructure pages require a group permission of `infrastructure:read` and
+# an operator-owned tenant-to-namespace grant. Group tenant bindings choose the
+# active Rush tenant; this map limits the Kubernetes namespaces that tenant can
+# inspect. `*` may be used as a shared tenant key. A namespace value of `*`
+# requires kubernetes.clusterWide=true and is the explicit cluster-wide opt-in.
+infrastructure:
+  tenantNamespaces: {}
+
 argocd:
   enabled: false                     # enable ArgoCD CRD reading
   namespace: argocd                  # namespace where ArgoCD apps live
 
 # ── fluxcd integration (Flux v2 / GitOps Toolkit) ──
-# Free integration: reads Kustomizations, HelmReleases, and Sources cluster-wide.
+# Free integration: reads Kustomizations, HelmReleases, and Sources in one namespace.
 fluxcd:
   enabled: false                     # enable Flux v2 CRD reading
-  namespace: flux-system             # default Flux namespace (resources read cluster-wide)
+  namespace: flux-system             # namespace containing Flux resources
 
 # ── kubernetes integration (read-only cluster browser) ──
-# Free integration: lists core/apps/batch/networking resources cluster-wide (read-only).
+# Namespace-scoped by default. When enabled, list every namespace that the
+# service account may read. tenantNamespaces must grant each tenant a subset.
 kubernetes:
   enabled: false                     # enable the read-only Kubernetes resource browser
+  namespaces: []
+  clusterWide: false                 # explicit opt-in; still never grants Secrets
 
 # ── cloudwatch integration (AWS CloudWatch Logs ingest via Kinesis Firehose) ──
 # Free integration: ingests CloudWatch Logs pushed through a Kinesis Data Firehose
@@ -262,22 +297,58 @@ rushConfig:
 # ── ClickHouse (Altinity subchart) ──
 # Full options: https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse
 clickhouse:
+  # `enabled` controls the bundled Altinity chart dependency. Keep it true for
+  # operator mode. Set it false for standalone or external mode so the
+  # operator-managed ClickHouseInstallation is not rendered as well.
   enabled: true
+  # Deployment strategy: operator (default), standalone (one StatefulSet), or
+  # external (use an existing ClickHouse endpoint and Secret).
+  mode: operator
+  external:
+    url: ""                         # e.g. https://clickhouse.example:8443
+    credentialsSecret: ""           # migration/write identity
+    userKey: user
+    passwordKey: password
+    # Distinct SELECT-only identity. The external ClickHouse administrator must
+    # grant it SELECT only on telemetry tables and let query-api own strict row policies.
+    readCredentialsSecret: ""
+    readUserKey: user
+    readPasswordKey: password
   clickhouse:
     defaultUser:
       password_secret_name: "rushobs-clickhouse-credentials"
       allowExternalAccess: true   # allow connections from other pods
+    # Tenant-scoped application read identity. Never grant this user access to
+    # config_* or audit_events; strict row policies are installed by query-api.
+    users:
+      - name: rushquery
+        hostIP: "0.0.0.0/0"
+        password_secret_name: "rushobs-clickhouse-read-credentials"
+        grants:
+          - "GRANT SELECT ON observability.logs"
+          - "GRANT SELECT ON observability.spans"
+          - "GRANT SELECT ON observability.spans_by_trace"
+          - "GRANT SELECT ON observability.services"
+          - "GRANT SELECT ON observability.metrics_gauge"
+          - "GRANT SELECT ON observability.metrics_sum"
+          - "GRANT SELECT ON observability.metrics_histogram"
+          - "GRANT SELECT ON observability.metrics_exp_histogram"
+          - "GRANT SELECT ON observability.metrics_summary"
+          - "GRANT SELECT ON observability.metrics_gauge_1m"
+          - "GRANT SELECT ON observability.metrics_gauge_1h"
+          - "GRANT SELECT ON observability.metrics_sum_1m"
+          - "GRANT SELECT ON observability.metrics_sum_1h"
+          - "GRANT SELECT ON observability.rum"
+          - "GRANT SELECT ON observability.rum_replay"
+          - "GRANT SELECT ON observability.signal_usage"
+          - "GRANT SELECT ON observability.tenant_usage"
     # Custom ClickHouse server configuration files.
     # rush_settings.xml: enables the 'rush_' custom settings prefix so that
     # rush-api can set `rush_tenant_id` per-query for row-level security
     # policies. Without this, getSetting('rush_tenant_id') in row policies
     # will fail with an unknown setting error.
-    # NOTE: this configurationFiles block is NOT consumed by the Altinity subchart
-    # (its chi.yaml only renders extraConfig → config.d and extraUsers → users.d),
-    # so custom_settings_prefixes never reaches ClickHouse — which is why query-api
-    # logs "ClickHouse does not accept rush_tenant_id custom setting" and row
-    # policies run permissive. Kept for documentation until wired into extraConfig
-    # (a tenancy-enforcement behavior change that needs its own rollout).
+    # Standalone also mounts this explicit file. Operator mode receives the same
+    # setting through rush.clickhouseExtraConfig below.
     configurationFiles:
       rush_settings.xml: |
         <clickhouse>
@@ -383,6 +454,23 @@ clickhouse:
     # restore the release-prefixed default.
     fullnameOverride: clickhouse-operator
 
+# Standalone mode settings. This intentionally supports one ClickHouse pod;
+# replicated ClickHouse still needs Keeper and is better handled by the
+# operator mode.
+clickhouseStandalone:
+  persistence:
+    enabled: true
+    storageClass: ""
+    size: 500Gi
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+    fsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  terminationGracePeriodSeconds: 120
+
 # ═══════════════════════════════════════════════════════════════════════
 # Data collectors (optional)
 #
@@ -408,6 +496,16 @@ clickhouse:
 # ═══════════════════════════════════════════════════════════════════════
 collectors:
   mode: none                         # none | otel | vector | hybrid
+
+  # Required whenever mode is not "none". Create an ingest-only key in
+  # Settings > API Keys with the signals used below, then store it in this
+  # existing Secret. Query/user keys are intentionally rejected by ingest.
+  ingestApiKeySecret:
+    name: ""
+    key: api-key
+  # Explicit opt-in for a tenant whose "Require ingest key" setting is off.
+  # Secure-key authentication remains the chart default.
+  allowAnonymousIngest: false
 
   # ── OpenTelemetry Collector ──
   otel:

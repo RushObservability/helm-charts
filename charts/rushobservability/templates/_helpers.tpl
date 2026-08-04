@@ -9,11 +9,66 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 {{- end -}}
 
 {{/*
-ClickHouse service DNS name inside the cluster. The Altinity subchart
-creates a service named `clickhouse-{release}-clickhouse`.
+ClickHouse service DNS name inside the cluster. The Altinity subchart and the
+standalone StatefulSet intentionally use the same service name.
 */}}
 {{- define "rush.clickhouseService" -}}
-clickhouse-{{ .Release.Name }}-clickhouse
+{{- if eq .Values.clickhouse.mode "operator" -}}
+{{- $name := .Values.clickhouse.fullnameOverride -}}
+{{- if not $name -}}
+{{- if contains "clickhouse" .Release.Name -}}
+{{- $name = .Release.Name -}}
+{{- else -}}
+{{- $name = printf "%s-clickhouse" .Release.Name -}}
+{{- end -}}
+{{- end -}}
+{{- printf "%s-service" $name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "clickhouse-%s-clickhouse" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+
+{{/* URL used by Rush workloads to reach ClickHouse. */}}
+{{- define "rush.clickhouseUrl" -}}
+{{- if eq .Values.clickhouse.mode "external" -}}
+{{- required "clickhouse.external.url is required when clickhouse.mode=external" .Values.clickhouse.external.url -}}
+{{- else -}}
+http://{{ include "rush.clickhouseService" . }}:8123
+{{- end -}}
+{{- end -}}
+
+{{/* Secret containing ClickHouse credentials for Rush workloads. */}}
+{{- define "rush.clickhouseCredentialsSecret" -}}
+{{- if eq .Values.clickhouse.mode "external" -}}
+{{- required "clickhouse.external.credentialsSecret is required when clickhouse.mode=external" .Values.clickhouse.external.credentialsSecret -}}
+{{- else -}}
+rushobs-clickhouse-credentials
+{{- end -}}
+{{- end -}}
+
+{{- define "rush.clickhouseUserKey" -}}
+{{- if eq .Values.clickhouse.mode "external" }}{{ .Values.clickhouse.external.userKey }}{{ else }}user{{ end -}}
+{{- end -}}
+
+{{- define "rush.clickhousePasswordKey" -}}
+{{- if eq .Values.clickhouse.mode "external" }}{{ .Values.clickhouse.external.passwordKey }}{{ else }}password{{ end -}}
+{{- end -}}
+
+{{/* SELECT-only identity used for tenant-scoped telemetry reads. */}}
+{{- define "rush.clickhouseReadCredentialsSecret" -}}
+{{- if eq .Values.clickhouse.mode "external" -}}
+{{- required "clickhouse.external.readCredentialsSecret is required when clickhouse.mode=external" .Values.clickhouse.external.readCredentialsSecret -}}
+{{- else -}}
+rushobs-clickhouse-read-credentials
+{{- end -}}
+{{- end -}}
+
+{{- define "rush.clickhouseReadUserKey" -}}
+{{- if eq .Values.clickhouse.mode "external" }}{{ .Values.clickhouse.external.readUserKey }}{{ else }}user{{ end -}}
+{{- end -}}
+
+{{- define "rush.clickhouseReadPasswordKey" -}}
+{{- if eq .Values.clickhouse.mode "external" }}{{ .Values.clickhouse.external.readPasswordKey }}{{ else }}password{{ end -}}
 {{- end -}}
 
 {{/*
@@ -45,6 +100,9 @@ through `tpl`. Reads `.Values.global.storage` (shared with subcharts via global)
 {{- define "rush.clickhouseExtraConfig" -}}
 {{- $s3 := .Values.global.storage.s3 -}}
 <clickhouse>
+  <!-- Required for the per-query rush_tenant_id row-policy setting. This helper
+       is rendered into config.d in both operator and standalone modes. -->
+  <custom_settings_prefixes>rush_</custom_settings_prefixes>
   <!-- The operator's default log level is `debug`, which writes every executed
        query (full SQL, including user search terms) to the server log as
        `<Debug> executeQuery`. Vector tails that log back into the `logs` table,

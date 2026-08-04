@@ -1,0 +1,6 @@
+{{- if not (has .Values.clickhouse.mode (list "operator" "standalone" "external")) -}}
+{{- fail "clickhouse.mode must be one of: operator, standalone, external" -}}
+{{- end -}}
+{{- if and (eq .Values.clickhouse.mode "external") .Values.clickhouse.enabled -}}
+{{- fail "clickhouse.enabled must be false when clickhouse.mode=external; the external mode does not deploy the bundled ClickHouse chart" -}}
+{{- end -}}

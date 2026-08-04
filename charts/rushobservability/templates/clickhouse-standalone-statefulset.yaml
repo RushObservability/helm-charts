@@ -1,0 +1,158 @@
+{{- if eq .Values.clickhouse.mode "standalone" -}}
+{{- if .Values.clickhouse.enabled -}}
+{{- fail "clickhouse.enabled must be false when clickhouse.mode=standalone; this prevents the Altinity operator subchart from rendering" -}}
+{{- end -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rush.clickhouseService" . }}
+  labels:
+    app.kubernetes.io/component: clickhouse
+    {{- include "rush.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.clickhouse.service.type | default "ClusterIP" }}
+  ports:
+    - name: http
+      port: 8123
+      targetPort: http
+    - name: tcp
+      port: 9000
+      targetPort: tcp
+  selector:
+    app.kubernetes.io/component: clickhouse
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "rush.clickhouseService" . }}
+  labels:
+    app.kubernetes.io/component: clickhouse
+    {{- include "rush.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "rush.clickhouseService" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: clickhouse
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: clickhouse
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/clickhouse-standalone-configmap.yaml") . | sha256sum }}
+        checksum/credentials: {{ include (print $.Template.BasePath "/clickhouse-credentials.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.clickhouseStandalone.terminationGracePeriodSeconds }}
+      securityContext:
+        {{- toYaml .Values.clickhouseStandalone.podSecurityContext | nindent 8 }}
+      containers:
+        - name: clickhouse
+          image: "{{ .Values.clickhouse.image.repository }}:{{ .Values.clickhouse.image.tag }}"
+          imagePullPolicy: {{ .Values.clickhouse.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8123
+              protocol: TCP
+            - name: tcp
+              containerPort: 9000
+              protocol: TCP
+          env:
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.queryApi.env.CLICKHOUSE_DATABASE | default "observability" | quote }}
+            - name: CLICKHOUSE_USER
+              value: default
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rushobs-clickhouse-credentials
+                  key: password
+            - name: CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
+              value: "1"
+            - name: RUSH_CLICKHOUSE_READ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rushobs-clickhouse-read-credentials
+                  key: password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+            - name: logs
+              mountPath: /var/log/clickhouse-server
+            - name: config
+              mountPath: /etc/clickhouse-server/config.d/extra_config.xml
+              subPath: extra_config.xml
+              readOnly: true
+            - name: config
+              mountPath: /etc/clickhouse-server/users.d/extra_users.xml
+              subPath: extra_users.xml
+              readOnly: true
+            - name: config
+              mountPath: /etc/clickhouse-server/users.d/default_user.xml
+              subPath: default_user.xml
+              readOnly: true
+            - name: config
+              mountPath: /etc/clickhouse-server/users.d/read_user.xml
+              subPath: read_user.xml
+              readOnly: true
+            {{- range $name, $_ := .Values.clickhouse.clickhouse.configurationFiles }}
+            - name: config
+              mountPath: /etc/clickhouse-server/config.d/{{ $name }}
+              subPath: {{ $name }}
+              readOnly: true
+            {{- end }}
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          resources:
+            {{- toYaml .Values.clickhouse.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "rush.fullname" . }}-clickhouse-standalone
+        - name: init
+          configMap:
+            name: {{ include "rush.fullname" . }}-clickhouse-standalone-init
+        - name: logs
+          emptyDir: {}
+        {{- if not .Values.clickhouseStandalone.persistence.enabled }}
+        - name: data
+          emptyDir: {}
+        {{- end }}
+  {{- if .Values.clickhouseStandalone.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.clickhouseStandalone.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.clickhouseStandalone.persistence.size }}
+  {{- end }}
+{{- end }}

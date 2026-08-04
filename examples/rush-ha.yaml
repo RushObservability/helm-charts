@@ -9,8 +9,7 @@
 # Resources: ~4 CPU / 16 Gi RAM per replica at peak ingest
 #
 # Pre-requisites:
-#   • Altinity ClickHouse Operator installed in your cluster
-#     (operator.enabled: true handles this via the subchart)
+#   • Kubernetes with RBAC permissions for the bundled Altinity ClickHouse Operator
 #   • At least 3 schedulable nodes (anti-affinity spreads pods)
 #   • A StorageClass that supports ReadWriteOnce (most CSI drivers)
 #
@@ -40,6 +39,7 @@ sreAgent:
 # ── ClickHouse — 1 shard × 3 replicas with ClickHouse Keeper ─────────────────
 clickhouse:
   enabled: true
+  mode: operator
 
   # ── Topology ────────────────────────────────────────────────────────────────
   # shardsCount:   number of independent data shards
