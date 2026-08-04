@@ -1,0 +1,29 @@
+# Rush Observability — external ClickHouse
+#
+# Rush does not create ClickHouse resources in this mode. The endpoint and
+# credential Secret must already exist and be reachable from the Rush namespace.
+#
+# Create the Secret before installing:
+#   kubectl -n observability create secret generic rush-clickhouse-credentials \
+#     --from-literal=user=default \
+#     --from-literal=password='<password>'
+#   kubectl -n observability create secret generic rush-clickhouse-read-credentials \
+#     --from-literal=user=rushquery \
+#     --from-literal=password='<different-password>'
+#
+# Configure custom_settings_prefixes='rush_' on the external ClickHouse and
+# create the SELECT-only rushquery user with the telemetry-table grants shown in
+# charts/rushobservability/values.yaml. query-api installs and verifies the
+# strict tenant row policies at startup.
+
+clickhouse:
+  enabled: false
+  mode: external
+  external:
+    url: https://clickhouse.example:8443
+    credentialsSecret: rush-clickhouse-credentials
+    userKey: user
+    passwordKey: password
+    readCredentialsSecret: rush-clickhouse-read-credentials
+    readUserKey: user
+    readPasswordKey: password

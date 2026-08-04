@@ -20,6 +20,47 @@ How data gets in is one switch, `collectors.mode`:
 | `vector` | a Vector DaemonSet (tails pod logs) |
 | `hybrid` | both |
 
+## ClickHouse deployment modes
+
+The default `clickhouse.mode: operator` uses the bundled Altinity ClickHouse
+Operator. It is the recommended production mode because it manages
+configuration, storage, scaling, upgrades, and cluster reconciliation.
+
+For a single-node deployment without any ClickHouse operator, use the
+operator-free profile:
+
+```bash
+helm install rush rush/rushobservability \
+  --namespace observability --create-namespace \
+  -f examples/rush-clickhouse-standalone.yaml
+```
+
+This creates one ClickHouse StatefulSet, Service, PVC, and configuration
+Secret. It does not provide replicated ClickHouse or Keeper-based HA.
+
+The chart also supports an existing ClickHouse deployment:
+
+```yaml
+clickhouse:
+  enabled: false
+  mode: external
+  external:
+    url: https://clickhouse.example:8443
+    credentialsSecret: rush-clickhouse-credentials
+    userKey: user
+    passwordKey: password
+    readCredentialsSecret: rush-clickhouse-read-credentials
+    readUserKey: user
+    readPasswordKey: password
+```
+
+Both external credential Secrets must already exist in the release namespace.
+The first identity owns migrations and writes. The second must be a distinct
+SELECT-only user with grants limited to the telemetry tables listed under
+`clickhouse.clickhouse.users` in the chart values. External ClickHouse must also
+set `custom_settings_prefixes` to `rush_`; query-api refuses to start if the
+setting, strict row policies, read grants, or separate identity cannot be verified.
+
 ## Install
 
 ```bash
@@ -29,6 +70,99 @@ helm install rush rush/rushobservability --namespace observability --create-name
 ```
 
 Charts are published on tag by [chart-releaser](.github/workflows/release-charts.yml).
+
+## Secure ingest keys
+
+Fresh tenants require authentication. Query/user keys cannot write telemetry;
+collectors need an ingest-only key scoped to their tenant, signals, request rate,
+and optionally source CIDRs.
+
+For a new installation, first install with the default `collectors.mode: none`,
+sign in, and create an ingest key under **Settings → API Keys**. Store the key in
+the release namespace, then enable the collector:
+
+```bash
+kubectl -n observability create secret generic rush-collector-ingest \
+  --from-literal=api-key='rush_ing_...'
+
+helm upgrade rush rush/rushobservability -n observability \
+  --set collectors.mode=otel \
+  --set collectors.ingestApiKeySecret.name=rush-collector-ingest
+```
+
+The generated OTel and Vector configurations send the key as a Bearer token.
+By default, the chart refuses to render an enabled collector without
+`collectors.ingestApiKeySecret.name`, preventing an accidentally anonymous or
+nonfunctional pipeline.
+
+If the target tenant explicitly has **Require ingest key** turned off, opt the
+collector into anonymous ingestion instead:
+
+```bash
+helm upgrade rush rush/rushobservability -n observability \
+  --set collectors.mode=otel \
+  --set collectors.allowAnonymousIngest=true
+```
+
+The chart omits the Authorization header in this mode. The explicit Helm flag
+and the tenant policy must both be configured; secure-key ingestion remains the
+default.
+
+### Upgrade migration
+
+- Existing tenant rows are not silently changed. Tenants without an explicit
+  ingest policy inherit their existing query-auth setting, so open tenants stay
+  open for ingestion. Query and ingest authentication can then be changed
+  independently in Settings.
+- Existing API keys are classified as `legacy` and remain query-only. Create
+  replacement ingest keys before enabling or upgrading in-chart collectors.
+- `queryApi.environment` defaults to `production` and
+  `queryApi.allowAnonymousDefault` defaults to `false`.
+- For the global default-tenant development override, set `environment: development` and
+  `allowAnonymousDefault: true`. `/healthz` marks the deployment insecure.
+
+Source restrictions use the direct peer address observed by query-api. If an
+ingress or service proxy terminates the collector connection, allowlist the
+proxy's CIDR rather than an untrusted forwarding header.
+
+## Scope query-api infrastructure access
+
+Kubernetes, ArgoCD, and Flux pages use a separate `infrastructure:read` group
+permission. Ordinary telemetry viewers do not receive it. The active Rush tenant
+is already selected through group tenant bindings; `infrastructure.tenantNamespaces`
+then maps that tenant to the only Kubernetes namespaces it may inspect.
+
+```yaml
+infrastructure:
+  tenantNamespaces:
+    acme: [acme-prod, acme-staging]
+    "*": [shared-observability]
+
+kubernetes:
+  enabled: true
+  namespaces: [acme-prod, acme-staging, shared-observability]
+  clusterWide: false
+
+argocd:
+  enabled: true
+  namespace: argocd
+
+fluxcd:
+  enabled: true
+  namespace: flux-system
+```
+
+Add `argocd` or `flux-system` to only the tenants that should see those
+integrations. The namespace map is deny-by-default: a missing tenant entry gets
+`403`. The chart creates namespace Roles for each independently enabled
+integration. ArgoCD and Flux roles contain only their own CRD API groups, and no
+query-api role grants Secret access.
+
+Cluster-wide Kubernetes browsing requires both `kubernetes.clusterWide: true`
+and a `"*"` namespace grant for the tenant. This adds nodes/namespaces visibility
+but still never grants or exposes Secrets. The query-api NetworkPolicy is enabled
+by default; use `queryApi.networkPolicy.extraIngress` and `extraEgress` for ingress
+controllers or external services that are not covered by the documented ports.
 
 ## Bootstrap secrets (admin password, audit HMAC key & SRE-agent token)
 
@@ -90,24 +224,32 @@ kubectl -n <namespace> create secret generic rush-github-app \
   --from-file=private-key.pem=/path/to/github-app.private-key.pem
 ```
 
-Enable the integration with values (the numeric installation ID is optional
-here when each service link supplies its own):
+Enable the integration with an operator-owned tenant repository policy. Find a
+repository's stable ID with `gh api repos/OWNER/REPO --jq .id`; the installation
+ID appears at the end of its installed-app settings URL.
 
 ```yaml
 sreAgent:
   githubApp:
     enabled: true
     appId: "123456"
-    defaultInstallationId: "654321"
+    tenantRepositories:
+      acme:
+        - repository: acme/api
+          installationId: 654321
+          repositoryId: 123456789
     privateKeySecret:
       name: rush-github-app
       key: private-key.pem
 ```
 
-The key is mounted read-only, source archives use a size-limited `emptyDir`, and
-the agent requests short-lived installation tokens scoped to `contents: read`
-and the single linked repository. Configure service-to-repository links in
-Settings; repository scripts and Git hooks are never executed.
+The same deny-by-default policy is injected into query-api and the agent. Only
+tenant admins can create links, and neither the browser nor API caller can
+choose an installation or repository ID. The key is mounted read-only, source
+archives use a size-limited `emptyDir`, and the agent requests short-lived
+installation tokens scoped to `contents: read` and the stable repository ID.
+Configure service-to-repository links in Settings; repository scripts and Git
+hooks are never executed.
 
 ## Scope SRE-agent Kubernetes access
 
@@ -135,7 +277,9 @@ administrators.
 
 Worked example values in [`examples/`](examples) — start from the one closest to your setup:
 
-- [`rush-single.yaml`](examples/rush-single.yaml) — single-node, kick-the-tires
+- [`rush-single.yaml`](examples/rush-single.yaml) — single-node, operator-managed
+- [`rush-clickhouse-standalone.yaml`](examples/rush-clickhouse-standalone.yaml) — one ClickHouse pod without the operator
+- [`rush-clickhouse-external.yaml`](examples/rush-clickhouse-external.yaml) — connect to an existing ClickHouse
 - [`rush-ha.yaml`](examples/rush-ha.yaml) — replicated query-api and frontend
 - [`rush-retention.yaml`](examples/rush-retention.yaml) — per-signal retention
 - [`rush-s3-tiering.yaml`](examples/rush-s3-tiering.yaml) — move cold data to object storage

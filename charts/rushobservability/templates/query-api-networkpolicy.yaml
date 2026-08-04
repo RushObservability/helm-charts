@@ -1,0 +1,66 @@
+{{- if .Values.queryApi.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rush.fullname" . }}-query-api
+  labels:
+    app.kubernetes.io/component: query-api
+    {{- include "rush.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: query-api
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # Frontend proxy, collectors, and other workloads in this release namespace.
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: http
+    {{- with .Values.queryApi.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    # Cluster DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Same-namespace ClickHouse and SRE-agent services.
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8123
+        - protocol: TCP
+          port: 9000
+        - protocol: TCP
+          port: 8081
+    # Kubernetes API, HTTPS integrations/OIDC, external ClickHouse, and SMTP.
+    # NetworkPolicy cannot select external services by DNS name, so these are
+    # explicit destination ports with CIDR narrowing available via extraEgress.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 8123
+        - protocol: TCP
+          port: 8443
+        - protocol: TCP
+          port: 465
+        - protocol: TCP
+          port: 587
+    {{- with .Values.queryApi.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

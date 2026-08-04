@@ -1,0 +1,32 @@
+# Rush Observability — operator-free ClickHouse
+#
+# This runs a single ClickHouse StatefulSet. It is intended for local
+# development, demos, and small single-node installations. Production HA
+# deployments should use the default operator mode.
+
+clickhouse:
+  # The dependency gate must be false so the Altinity ClickHouseInstallation
+  # and operator subchart are not rendered.
+  enabled: false
+  mode: standalone
+
+  image:
+    repository: clickhouse/clickhouse-server
+    tag: "26.6.1.1193"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      memory: 4Gi
+  clickhouse:
+    defaultUser:
+      allowExternalAccess: true
+
+clickhouseStandalone:
+  persistence:
+    enabled: true
+    storageClass: ""
+    size: 50Gi
+

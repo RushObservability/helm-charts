@@ -30,6 +30,15 @@ spec:
           imagePullPolicy: {{ .Values.collectors.vector.image.pullPolicy }}
           args: ["--config", "/etc/vector/vector.yaml"]
           env:
+            {{- if .Values.collectors.ingestApiKeySecret.name }}
+            - name: RUSH_INGEST_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.collectors.ingestApiKeySecret.name }}
+                  key: {{ .Values.collectors.ingestApiKeySecret.key }}
+            {{- else if not .Values.collectors.allowAnonymousIngest }}
+            {{- fail "collectors.ingestApiKeySecret.name is required when an in-cluster collector is enabled" }}
+            {{- end }}
             - name: VECTOR_SELF_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -45,13 +54,13 @@ spec:
             - name: CLICKHOUSE_USER
               valueFrom:
                 secretKeyRef:
-                  name: rushobs-clickhouse-credentials
-                  key: user
+                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
+                  key: {{ include "rush.clickhouseUserKey" . }}
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: rushobs-clickhouse-credentials
-                  key: password
+                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
+                  key: {{ include "rush.clickhousePasswordKey" . }}
           ports:
             - name: api
               containerPort: 8686

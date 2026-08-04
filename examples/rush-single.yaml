@@ -1,8 +1,8 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# Rush Observability — Single-Pod ClickHouse Example
+# Rush Observability — Single-Pod Operator-Managed ClickHouse Example
 #
 # Use for:  local dev, staging, small teams (<5 engineers), proof-of-concept
-# Topology: 1 shard × 1 replica (standalone — no Keeper required)
+# Topology: 1 shard × 1 replica (operator-managed; no Keeper required)
 # Storage:  50 Gi (adjust to your data volume)
 # Resources: ~2 CPU / 4 Gi RAM at peak ingest
 #
@@ -29,9 +29,10 @@ frontend:
 sreAgent:
   enabled: false   # enable + set llmApiKey when you want AI-powered root cause
 
-# ── ClickHouse — single-node standalone ───────────────────────────────────────
+# ── ClickHouse — single-node operator mode ────────────────────────────────────
 clickhouse:
   enabled: true
+  mode: operator
 
   # Topology: 1 shard, 1 replica = simple standalone instance
   shardsCount: 1
@@ -84,10 +85,9 @@ clickhouse:
   keeper:
     enabled: false
 
-  # operator.enabled — set to false if the Altinity ClickHouse Operator is
-  # already installed in your cluster (e.g. shared cluster-wide or managed
-  # by your platform team). Rush will still create the ClickHouseInstallation
-  # CR and the existing operator will reconcile it.
+  # Set operator.enabled to false when the Altinity ClickHouse Operator is
+  # already installed cluster-wide. Rush will still create the
+  # ClickHouseInstallation CR and the existing operator will reconcile it.
   operator:
     enabled: true
 

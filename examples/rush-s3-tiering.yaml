@@ -35,6 +35,7 @@
 
 # clickhouse:
 #   enabled: true
+#   mode: operator
 #   shardsCount: 1
 #   replicasCount: 1
 #   image:
@@ -148,6 +149,7 @@
 
 # clickhouse:
 #   enabled: true
+#   mode: operator
 #   shardsCount: 1
 #   replicasCount: 1
 #   image:
@@ -247,6 +249,7 @@
 
 clickhouse:
   enabled: true
+  mode: operator
   shardsCount: 1
   replicasCount: 1
   image:
@@ -369,6 +372,7 @@ rushConfig:
 
 # clickhouse:
 #   enabled: true
+#   mode: operator
 #   shardsCount: 1
 #   replicasCount: 1
 #   image:

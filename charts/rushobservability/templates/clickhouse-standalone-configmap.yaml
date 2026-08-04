@@ -1,0 +1,78 @@
+{{- if eq .Values.clickhouse.mode "standalone" -}}
+{{- if .Values.clickhouse.enabled -}}
+{{- fail "clickhouse.enabled must be false when clickhouse.mode=standalone; this prevents the Altinity operator subchart from rendering" -}}
+{{- end -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rush.fullname" . }}-clickhouse-standalone
+  labels:
+    app.kubernetes.io/component: clickhouse
+    {{- include "rush.labels" . | nindent 4 }}
+data:
+  extra_config.xml: |
+    {{- include "rush.clickhouseExtraConfig" . | nindent 4 }}
+  extra_users.xml: |
+    {{- .Values.clickhouse.clickhouse.extraUsers | nindent 4 }}
+  default_user.xml: |
+    <clickhouse>
+      <users>
+        <default>
+          <networks>
+            {{- if .Values.clickhouse.clickhouse.defaultUser.allowExternalAccess }}
+            <ip>0.0.0.0/0</ip>
+            {{- else }}
+            <ip>{{ .Values.clickhouse.clickhouse.defaultUser.hostIP | default "127.0.0.1/32" }}</ip>
+            {{- end }}
+          </networks>
+          <access_management>1</access_management>
+        </default>
+      </users>
+    </clickhouse>
+  read_user.xml: |
+    <clickhouse>
+      <users>
+        <rushquery>
+          <password from_env="RUSH_CLICKHOUSE_READ_PASSWORD"/>
+          <networks><ip>0.0.0.0/0</ip></networks>
+          <profile>default</profile>
+          <quota>default</quota>
+          <access_management>0</access_management>
+          <grants>
+            <query>GRANT SELECT ON observability.logs</query>
+            <query>GRANT SELECT ON observability.spans</query>
+            <query>GRANT SELECT ON observability.spans_by_trace</query>
+            <query>GRANT SELECT ON observability.services</query>
+            <query>GRANT SELECT ON observability.metrics_gauge</query>
+            <query>GRANT SELECT ON observability.metrics_sum</query>
+            <query>GRANT SELECT ON observability.metrics_histogram</query>
+            <query>GRANT SELECT ON observability.metrics_exp_histogram</query>
+            <query>GRANT SELECT ON observability.metrics_summary</query>
+            <query>GRANT SELECT ON observability.metrics_gauge_1m</query>
+            <query>GRANT SELECT ON observability.metrics_gauge_1h</query>
+            <query>GRANT SELECT ON observability.metrics_sum_1m</query>
+            <query>GRANT SELECT ON observability.metrics_sum_1h</query>
+            <query>GRANT SELECT ON observability.rum</query>
+            <query>GRANT SELECT ON observability.rum_replay</query>
+            <query>GRANT SELECT ON observability.signal_usage</query>
+            <query>GRANT SELECT ON observability.tenant_usage</query>
+          </grants>
+        </rushquery>
+      </users>
+    </clickhouse>
+  {{- range $name, $content := .Values.clickhouse.clickhouse.configurationFiles }}
+  {{ $name }}: |
+    {{- tpl $content $ | nindent 4 }}
+  {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rush.fullname" . }}-clickhouse-standalone-init
+  labels:
+    app.kubernetes.io/component: clickhouse
+    {{- include "rush.labels" . | nindent 4 }}
+data:
+  001_init.sql: |
+    CREATE DATABASE IF NOT EXISTS observability;
+{{- end }}

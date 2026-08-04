@@ -47,6 +47,10 @@ data:
       # otlphttp posts protobuf to {endpoint}/v1/{traces,logs,metrics}.
       otlphttp:
         endpoint: http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}
+        {{- if .Values.collectors.ingestApiKeySecret.name }}
+        headers:
+          Authorization: "Bearer ${env:RUSH_INGEST_API_KEY}"
+        {{- end }}
         encoding: proto
         timeout: 30s
         retry_on_failure:

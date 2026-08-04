@@ -1,4 +1,8 @@
 {{- if .Values.kubernetes.enabled }}
+{{- if and (not .Values.kubernetes.clusterWide) (empty .Values.kubernetes.namespaces) }}
+{{- fail "kubernetes.namespaces must contain at least one namespace when kubernetes.enabled=true and kubernetes.clusterWide=false" }}
+{{- end }}
+{{- if .Values.kubernetes.clusterWide }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -7,26 +11,19 @@ metadata:
     app.kubernetes.io/component: query-api
     {{- include "rush.labels" . | nindent 4 }}
 rules:
-  # Read-only access to core resources for the Kubernetes browser + AI investigation.
-  # (The argocd-reader / fluxcd-reader roles grant the same set when those are enabled;
-  # this standalone role lets the Kubernetes integration work on its own.)
+  # Secret resources are intentionally absent. Keep this list aligned with
+  # query-api/src/handlers/kubernetes.rs.
   - apiGroups: [""]
-    resources: ["pods", "pods/log", "services", "endpoints", "configmaps", "secrets", "events", "namespaces", "nodes", "persistentvolumeclaims", "replicationcontrollers", "serviceaccounts"]
+    resources: ["pods", "services", "configmaps", "events", "namespaces", "nodes"]
     verbs: ["get", "list"]
   - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
     verbs: ["get", "list"]
   - apiGroups: ["batch"]
     resources: ["jobs", "cronjobs"]
     verbs: ["get", "list"]
   - apiGroups: ["networking.k8s.io"]
-    resources: ["ingresses", "networkpolicies"]
-    verbs: ["get", "list"]
-  - apiGroups: ["autoscaling"]
-    resources: ["horizontalpodautoscalers"]
-    verbs: ["get", "list"]
-  - apiGroups: ["policy"]
-    resources: ["poddisruptionbudgets"]
+    resources: ["ingresses"]
     verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -44,4 +41,47 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "rush.fullname" . }}-query-api
     namespace: {{ .Release.Namespace }}
+{{- else }}
+{{- range $namespace := .Values.kubernetes.namespaces }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "rush.fullname" $ }}-kubernetes-reader
+  namespace: {{ $namespace | quote }}
+  labels:
+    app.kubernetes.io/component: query-api
+    {{- include "rush.labels" $ | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "events"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "rush.fullname" $ }}-kubernetes-reader
+  namespace: {{ $namespace | quote }}
+  labels:
+    app.kubernetes.io/component: query-api
+    {{- include "rush.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "rush.fullname" $ }}-kubernetes-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "rush.fullname" $ }}-query-api
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+{{- end }}
 {{- end }}

@@ -20,6 +20,8 @@ spec:
         checksum/rush-config: {{ include (print $.Template.BasePath "/rush-config-configmap.yaml") . | sha256sum }}
     spec:
       serviceAccountName: {{ include "rush.fullname" . }}-query-api
+      terminationGracePeriodSeconds: {{ .Values.queryApi.terminationGracePeriodSeconds | default 120 }}
+      automountServiceAccountToken: {{ or .Values.kubernetes.enabled .Values.argocd.enabled .Values.fluxcd.enabled }}
       securityContext:
         runAsNonRoot: true
         # Matches the appgroup created by query-api/Dockerfile and grants it
@@ -36,19 +38,33 @@ spec:
               containerPort: {{ .Values.queryApi.port }}
           env:
             - name: CLICKHOUSE_URL
-              value: "http://clickhouse-{{ .Release.Name }}-clickhouse:8123"
+              value: {{ include "rush.clickhouseUrl" . | quote }}
             - name: CLICKHOUSE_USER
               valueFrom:
                 secretKeyRef:
-                  name: rushobs-clickhouse-credentials
-                  key: user
+                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
+                  key: {{ include "rush.clickhouseUserKey" . }}
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: rushobs-clickhouse-credentials
-                  key: password
+                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
+                  key: {{ include "rush.clickhousePasswordKey" . }}
+            - name: CLICKHOUSE_READ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rush.clickhouseReadCredentialsSecret" . }}
+                  key: {{ include "rush.clickhouseReadUserKey" . }}
+            - name: CLICKHOUSE_READ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rush.clickhouseReadCredentialsSecret" . }}
+                  key: {{ include "rush.clickhouseReadPasswordKey" . }}
             - name: RUSH_CONFIG
               value: /etc/rush/rush.toml
+            - name: RUSH_ENVIRONMENT
+              value: {{ .Values.queryApi.environment | quote }}
+            - name: RUSH_ALLOW_ANONYMOUS_DEFAULT
+              value: {{ .Values.queryApi.allowAnonymousDefault | quote }}
             - name: RUSH_SPOOL_DIR
               value: /var/lib/rush/spool
             # Run the anomaly engine in-process only when there is no dedicated
@@ -61,6 +77,10 @@ spec:
             # PromQL staleness/lookback: how long a metric's last value carries forward.
             - name: RUSH_PROM_LOOKBACK_SECS
               value: {{ .Values.promql.lookbackSecs | default 300 | quote }}
+            # Operator-owned group -> tenant -> Kubernetes namespace boundary.
+            # Empty/missing tenant entries deny infrastructure reads.
+            - name: RUSH_INFRASTRUCTURE_TENANT_NAMESPACES
+              value: {{ .Values.infrastructure.tenantNamespaces | toJson | quote }}
             {{- if .Values.argocd.enabled }}
             - name: ARGOCD_NAMESPACE
               value: {{ .Values.argocd.namespace | quote }}
@@ -72,13 +92,15 @@ spec:
             {{- if .Values.kubernetes.enabled }}
             - name: KUBERNETES_ENABLED
               value: "true"
+            - name: KUBERNETES_CLUSTER_WIDE
+              value: {{ .Values.kubernetes.clusterWide | quote }}
             {{- end }}
             {{- if .Values.cloudwatch.enabled }}
             - name: CLOUDWATCH_ENABLED
               value: "true"
             {{- end }}
             {{- if .Values.sreAgent.enabled }}
-            - name: LLM_API_KEY
+            - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.sreAgent.llmApiKeySecret.name }}
@@ -88,6 +110,12 @@ spec:
             # /investigation-templates to the agent at this URL.
             - name: SRE_AGENT_URL
               value: "http://{{ include "rush.fullname" . }}-sre-agent:{{ .Values.sreAgent.service.port }}"
+            {{- if .Values.sreAgent.githubApp.enabled }}
+            # The API uses the same operator-owned policy as the agent so
+            # browser callers can never choose installation/repository IDs.
+            - name: SRE_AGENT_GITHUB_REPOSITORY_POLICY
+              value: {{ .Values.sreAgent.githubApp.tenantRepositories | toJson | quote }}
+            {{- end }}
             {{- end }}
             {{- if .Values.enterprise.license.enabled }}
             # Commercial license (Ed25519-signed token), verified offline by the API.
@@ -135,9 +163,20 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          {{- if .Values.queryApi.gracefulShutdown.enabled }}
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - >-
+                    exec /usr/bin/curl --fail --silent --show-error --max-time 5
+                    --request POST http://127.0.0.1:{{ .Values.queryApi.port }}/shutdown
+          {{- end }}
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /readyz
               port: http
             initialDelaySeconds: 3
             periodSeconds: 5

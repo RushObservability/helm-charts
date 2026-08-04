@@ -4,3 +4,4 @@ values-*.local.yaml
 *.local.yaml
 *.env
 .env
+/graphify-out
