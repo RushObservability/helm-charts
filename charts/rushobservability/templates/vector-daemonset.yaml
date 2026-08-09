@@ -26,7 +26,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: vector
-          image: "{{ .Values.collectors.vector.image.repository }}:{{ .Values.collectors.vector.image.tag }}"
+          image: {{ include "rush.image" (dict "image" .Values.collectors.vector.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.collectors.vector.image.pullPolicy }}
           args: ["--config", "/etc/vector/vector.yaml"]
           env:

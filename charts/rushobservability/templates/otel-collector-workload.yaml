@@ -26,7 +26,7 @@ spec:
     spec:
       containers:
         - name: otel-collector
-          image: "{{ .Values.collectors.otel.image.repository }}:{{ .Values.collectors.otel.image.tag }}"
+          image: {{ include "rush.image" (dict "image" .Values.collectors.otel.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.collectors.otel.image.pullPolicy }}
           args:
             - "--config=/etc/otelcol/collector.yaml"

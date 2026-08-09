@@ -53,7 +53,7 @@ spec:
         {{- toYaml .Values.clickhouseStandalone.podSecurityContext | nindent 8 }}
       containers:
         - name: clickhouse
-          image: "{{ .Values.clickhouse.image.repository }}:{{ .Values.clickhouse.image.tag }}"
+          image: {{ include "rush.image" (dict "image" .Values.clickhouse.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.clickhouse.image.pullPolicy }}
           ports:
             - name: http

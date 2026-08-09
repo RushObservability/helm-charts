@@ -164,16 +164,101 @@ but still never grants or exposes Secrets. The query-api NetworkPolicy is enable
 by default; use `queryApi.networkPolicy.extraIngress` and `extraEgress` for ingress
 controllers or external services that are not covered by the documented ports.
 
-## Bootstrap secrets (admin password, audit HMAC key & SRE-agent token)
+## Immutable production images
 
-The chart needs three secrets: the **initial admin password** (`INITIAL_ADMIN_PASSWORD`, seeds the `admin` user on first boot), the **audit-log HMAC key** (`RUSH_AUDIT_HMAC_SECRET`, keys the tamper-evident audit hash-chain), and an internal **SRE-agent token** (`SRE_AGENT_INTERNAL_TOKEN`, which only query-api may use to call the agent). You have three options:
+Every Rush image supports a separate `digest` value. A valid
+`sha256:<64 lowercase hex characters>` digest takes precedence over `tag`, so
+the running pod cannot change when a registry tag is moved. Copy the digest from
+the corresponding release workflow summary:
 
-**1. Auto-generate (default).** Leave them blank and the chart generates a random admin password (24 chars) and HMAC key (64 chars) on first install, stores them in the `<release>-bootstrap` Secret, and **preserves them across upgrades** (and `helm uninstall`). Retrieve the generated admin password:
+```yaml
+imageSecurity:
+  requireDigests: true
+queryApi:
+  image:
+    repository: ghcr.io/rushobservability/query-api
+    digest: sha256:<release-digest>
+frontend:
+  image:
+    repository: ghcr.io/rushobservability/web-ui
+    digest: sha256:<release-digest>
+```
+
+`imageSecurity.requireDigests=true` rejects tag-only query-api and frontend
+images, plus SRE-agent, anomaly-engine, and PostgreSQL collector images whenever
+those workloads are enabled. The chart always rejects empty and `latest` tags,
+and CI renders the full chart to prevent a dependency from reintroducing a
+floating production image. Verify each image's GitHub provenance/SBOM
+attestation before deployment and retain the SPDX artifact named in its release
+workflow summary.
+
+## Bootstrap secrets and audit durability
+
+The chart provisions an **initial admin password**, an **audit-log HMAC key**, a
+separate **session-token HMAC key**, SSO/config encryption keys, and an internal
+**SRE-agent token**. The generated values are stored in the
+`<release>-bootstrap` Secret and preserved across upgrades.
+
+**1. Auto-generate (default).** Leave them blank and the chart generates strong
+values on first install and preserves them across upgrades (and `helm
+uninstall`). Retrieve the generated admin password:
 
 ```bash
 kubectl -n <namespace> get secret <release>-bootstrap \
   -o jsonpath="{.data.initial-admin-password}" | base64 -d ; echo
 ```
+
+The password is read from this Secret only while seeding the initial account;
+query-api never prints generated or supplied credentials to its logs.
+Explicit bootstrap passwords must satisfy the same policy as every later user
+password: at least 12 Unicode characters, at least one non-whitespace
+character, no more than 1,024 UTF-8 bytes, and not one of the bundled common
+passwords. The default generated 24-character value satisfies this policy.
+
+The audit outbox uses a retained 1 GiB PVC by default. Every audit event is
+fsynced there before ordered ClickHouse delivery. `/readyz` fails and audit
+queue metrics rise while delivery is degraded. Set
+`queryApi.audit.spool.persistence.existingClaim` to use an operator-owned PVC;
+disabling persistence is intended only for local testing.
+
+For more than one query-api replica, enable ClickHouse Keeper so SAML
+assertion IDs, OIDC transactions, and delegated SSO setup links are consumed
+atomically across pods:
+
+```yaml
+queryApi:
+  replicas: 2
+  ssoReplayStore: auto
+clickhouse:
+  keeper:
+    enabled: true
+```
+
+External ClickHouse deployments must configure Keeper and
+`keeper_map_path_prefix`; the API fails startup rather than falling back to a
+process-local replay cache in a multi-replica deployment.
+
+Browser sessions default to a 30-minute idle timeout and a 24-hour hard limit.
+Authenticated activity rotates the HttpOnly bearer every five minutes at most;
+rotation renews only the idle deadline, never the hard limit. Configure the
+policy in seconds:
+
+```yaml
+queryApi:
+  session:
+    idleTimeoutSeconds: 1800
+    absoluteTimeoutSeconds: 86400
+    renewalIntervalSeconds: 300
+```
+
+The renewal interval must be at least 30 seconds and shorter than the idle
+timeout. The absolute timeout must be at least the idle timeout and cannot
+exceed 31 days. Invalid combinations make query-api fail startup. Administrators
+can inspect and revoke active sessions from **Settings → Users**; all admin
+inventory reads, revocations, and bearer rotations are audited without recording
+the token or token hash. ClickHouse stores only keyed HMAC digests. The first
+upgrade to keyed storage revokes legacy raw/unkeyed session rows, so currently
+signed-in users authenticate again once.
 
 **2. Preset values.** Pin either/both:
 
@@ -181,15 +266,20 @@ kubectl -n <namespace> get secret <release>-bootstrap \
 helm install rush rush/rushobservability \
   --set queryApi.adminPassword="$(openssl rand -base64 18)" \
     --set queryApi.auditHmacSecret="$(openssl rand -hex 32)" \
+    --set queryApi.sessionHmacSecret="$(openssl rand -hex 32)" \
     --set sreAgent.internalAuthToken="$(openssl rand -hex 32)"
 ```
 
-**3. Bring your own Secret.** Create it **before** install, in the release namespace, with exactly these two keys, then point the chart at it with `queryApi.existingSecret` (the chart then creates no Secret of its own):
+**3. Bring your own Secret.** Create it **before** install in the release
+namespace, then point the chart at it with `queryApi.existingSecret`:
 
 ```bash
 kubectl create secret generic rush-bootstrap -n <namespace> \
   --from-literal=initial-admin-password="$(openssl rand -base64 18)" \
   --from-literal=audit-hmac-secret="$(openssl rand -hex 32)" \
+  --from-literal=session-hmac-secret="$(openssl rand -hex 32)" \
+  --from-literal=sso-transaction-secret="$(openssl rand -hex 32)" \
+  --from-literal=config-encryption-key="$(openssl rand -hex 32)" \
   --from-literal=sre-agent-internal-token="$(openssl rand -hex 32)"
 
 helm install rush rush/rushobservability -n <namespace> \
@@ -208,10 +298,18 @@ type: Opaque
 stringData:
   initial-admin-password: "choose-a-strong-password"
   audit-hmac-secret: "<random string, ≥ 32 bytes — e.g. `openssl rand -hex 32`>"
+  session-hmac-secret: "<random string, ≥ 32 bytes — e.g. `openssl rand -hex 32`>"
+  sso-transaction-secret: "<random string, ≥ 32 bytes>"
+  config-encryption-key: "<random string, ≥ 32 bytes>"
+  audit-hmac-previous-keys: ""
   sre-agent-internal-token: "<random string — e.g. `openssl rand -hex 32`>"
 ```
 
-> **`audit-hmac-secret` must be ≥ 32 bytes.** It's used directly as the HMAC-SHA256 key (literal UTF-8 bytes — not hex-decoded), so the string's character count *is* the byte length; `openssl rand -hex 32` yields 64 bytes. A shorter/empty key makes the audit chain forgeable (query-api logs a warning). **Keep this value stable forever** — changing it makes all prior audit rows fail verification. `initial-admin-password` only seeds the admin user on first boot; changing it later does not rotate an existing admin.
+> **HMAC secrets must be at least 32 bytes.** Production startup fails for a
+> weak audit key. To rotate it, set `queryApi.audit.keyId` to a new identifier
+> and retain old key material in `audit-hmac-previous-keys` as a JSON object,
+> for example `{"primary":"old-secret"}`. The new segment remains linked to
+> the old tail and historical verification selects the correct key by ID.
 
 ## Read-only GitHub App access for the SRE agent
 

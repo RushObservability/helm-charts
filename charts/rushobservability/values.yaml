@@ -1,8 +1,14 @@
 # ── query-api ──
+imageSecurity:
+  # Recommended for every production values file. When enabled, the chart
+  # refuses tag-only first-party Rush workloads.
+  requireDigests: false
+
 queryApi:
   image:
     repository: mzupan/rush-api
     tag: "0.1.24"
+    digest: "" # sha256:<64 hex chars>; takes precedence over tag
     pullPolicy: Always
   replicas: 1
   port: 8080
@@ -18,14 +24,52 @@ queryApi:
   # pin/preset it, or point existingSecret at your own Secret to bring your own.
   adminPassword: ""        # INITIAL_ADMIN_PASSWORD — first-boot admin seed
   auditHmacSecret: ""      # RUSH_AUDIT_HMAC_SECRET — audit hash-chain key; MUST stay stable
+  sessionHmacSecret: ""    # RUSH_SESSION_HMAC_SECRET — one-way browser-session token key
+  ssoTransactionSecret: "" # RUSH_SSO_TRANSACTION_SECRET — signed OIDC/SAML transaction key; MUST stay stable
+  configEncryptionKey: ""  # RUSH_CONFIG_ENCRYPTION_KEY — encrypts SSO client secrets; MUST stay stable
+  audit:
+    # Change keyId whenever auditHmacSecret is deliberately rotated. Supply old
+    # keys as a JSON object (for example {"primary":"old-secret"}) so historical
+    # segments remain verifiable. Prefer existingSecret for production values.
+    keyId: primary
+    previousKeysJson: ""
+    spool:
+      maxBytes: 268435456
+      persistence:
+        enabled: true
+        existingClaim: ""
+        storageClass: ""
+        accessModes: ["ReadWriteOnce"]
+        size: 1Gi
   # Use a pre-created Secret instead of the auto-generated one. When set, the
   # chart creates no bootstrap Secret and reads these keys from yours:
-  #   initial-admin-password, audit-hmac-secret
+  #   initial-admin-password, audit-hmac-secret, session-hmac-secret,
+  #   sso-transaction-secret, config-encryption-key, and optionally
+  #   audit-hmac-previous-keys
   existingSecret: ""
   # Authentication is fail-closed by default. The anonymous-default switch is
   # only for local development; enabling it leaves /readyz unhealthy in a
   # production environment.
   environment: production
+  # Required when environment is production. Use the externally reachable
+  # HTTPS origin without a trailing path, query, or fragment.
+  baseUrl: ""
+  # Forwarded client addresses are ignored unless the direct peer belongs to
+  # one of these proxy networks. Use pod/ingress CIDRs, never 0.0.0.0/0.
+  trustedProxyCidrs: []
+  # One-time OIDC/SAML/setup claims. "auto" uses an in-process store for one
+  # replica and ClickHouse KeeperMap for two or more replicas. HA therefore
+  # requires clickhouse.keeper.enabled=true (or Keeper on external ClickHouse).
+  ssoReplayStore: auto
+  loginRateLimit:
+    accountPerMinute: 10
+    ipPerMinute: 50
+  # Browser sessions use a renewable idle deadline plus a hard maximum age.
+  # Renewal rotates the HttpOnly bearer and never extends absoluteTimeoutSeconds.
+  session:
+    idleTimeoutSeconds: 1800
+    absoluteTimeoutSeconds: 86400
+    renewalIntervalSeconds: 300
   allowAnonymousDefault: false
   env:
     CLICKHOUSE_DATABASE: observability
@@ -78,6 +122,7 @@ enterprise:
         image:
           repository: mzupan/postgres-collector
           tag: "0.1.0"
+          digest: ""
           pullPolicy: Always
         secret:
           name: rush-pg-collector
@@ -100,6 +145,7 @@ sreAgent:
   image:
     repository: mzupan/sre-agent
     tag: "0.1.0"
+    digest: ""
     pullPolicy: Always
   replicas: 1
   port: 8081
@@ -167,6 +213,7 @@ anomalyEngine:
   image:
     repository: mzupan/rush-api
     tag: "0.1.32"
+    digest: ""
     pullPolicy: Always
   env:
     CLICKHOUSE_DATABASE: observability
@@ -230,6 +277,7 @@ frontend:
   image:
     repository: mzupan/rush-frontend
     tag: "0.1.12"
+    digest: ""
     pullPolicy: Always
   # Public base URL (scheme + host, no trailing slash) of the Rush API as seen from
   # outside the cluster. Surfaced to the UI wherever it shows or reaches the API by
@@ -428,6 +476,7 @@ clickhouse:
   image:
     repository: clickhouse/clickhouse-server
     tag: "26.6.1.1193"
+    digest: ""
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
@@ -447,6 +496,12 @@ clickhouse:
     # Rush will still deploy the ClickHouseInstallation CRD resource; it just
     # won't install the operator Deployment, RBAC, or CRDs again.
     enabled: true
+    # Override the upstream chart's floating kubectl:latest CRD hook.
+    crdHook:
+      image:
+        repository: bitnami/kubectl
+        tag: "1.33.4"
+        pullPolicy: IfNotPresent
     # Name applied to the operator's resources (Deployment/pod, RBAC, Secret,
     # ServiceMonitor, dashboards). Without this, the Altinity subchart names them
     # "<release>-operator" (e.g. rushobs-operator). Pin it to "clickhouse-operator"
@@ -512,6 +567,7 @@ collectors:
     image:
       repository: otel/opentelemetry-collector-contrib
       tag: "0.118.0"
+      digest: ""
       pullPolicy: IfNotPresent
 
     # deployment  — central, scalable, single service endpoint
@@ -562,6 +618,7 @@ collectors:
       # which lets full-otel mode forward received OTLP traces/metrics/logs straight to
       # Rush's OTLP endpoints. 0.56 is the current stable.
       tag: "0.56.0-distroless-libc"
+      digest: ""
       pullPolicy: IfNotPresent
 
     # logs       — kubernetes_logs source only (DaemonSet)
