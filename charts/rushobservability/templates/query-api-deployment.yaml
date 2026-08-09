@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: query-api
-          image: "{{ .Values.queryApi.image.repository }}:{{ .Values.queryApi.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "rush.image" (dict "image" .Values.queryApi.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.queryApi.image.pullPolicy }}
           ports:
             - name: http
@@ -63,10 +63,34 @@ spec:
               value: /etc/rush/rush.toml
             - name: RUSH_ENVIRONMENT
               value: {{ .Values.queryApi.environment | quote }}
+            - name: RUSH_BASE_URL
+              value: {{ .Values.queryApi.baseUrl | quote }}
+            - name: RUSH_TRUSTED_PROXY_CIDRS
+              value: {{ join "," .Values.queryApi.trustedProxyCidrs | quote }}
+            - name: RUSH_QUERY_API_REPLICAS
+              value: {{ .Values.queryApi.replicas | quote }}
+            - name: RUSH_SSO_REPLAY_STORE
+              value: {{ .Values.queryApi.ssoReplayStore | quote }}
+            - name: RUSH_LOGIN_ACCOUNT_LIMIT_PER_MINUTE
+              value: {{ .Values.queryApi.loginRateLimit.accountPerMinute | quote }}
+            - name: RUSH_LOGIN_IP_LIMIT_PER_MINUTE
+              value: {{ .Values.queryApi.loginRateLimit.ipPerMinute | quote }}
+            - name: RUSH_SESSION_IDLE_TIMEOUT_SECS
+              value: {{ .Values.queryApi.session.idleTimeoutSeconds | quote }}
+            - name: RUSH_SESSION_ABSOLUTE_TIMEOUT_SECS
+              value: {{ .Values.queryApi.session.absoluteTimeoutSeconds | quote }}
+            - name: RUSH_SESSION_RENEWAL_INTERVAL_SECS
+              value: {{ .Values.queryApi.session.renewalIntervalSeconds | quote }}
             - name: RUSH_ALLOW_ANONYMOUS_DEFAULT
               value: {{ .Values.queryApi.allowAnonymousDefault | quote }}
             - name: RUSH_SPOOL_DIR
               value: /var/lib/rush/spool
+            - name: RUSH_AUDIT_SPOOL_DIR
+              value: /var/lib/rush/audit-spool
+            - name: RUSH_AUDIT_SPOOL_MAX_BYTES
+              value: {{ .Values.queryApi.audit.spool.maxBytes | quote }}
+            - name: RUSH_AUDIT_HMAC_KEY_ID
+              value: {{ .Values.queryApi.audit.keyId | quote }}
             # Run the anomaly engine in-process only when there is no dedicated
             # anomaly-engine Deployment, so rules aren't evaluated twice.
             - name: RUSH_RUN_ANOMALY_ENGINE
@@ -139,6 +163,28 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: audit-hmac-secret
+            - name: RUSH_AUDIT_HMAC_PREVIOUS_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: audit-hmac-previous-keys
+                  optional: true
+            - name: RUSH_SESSION_HMAC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: session-hmac-secret
+                  optional: true
+            - name: RUSH_SSO_TRANSACTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: sso-transaction-secret
+            - name: RUSH_CONFIG_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: config-encryption-key
             {{- if .Values.sreAgent.enabled }}
             - name: SRE_AGENT_INTERNAL_TOKEN
               valueFrom:
@@ -156,6 +202,8 @@ spec:
               readOnly: true
             - name: rush-spool
               mountPath: /var/lib/rush/spool
+            - name: audit-spool
+              mountPath: /var/lib/rush/audit-spool
           resources:
             {{- toYaml .Values.queryApi.resources | nindent 12 }}
           securityContext:
@@ -192,3 +240,10 @@ spec:
             name: {{ include "rush.fullname" . }}-rush-config
         - name: rush-spool
           emptyDir: {}
+        - name: audit-spool
+          {{- if .Values.queryApi.audit.spool.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.queryApi.audit.spool.persistence.existingClaim | default (printf "%s-query-api-audit" (include "rush.fullname" .)) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

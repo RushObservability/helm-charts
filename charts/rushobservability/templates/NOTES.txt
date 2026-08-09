@@ -32,8 +32,9 @@ Admin login (user "admin"):
     kubectl -n {{ $ns }} get secret {{ $fullName }}-bootstrap \
       -o jsonpath="{.data.initial-admin-password}" | base64 -d ; echo
 {{- end }}
-  Change it after first login. The audit-log HMAC key lives in the same Secret
-  (key audit-hmac-secret) — keep it stable; rotating it breaks the audit chain.
+  Change it after first login. The audit/session HMAC keys live in the same
+  Secret. For a planned audit-key rotation, change queryApi.audit.keyId and
+  retain the old key in audit-hmac-previous-keys so old segments still verify.
 
 ────────────────────────────────────────────────────────────────────
   Data ingestion — collectors.mode = "{{ $mode }}"

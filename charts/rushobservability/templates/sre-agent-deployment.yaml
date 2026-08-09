@@ -23,7 +23,7 @@ spec:
         {{- toYaml .Values.sreAgent.podSecurityContext | nindent 8 }}
       containers:
         - name: sre-agent
-          image: "{{ .Values.sreAgent.image.repository }}:{{ .Values.sreAgent.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "rush.image" (dict "image" .Values.sreAgent.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.sreAgent.image.pullPolicy }}
           ports:
             - name: http

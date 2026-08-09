@@ -1,0 +1,22 @@
+{{- if and .Values.queryApi.audit.spool.persistence.enabled (not .Values.queryApi.audit.spool.persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "rush.fullname" . }}-query-api-audit
+  labels:
+    app.kubernetes.io/component: query-api
+    {{- include "rush.labels" . | nindent 4 }}
+  annotations:
+    # The outbox can contain audit events not yet committed to ClickHouse. Keep
+    # it through a chart uninstall/reinstall unless an operator deletes it.
+    "helm.sh/resource-policy": keep
+spec:
+  accessModes:
+    {{- toYaml .Values.queryApi.audit.spool.persistence.accessModes | nindent 4 }}
+  {{- with .Values.queryApi.audit.spool.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.queryApi.audit.spool.persistence.size | quote }}
+{{- end }}

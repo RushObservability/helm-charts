@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: postgres-collector
-          image: "{{ .Values.enterprise.license.integrations.postgresCollector.image.repository }}:{{ .Values.enterprise.license.integrations.postgresCollector.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "rush.image" (dict "image" .Values.enterprise.license.integrations.postgresCollector.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.enterprise.license.integrations.postgresCollector.image.pullPolicy }}
           env:
             - name: PG_DSN

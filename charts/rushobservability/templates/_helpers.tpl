@@ -9,6 +9,29 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 {{- end -}}
 
 {{/*
+Render an immutable OCI digest when supplied, otherwise an explicit tag. The
+digest is deliberately separate from repository so values remain readable and
+policy validation can distinguish immutable production configuration.
+*/}}
+{{- define "rush.image" -}}
+{{- $image := .image -}}
+{{- $repository := required "image.repository is required" $image.repository -}}
+{{- $digest := default "" $image.digest -}}
+{{- if $digest -}}
+{{- if not (regexMatch "^sha256:[0-9a-f]{64}$" $digest) -}}
+{{- fail (printf "invalid image digest for %s: expected sha256 followed by 64 lowercase hex characters" $repository) -}}
+{{- end -}}
+{{- printf "%s@%s" $repository $digest -}}
+{{- else -}}
+{{- $tag := default .defaultTag $image.tag -}}
+{{- if or (not $tag) (eq $tag "latest") (hasPrefix "latest-" $tag) -}}
+{{- fail (printf "floating or empty image tag is not allowed for %s" $repository) -}}
+{{- end -}}
+{{- printf "%s:%s" $repository $tag -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 ClickHouse service DNS name inside the cluster. The Altinity subchart and the
 standalone StatefulSet intentionally use the same service name.
 */}}
@@ -103,6 +126,10 @@ through `tpl`. Reads `.Values.global.storage` (shared with subcharts via global)
   <!-- Required for the per-query rush_tenant_id row-policy setting. This helper
        is rendered into config.d in both operator and standalone modes. -->
   <custom_settings_prefixes>rush_</custom_settings_prefixes>
+  <!-- KeeperMap is the linearizable one-time-claim store used by SSO when
+       query-api has multiple replicas. The engine remains unused for a
+       single-replica deployment unless queryApi.ssoReplayStore=keeper. -->
+  <keeper_map_path_prefix>/rush</keeper_map_path_prefix>
   <!-- The operator's default log level is `debug`, which writes every executed
        query (full SQL, including user search terms) to the server log as
        `<Debug> executeQuery`. Vector tails that log back into the `logs` table,
