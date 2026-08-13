@@ -1,0 +1,66 @@
+{{- /* Kept outside templates/tests so chart .helmignore excludes only repository tests. */ -}}
+{{- if .Values.helmTests.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "connectivity-test") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "helm-test") | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  activeDeadlineSeconds: {{ .Values.helmTests.activeDeadlineSeconds }}
+  backoffLimit: {{ .Values.helmTests.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "rush.selectorLabels" (dict "root" . "component" "helm-test") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: connectivity
+          image: {{ include "rush.image" (dict "image" .Values.queryApi.image "defaultTag" .Chart.AppVersion) | quote }}
+          imagePullPolicy: {{ .Values.queryApi.image.pullPolicy }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              curl --fail --silent --show-error --max-time 10 "${QUERY_API_URL}/healthz"
+              curl --fail --silent --show-error --max-time 10 "${QUERY_API_URL}/readyz"
+              curl --fail --silent --show-error --max-time 10 "${FRONTEND_URL}/"
+              curl --fail --silent --show-error --max-time 10 "${FRONTEND_URL}/metrics"
+              {{- if .Values.helmTests.clickhouseConnectivity }}
+              curl --fail --silent --show-error --max-time 10 \
+                --user "${CLICKHOUSE_USER}:${CLICKHOUSE_PASSWORD}" \
+                "${CLICKHOUSE_URL}/ping" | grep -q '^Ok'
+              {{- end }}
+          env:
+            - name: QUERY_API_URL
+              value: {{ include "rush.queryApiUrl" . | quote }}
+            - name: FRONTEND_URL
+              value: {{ printf "http://%s:%v" (include "rush.componentName" (dict "root" . "component" "frontend")) .Values.frontend.service.port | quote }}
+            {{- if .Values.helmTests.clickhouseConnectivity }}
+            - name: CLICKHOUSE_URL
+              value: {{ include "rush.clickhouseUrl" . | quote }}
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
+                  key: {{ include "rush.clickhouseUserKey" . }}
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
+                  key: {{ include "rush.clickhousePasswordKey" . }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.helmTests.resources | nindent 12 }}
+          securityContext:
+            {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
+{{- end }}

@@ -16,6 +16,42 @@
 {{- if and (gt (int .Values.queryApi.replicas) 1) (eq .Values.clickhouse.mode "operator") (not .Values.clickhouse.keeper.enabled) -}}
 {{- fail "queryApi replicas greater than 1 require clickhouse.keeper.enabled=true for atomic SSO replay protection" -}}
 {{- end -}}
+{{- if not (has .Values.queryApi.buffer.backend (list "disk" "object_store")) -}}
+{{- fail "queryApi.buffer.backend must be one of: disk, object_store" -}}
+{{- end -}}
+{{- if and (gt (int .Values.queryApi.replicas) 1) (ne .Values.queryApi.buffer.backend "object_store") -}}
+{{- fail "queryApi replicas greater than 1 require queryApi.buffer.backend=object_store; pod-local disk queues are not HA" -}}
+{{- end -}}
+{{- if and (gt (int .Values.queryApi.replicas) 1) (not .Values.queryApi.buffer.drainWorker.enabled) -}}
+{{- fail "queryApi replicas greater than 1 require queryApi.buffer.drainWorker.enabled=true so exactly one worker drains the shared queue" -}}
+{{- end -}}
+{{- if and .Values.queryApi.buffer.drainWorker.enabled (ne .Values.queryApi.buffer.backend "object_store") -}}
+{{- fail "queryApi.buffer.drainWorker.enabled=true requires queryApi.buffer.backend=object_store" -}}
+{{- end -}}
+{{- if eq .Values.queryApi.buffer.backend "object_store" -}}
+{{- if not .Values.queryApi.buffer.objectStore.bucket -}}{{- fail "queryApi.buffer.objectStore.bucket is required when queryApi.buffer.backend=object_store" -}}{{- end -}}
+{{- if not .Values.queryApi.buffer.objectStore.credentialsSecret.name -}}{{- fail "queryApi.buffer.objectStore.credentialsSecret.name is required when queryApi.buffer.backend=object_store" -}}{{- end -}}
+{{- if and .Values.queryApi.networkPolicy.enabled (not .Values.queryApi.networkPolicy.allowExternalHttpsEgress) (empty .Values.queryApi.networkPolicy.extraEgress) -}}{{- fail "object-store buffering with queryApi.networkPolicy.enabled requires allowExternalHttpsEgress=true or an explicit queryApi.networkPolicy.extraEgress rule" -}}{{- end -}}
+{{- end -}}
+{{- if .Values.ingress.enabled -}}
+{{- if not .Values.ingress.frontend.enabled -}}{{- fail "ingress.enabled=true requires ingress.frontend.enabled=true; the frontend is the canonical browser and SSO origin" -}}{{- end -}}
+{{- if not .Values.ingress.frontend.host -}}{{- fail "ingress.frontend.host is required when ingress is enabled" -}}{{- end -}}
+{{- if and (eq .Values.queryApi.environment "production") (not .Values.queryApi.baseUrl) (not .Values.ingress.frontend.tls.enabled) -}}{{- fail "production ingress must enable frontend TLS or set queryApi.baseUrl to an explicit HTTPS origin" -}}{{- end -}}
+{{- if and .Values.ingress.api.enabled (not .Values.ingress.api.host) -}}{{- fail "ingress.api.host is required when ingress.api.enabled=true" -}}{{- end -}}
+{{- if and .Values.ingress.api.enabled (eq .Values.ingress.api.host .Values.ingress.frontend.host) -}}{{- fail "ingress.api.host must differ from ingress.frontend.host; the frontend already proxies API paths on its own host" -}}{{- end -}}
+{{- end -}}
+{{- if and .Values.sreAgent.enabled .Values.sreAgent.networkPolicy.enabled (not .Values.sreAgent.networkPolicy.allowExternalHttpsEgress) (empty .Values.sreAgent.networkPolicy.extraEgress) -}}
+{{- fail "sreAgent requires allowExternalHttpsEgress=true or an explicit sreAgent.networkPolicy.extraEgress rule for its LLM/GitHub endpoint" -}}
+{{- end -}}
+{{- if and .Values.enterprise.license.integrations.postgresCollector.enabled .Values.enterprise.license.integrations.postgresCollector.networkPolicy.enabled (empty .Values.enterprise.license.integrations.postgresCollector.networkPolicy.extraEgress) -}}
+{{- fail "postgresCollector requires an explicit networkPolicy.extraEgress rule for the monitored PostgreSQL endpoint" -}}
+{{- end -}}
+{{- if and (eq .Values.clickhouse.mode "external") .Values.queryApi.networkPolicy.enabled (not .Values.queryApi.networkPolicy.allowExternalClickHouseEgress) (empty .Values.queryApi.networkPolicy.extraEgress) -}}
+{{- fail "external ClickHouse with queryApi.networkPolicy.enabled requires allowExternalClickHouseEgress=true or an explicit queryApi.networkPolicy.extraEgress rule" -}}
+{{- end -}}
+{{- if and (eq .Values.clickhouse.mode "standalone") .Values.global.storage.s3.enabled .Values.clickhouseStandalone.networkPolicy.enabled (not .Values.clickhouseStandalone.networkPolicy.allowExternalHttpsEgress) (empty .Values.clickhouseStandalone.networkPolicy.extraEgress) -}}
+{{- fail "standalone ClickHouse S3 tiering requires allowExternalHttpsEgress=true or an explicit clickhouseStandalone.networkPolicy.extraEgress rule" -}}
+{{- end -}}
 {{- $anomalyImage := mergeOverwrite (deepCopy .Values.queryApi.image) (deepCopy (.Values.anomalyEngine.image | default dict)) -}}
 {{- if .Values.imageSecurity.requireDigests -}}
 {{- if not .Values.queryApi.image.digest -}}{{- fail "imageSecurity.requireDigests=true requires queryApi.image.digest" -}}{{- end -}}

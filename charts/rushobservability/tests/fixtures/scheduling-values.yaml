@@ -12,6 +12,8 @@ frontend:
 
 sreAgent:
   enabled: true
+  networkPolicy:
+    allowExternalHttpsEgress: true
   llmApiKeySecret:
     name: llm-key
 
@@ -23,6 +25,14 @@ enterprise:
     integrations:
       postgresCollector:
         enabled: true
+        networkPolicy:
+          extraEgress:
+            - to:
+                - ipBlock:
+                    cidr: 10.0.0.0/8
+              ports:
+                - protocol: TCP
+                  port: 5432
 
 global:
   scheduling:

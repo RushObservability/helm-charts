@@ -12,6 +12,10 @@
 #   • Kubernetes with RBAC permissions for the bundled Altinity ClickHouse Operator
 #   • At least 3 schedulable nodes (anti-affinity spreads pods)
 #   • A StorageClass that supports ReadWriteOnce (most CSI drivers)
+#   • An S3-compatible bucket and a Secret for the shared ingest buffer:
+#       kubectl create secret generic rush-ingest-buffer \
+#         --from-literal=access-key='<access-key>' \
+#         --from-literal=secret-key='<secret-key>'
 #
 # Deploy:
 #   helm install rushobs oci://... \
@@ -22,6 +26,29 @@
 # ── Rush components ───────────────────────────────────────────────────────────
 queryApi:
   replicas: 2   # run 2 query-api pods for HA; sit behind a ClusterIP load balancer
+  # Every API replica writes failed ingest to one shared object-store queue. A
+  # dedicated single-replica worker drains it; API pods never replay entries.
+  buffer:
+    backend: object_store
+    objectStore:
+      endpoint: ""             # blank for AWS; set for MinIO/Ceph/RustFS
+      bucket: your-rush-ingest-buffer
+      prefix: ingest/
+      region: us-east-1
+      credentialsSecret:
+        name: rush-ingest-buffer
+        accessKeyKey: access-key
+        secretKeyKey: secret-key
+    drainWorker:
+      enabled: true
+  podDisruptionBudget:
+    enabled: true
+    type: minAvailable
+    value: 1
+  networkPolicy:
+    # Required for the S3-compatible shared ingest buffer. Narrow this with
+    # extraEgress instead when the bucket endpoint has stable private CIDRs.
+    allowExternalHttpsEgress: true
   resources:
     requests:
       cpu: 250m
@@ -32,6 +59,10 @@ queryApi:
 
 frontend:
   replicas: 2
+  podDisruptionBudget:
+    enabled: true
+    type: minAvailable
+    value: 1
 
 sreAgent:
   enabled: false   # enable + set llmApiKey when you want AI-powered root cause
@@ -84,12 +115,6 @@ clickhouse:
       cpu: "4"
       memory: 16Gi
 
-  # ── Init scripts ────────────────────────────────────────────────────────────
-  initScripts:
-    enabled: true
-    configMapName: "rushobs-clickhouse-init"
-    alwaysRun: true
-
   service:
     type: ClusterIP
 
@@ -139,6 +164,10 @@ collectors:
   otel:
     kind: deployment
     replicas: 2
+    podDisruptionBudget:
+      enabled: true
+      type: minAvailable
+      value: 1
     autoscaling:
       enabled: true
       minReplicas: 2
@@ -170,7 +199,7 @@ collectors:
 # In production, enable S3 tiering to keep ClickHouse disks lean.
 # Metrics/traces/logs older than N days are moved to object storage;
 # ClickHouse queries them transparently via the S3 disk.
-rushConfig:
+global:
   storage:
     s3:
       enabled: true           # enable S3 cold-tier storage
@@ -183,6 +212,7 @@ rushConfig:
       metrics_move_after_days: 7
       traces_move_after_days: 3
       logs_move_after_days: 7
+rushConfig:
   retention:
     defaults:
       metrics_days: 365

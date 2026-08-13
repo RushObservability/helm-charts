@@ -328,7 +328,7 @@ clickhouse:
   operator:
     enabled: true
 
-rushConfig:
+global:
   storage:
     s3:
       enabled: true
@@ -343,6 +343,7 @@ rushConfig:
       metrics_move_after_days: 7
       traces_move_after_days: 3
       logs_move_after_days: 7
+rushConfig:
   retention:
     defaults:
       metrics_days: 365

@@ -30,6 +30,7 @@ assert_render "$standalone" 'RUSH_CLICKHOUSE_READ_PASSWORD' 'standalone read cre
 external="$(helm template tenant-policy "$chart_dir" \
   --set clickhouse.enabled=false \
   --set clickhouse.mode=external \
+  --set queryApi.networkPolicy.allowExternalClickHouseEgress=true \
   --set clickhouse.external.url=https://clickhouse.example:8443 \
   --set clickhouse.external.credentialsSecret=clickhouse-writer \
   --set clickhouse.external.readCredentialsSecret=clickhouse-reader)"

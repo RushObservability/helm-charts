@@ -6,6 +6,7 @@ metadata:
     {{- include "rush.componentLabels" (dict "root" . "component" "frontend") | nindent 4 }}
 spec:
   replicas: {{ .Values.frontend.replicas }}
+  {{- include "rush.deploymentRollout" (dict "rollout" .Values.frontend.rollout) | nindent 2 }}
   selector:
     matchLabels:
       {{- include "rush.selectorLabels" (dict "root" . "component" "frontend") | nindent 6 }}
@@ -13,10 +14,18 @@ spec:
     metadata:
       labels:
         {{- include "rush.selectorLabels" (dict "root" . "component" "frontend") | nindent 8 }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.frontend)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
       annotations:
         checksum/nginx-config: {{ include (print $.Template.BasePath "/frontend-nginx-configmap.yaml") . | sha256sum }}
+        {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.frontend)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
     spec:
       {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.frontend) | nindent 6 }}
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.frontend) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.frontend "component" "frontend") }}
       # The frontend serves static files and proxies /api. It needs no Kubernetes
       # API token. The Rush Chainguard image runs as uid 65532 and binds 8080.
       automountServiceAccountToken: false
@@ -43,6 +52,7 @@ spec:
               value: "{{ .Values.frontend.apiBaseUrl | default "" }}"
             - name: RUSH_ENVIRONMENT
               value: "{{ .Values.queryApi.environment }}"
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.frontend) | nindent 10 }}
           securityContext:
             {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
           volumeMounts:
@@ -52,20 +62,23 @@ spec:
               readOnly: true
             - name: runtime-tmp
               mountPath: /tmp
+            {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.frontend)) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
+          {{- if .Values.frontend.probes.startup.enabled }}
+          startupProbe:
+            {{- include "rush.httpProbe" (dict "probe" .Values.frontend.probes.startup "port" "http") | nindent 12 }}
+          {{- end }}
+          {{- if .Values.frontend.probes.readiness.enabled }}
           readinessProbe:
-            httpGet:
-              path: /
-              port: http
-            initialDelaySeconds: 3
-            periodSeconds: 5
+            {{- include "rush.httpProbe" (dict "probe" .Values.frontend.probes.readiness "port" "http") | nindent 12 }}
+          {{- end }}
+          {{- if .Values.frontend.probes.liveness.enabled }}
           livenessProbe:
-            httpGet:
-              path: /
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            {{- include "rush.httpProbe" (dict "probe" .Values.frontend.probes.liveness "port" "http") | nindent 12 }}
+          {{- end }}
       volumes:
         - name: nginx-config
           configMap:
@@ -74,3 +87,6 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 32Mi
+        {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.frontend)) }}
+        {{- . | nindent 8 }}
+        {{- end }}

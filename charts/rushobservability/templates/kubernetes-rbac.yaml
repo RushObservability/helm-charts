@@ -39,7 +39,7 @@ roleRef:
   name: {{ include "rush.fullname" . }}-kubernetes-reader
 subjects:
   - kind: ServiceAccount
-    name: {{ include "rush.fullname" . }}-query-api
+    name: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.queryApi "component" "query-api") }}
     namespace: {{ .Release.Namespace }}
 {{- else }}
 {{- range $namespace := .Values.kubernetes.namespaces }}
@@ -80,7 +80,7 @@ roleRef:
   name: {{ include "rush.fullname" $ }}-kubernetes-reader
 subjects:
   - kind: ServiceAccount
-    name: {{ include "rush.fullname" $ }}-query-api
+    name: {{ include "rush.serviceAccountName" (dict "root" $ "workload" $.Values.queryApi "component" "query-api") }}
     namespace: {{ $.Release.Namespace }}
 {{- end }}
 {{- end }}

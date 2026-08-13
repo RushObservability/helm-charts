@@ -41,6 +41,9 @@ Secret. It does not provide replicated ClickHouse or Keeper-based HA.
 The chart also supports an existing ClickHouse deployment:
 
 ```yaml
+queryApi:
+  networkPolicy:
+    allowExternalClickHouseEgress: true # or use a CIDR-specific extraEgress rule
 clickhouse:
   enabled: false
   mode: external
@@ -138,6 +141,210 @@ separately with `clickhouse.operator.nodeSelector`, `tolerations`, `affinity`,
 and `topologySpreadConstraints`; its install hook uses the corresponding
 `clickhouse.operator.crdHook` values.
 
+## High-availability ingest buffering
+
+A pod-local disk queue is intentionally the default for one query-api replica.
+It is not safe for HA because another pod cannot replay telemetry stranded on a
+failed node. When `queryApi.replicas` is greater than one, the chart requires an
+S3-compatible shared buffer and deploys exactly one dedicated drain worker:
+
+```bash
+kubectl -n observability create secret generic rush-ingest-buffer \
+  --from-literal=access-key='<access-key>' \
+  --from-literal=secret-key='<secret-key>'
+```
+
+```yaml
+queryApi:
+  replicas: 3
+  buffer:
+    backend: object_store
+    maxBytes: 2147483648
+    objectStore:
+      endpoint: "" # blank for AWS; set for MinIO, Ceph, or RustFS
+      bucket: rush-ingest-buffer
+      prefix: ingest/
+      region: us-east-1
+      credentialsSecret:
+        name: rush-ingest-buffer
+        accessKeyKey: access-key
+        secretKeyKey: secret-key
+    drainWorker:
+      enabled: true
+  networkPolicy:
+    allowExternalHttpsEgress: true # or use a bucket-specific extraEgress rule
+
+clickhouse:
+  keeper:
+    enabled: true
+```
+
+API pods enqueue but do not replay objects when the worker is enabled. The
+worker is fixed at one replica and uses a `Recreate` rollout so upgrades cannot
+briefly run two drainers. Object-store credentials are read only from the named
+Secret. See [`examples/rush-ha.yaml`](examples/rush-ha.yaml) for a complete HA
+profile. The chart rejects multi-replica API values that omit any of these
+requirements.
+
+## Availability, rollouts, and health probes
+
+First-party Deployments expose a `rollout` block, and each workload exposes an
+opt-in `podDisruptionBudget`. Stateless serving paths use zero-unavailable
+rolling updates by default. Singleton consumers such as the anomaly engine,
+Postgres collector, and ingest drain worker default to `Recreate` to avoid
+duplicate work.
+
+```yaml
+queryApi:
+  rollout:
+    strategy: RollingUpdate
+    maxUnavailable: 0
+    maxSurge: 1
+    minReadySeconds: 10
+    progressDeadlineSeconds: 600
+    revisionHistoryLimit: 10
+  podDisruptionBudget:
+    enabled: true
+    type: minAvailable # or maxUnavailable
+    value: 2           # integer or percentage
+```
+
+Do not enable `minAvailable: 1` on a singleton unless blocking voluntary node
+drains is intentional. OTel and Vector DaemonSets also have configurable update
+strategies; standalone ClickHouse exposes its StatefulSet update strategy and
+PDB under `clickhouseStandalone`.
+
+Query-api, frontend, SRE agent, OTel, and standalone ClickHouse expose startup,
+readiness, and liveness settings. A startup probe protects slow initialization
+from premature liveness restarts. Each probe can be tuned or disabled:
+
+```yaml
+queryApi:
+  probes:
+    startup:
+      enabled: true
+      path: /healthz
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 60
+      successThreshold: 1
+```
+
+The chart includes `values.schema.json`. `helm lint`, `helm template`, install,
+and upgrade validate core enums, numeric ranges, image digests, rollout/PDB/probe
+shapes, and the HA buffer contract before resources are submitted to Kubernetes.
+
+## Network isolation
+
+NetworkPolicies are enabled for query-api, frontend, SRE agent, anomaly engine,
+OTel, Vector, the PostgreSQL collector, the drain worker, and standalone
+ClickHouse. Default rules permit only required component-to-component traffic,
+DNS, and same-namespace collector ingestion. Query-api no longer accepts traffic
+from every pod in the namespace and receives no broad Internet egress by default.
+
+Enable broad destinations only when the feature needs them, or prefer a
+CIDR-specific `extraEgress` rule:
+
+```yaml
+queryApi:
+  networkPolicy:
+    allowExternalHttpsEgress: true     # OIDC/SAML, webhooks, S3 buffer
+    allowExternalClickHouseEgress: false
+    allowSmtpEgress: false
+    extraIngress: []                   # ingress controller or external collector
+    extraEgress: []
+
+sreAgent:
+  enabled: true
+  networkPolicy:
+    allowExternalHttpsEgress: true     # OpenAI/GitHub/Kubernetes API
+```
+
+The PostgreSQL collector requires an explicit `networkPolicy.extraEgress` rule
+for the monitored database. External ClickHouse requires either
+`allowExternalClickHouseEgress` or an explicit rule. The chart fails rendering
+instead of deploying a workload that cannot reach a required external service.
+
+## Ingress and TLS
+
+The optional Ingress exposes the frontend, which already proxies `/api`,
+`/auth`, `/prom`, and `/metrics`. A separate direct API host is also available
+for integrations that should not traverse the frontend proxy:
+
+```yaml
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  trustedProxyCidrs: [10.42.0.0/16]
+  frontend:
+    host: rush.example.com
+    tls:
+      enabled: true
+      secretName: rush-tls
+  api:
+    enabled: true
+    host: api.rush.example.com
+    tls:
+      enabled: true
+      secretName: rush-api-tls
+```
+
+When `queryApi.baseUrl` is empty, the chart derives it from the frontend TLS
+host. `ingress.trustedProxyCidrs` is merged into query-api's trusted proxy list.
+Add an `extraIngress` rule matching your ingress controller's namespace/pod
+labels when it does not run in the release namespace.
+
+## Operational overrides
+
+Shared pod defaults live under `global`; every Rush-owned workload can override
+them. Annotation and label maps merge. Non-empty component lists/scalars replace
+the corresponding global value.
+
+```yaml
+global:
+  podAnnotations: { cluster-autoscaler.kubernetes.io/safe-to-evict: "true" }
+  podLabels: { platform.example.com/tier: observability }
+  imagePullSecrets: [{ name: registry-credentials }]
+  priorityClassName: platform-critical
+  runtimeClassName: gvisor
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  serviceAccount:
+    annotations: { eks.amazonaws.com/role-arn: arn:aws:iam::123:role/rush }
+
+queryApi:
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
+```
+
+Supported workload fields are `podAnnotations`, `podLabels`,
+`imagePullSecrets`, `priorityClassName`, `runtimeClassName`, `extraEnvFrom`,
+`extraVolumes`, `extraVolumeMounts`, and `serviceAccount.create/name/annotations`.
+Reserved selector labels cannot be overridden.
+
+## Installed-release and package tests
+
+Run the native connectivity checks after installation:
+
+```bash
+helm test rush -n observability --logs
+```
+
+The test verifies query-api health/readiness, frontend availability, frontend
+proxying, and optionally authenticated ClickHouse connectivity. Configure it
+under `helmTests`, or set `helmTests.enabled: false` to omit the hook.
+
+Repository render tests remain in Git but `.helmignore` excludes them from the
+published archive. CI requires a chart-version bump for chart changes, runs the
+render suite, validates the packaged archive, renders from the archive, and
+refuses packages that accidentally contain `tests/`.
+
 ## Install
 
 ```bash
@@ -146,7 +353,8 @@ helm repo update
 helm install rush rush/rushobservability --namespace observability --create-namespace
 ```
 
-Charts are published on tag by [chart-releaser](.github/workflows/release-charts.yml).
+Charts are published to GHCR when versioned chart changes reach `main` by the
+[release workflow](.github/workflows/release-charts.yml).
 
 ## Secure ingest keys
 
@@ -237,9 +445,9 @@ query-api role grants Secret access.
 
 Cluster-wide Kubernetes browsing requires both `kubernetes.clusterWide: true`
 and a `"*"` namespace grant for the tenant. This adds nodes/namespaces visibility
-but still never grants or exposes Secrets. The query-api NetworkPolicy is enabled
-by default; use `queryApi.networkPolicy.extraIngress` and `extraEgress` for ingress
-controllers or external services that are not covered by the documented ports.
+but still never grants or exposes Secrets. Kubernetes API access also needs
+`queryApi.networkPolicy.allowExternalHttpsEgress: true` or a narrower explicit
+egress rule because broad external egress is disabled by default.
 
 ## Immutable production images
 
@@ -405,6 +613,9 @@ ID appears at the end of its installed-app settings URL.
 
 ```yaml
 sreAgent:
+  enabled: true
+  networkPolicy:
+    allowExternalHttpsEgress: true
   githubApp:
     enabled: true
     appId: "123456"

@@ -60,7 +60,7 @@
 # Longer windows for production services. S3 tiering keeps the local disk lean.
 # ══════════════════════════════════════════════════════════════════════════════
 
-rushConfig:
+global:
   storage:
     s3:
       enabled: true
@@ -75,6 +75,7 @@ rushConfig:
       traces_move_after_days: 7
       logs_move_after_days: 14
 
+rushConfig:
   retention:
     # ── Global defaults (apply when no specific rule matches) ──────────────────
     defaults:

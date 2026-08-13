@@ -7,6 +7,11 @@ metadata:
   labels:
     {{- include "rush.componentLabels" (dict "root" . "component" "otel-collector") | nindent 4 }}
 spec:
+  {{- if $isDaemonSet }}
+  {{- include "rush.daemonSetRollout" (dict "rollout" .Values.collectors.otel.rollout) | nindent 2 }}
+  {{- else }}
+  {{- include "rush.deploymentRollout" (dict "rollout" .Values.collectors.otel.rollout) | nindent 2 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "rush.selectorLabels" (dict "root" . "component" "otel-collector") | nindent 6 }}
@@ -17,10 +22,19 @@ spec:
     metadata:
       labels:
         {{- include "rush.selectorLabels" (dict "root" . "component" "otel-collector") | nindent 8 }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.collectors.otel)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/otel-collector-configmap.yaml") . | sha256sum }}
+        {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.collectors.otel)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
     spec:
       {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.collectors.otel) | nindent 6 }}
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.collectors.otel) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.collectors.otel "component" "otel-collector") }}
+      automountServiceAccountToken: false
       containers:
         - name: otel-collector
           image: {{ include "rush.image" (dict "image" .Values.collectors.otel.image "defaultTag" .Chart.AppVersion) | quote }}
@@ -47,25 +61,28 @@ spec:
           {{- else if not .Values.collectors.allowAnonymousIngest }}
           {{- fail "collectors.ingestApiKeySecret.name is required when an in-cluster collector is enabled" }}
           {{- end }}
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.collectors.otel) | nindent 10 }}
           volumeMounts:
             - name: config
               mountPath: /etc/otelcol
               readOnly: true
+            {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.collectors.otel)) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.collectors.otel.resources | nindent 12 }}
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 13133
-            initialDelaySeconds: 15
-            periodSeconds: 20
-            failureThreshold: 3
+          {{- if .Values.collectors.otel.probes.startup.enabled }}
+          startupProbe:
+            {{- include "rush.httpProbe" (dict "probe" .Values.collectors.otel.probes.startup "port" 13133) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.collectors.otel.probes.readiness.enabled }}
           readinessProbe:
-            httpGet:
-              path: /
-              port: 13133
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            {{- include "rush.httpProbe" (dict "probe" .Values.collectors.otel.probes.readiness "port" 13133) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.collectors.otel.probes.liveness.enabled }}
+          livenessProbe:
+            {{- include "rush.httpProbe" (dict "probe" .Values.collectors.otel.probes.liveness "port" 13133) | nindent 12 }}
+          {{- end }}
       volumes:
         - name: config
           configMap:
@@ -73,4 +90,7 @@ spec:
             items:
               - key: collector.yaml
                 path: collector.yaml
+        {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.collectors.otel)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
 {{- end }}

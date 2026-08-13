@@ -1,0 +1,133 @@
+{{- if .Values.queryApi.buffer.drainWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "query-api-drain-worker") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "query-api-drain-worker") | nindent 4 }}
+spec:
+  # The object-store queue uses a single drainer. Recreate also prevents a
+  # rolling update from briefly running the old and new workers together.
+  replicas: 1
+  {{- include "rush.deploymentRollout" (dict "rollout" .Values.queryApi.buffer.drainWorker.rollout) | nindent 2 }}
+  selector:
+    matchLabels:
+      {{- include "rush.selectorLabels" (dict "root" . "component" "query-api-drain-worker") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rush.selectorLabels" (dict "root" . "component" "query-api-drain-worker") | nindent 8 }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.queryApi.buffer.drainWorker)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/rush-config: {{ include (print $.Template.BasePath "/rush-config-configmap.yaml") . | sha256sum }}
+        {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.queryApi.buffer.drainWorker)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.queryApi.buffer.drainWorker) | nindent 6 }}
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.queryApi.buffer.drainWorker) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.queryApi.buffer.drainWorker "component" "query-api-drain-worker") }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.queryApi.buffer.drainWorker.terminationGracePeriodSeconds }}
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: drain-worker
+          image: {{ include "rush.image" (dict "image" .Values.queryApi.image "defaultTag" .Chart.AppVersion) | quote }}
+          imagePullPolicy: {{ .Values.queryApi.image.pullPolicy }}
+          env:
+            {{- include "rush.clickhouseWriteEnv" . | nindent 12 }}
+            {{- include "rush.clickhouseReadEnv" . | nindent 12 }}
+            - name: RUSH_CONFIG
+              value: /etc/rush/rush.toml
+            - name: RUSH_ENVIRONMENT
+              value: {{ .Values.queryApi.environment | quote }}
+            - name: RUSH_BASE_URL
+              value: {{ include "rush.effectiveBaseUrl" . | quote }}
+            - name: RUSH_QUERY_API_REPLICAS
+              value: {{ .Values.queryApi.replicas | quote }}
+            - name: RUSH_SSO_REPLAY_STORE
+              value: {{ .Values.queryApi.ssoReplayStore | quote }}
+            - name: RUSH_ALLOW_ANONYMOUS_DEFAULT
+              value: {{ .Values.queryApi.allowAnonymousDefault | quote }}
+            - name: RUSH_RUN_ANOMALY_ENGINE
+              value: "false"
+            - name: RUSH_SPOOL_DIR
+              value: /var/lib/rush/spool
+            {{- include "rush.queryApiBufferEnv" (dict "root" . "drainOnly" true) | nindent 12 }}
+            - name: RUSH_AUDIT_SPOOL_DIR
+              value: /var/lib/rush/audit-spool
+            - name: RUSH_AUDIT_SPOOL_MAX_BYTES
+              value: {{ .Values.queryApi.audit.spool.maxBytes | int64 | quote }}
+            - name: RUSH_AUDIT_HMAC_KEY_ID
+              value: {{ .Values.queryApi.audit.keyId | quote }}
+            {{- $bootstrapSecret := .Values.queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
+            - name: INITIAL_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: initial-admin-password
+            - name: RUSH_AUDIT_HMAC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: audit-hmac-secret
+            - name: RUSH_AUDIT_HMAC_PREVIOUS_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: audit-hmac-previous-keys
+                  optional: true
+            - name: RUSH_SESSION_HMAC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: session-hmac-secret
+                  optional: true
+            - name: RUSH_SSO_TRANSACTION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: sso-transaction-secret
+            - name: RUSH_CONFIG_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: config-encryption-key
+            {{- range $key, $val := .Values.queryApi.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.queryApi.buffer.drainWorker) | nindent 10 }}
+          volumeMounts:
+            - name: rush-config
+              mountPath: /etc/rush
+              readOnly: true
+            - name: rush-spool
+              mountPath: /var/lib/rush/spool
+            - name: audit-spool
+              mountPath: /var/lib/rush/audit-spool
+            {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.queryApi.buffer.drainWorker)) }}
+            {{- . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.queryApi.buffer.drainWorker.resources | nindent 12 }}
+          securityContext:
+            {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
+      volumes:
+        - name: rush-config
+          configMap:
+            name: {{ include "rush.fullname" . }}-rush-config
+        - name: rush-spool
+          emptyDir: {}
+        - name: audit-spool
+          emptyDir: {}
+        {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.queryApi.buffer.drainWorker)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+{{- end }}

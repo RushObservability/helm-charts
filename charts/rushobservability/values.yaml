@@ -9,6 +9,18 @@ queryApi:
   # global maps/lists; set this false to schedule this workload independently.
   inheritGlobalScheduling: true
   scheduling: {}
+  podAnnotations: {}
+  podLabels: {}
+  imagePullSecrets: []
+  priorityClassName: ""
+  runtimeClassName: ""
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
   image:
     repository: mzupan/rush-api
     tag: "0.1.24"
@@ -16,6 +28,90 @@ queryApi:
     pullPolicy: Always
   replicas: 1
   port: 8080
+  rollout:
+    strategy: RollingUpdate
+    maxUnavailable: 0
+    maxSurge: 1
+    minReadySeconds: 0
+    progressDeadlineSeconds: 600
+    revisionHistoryLimit: 10
+  podDisruptionBudget:
+    enabled: false
+    type: maxUnavailable
+    value: 1
+  probes:
+    startup:
+      enabled: true
+      path: /healthz
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 60
+      successThreshold: 1
+    readiness:
+      enabled: true
+      path: /readyz
+      initialDelaySeconds: 3
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 3
+      successThreshold: 1
+    liveness:
+      enabled: true
+      path: /healthz
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+      successThreshold: 1
+  # The local disk queue is safe for one API pod. HA API replicas must share an
+  # object-store queue and use exactly one dedicated drain worker.
+  buffer:
+    backend: disk                    # disk | object_store
+    maxBytes: 2147483648
+    objectStore:
+      endpoint: ""                   # blank uses the S3 provider default
+      bucket: ""
+      prefix: ingest/
+      region: us-east-1
+      credentialsSecret:
+        name: ""                     # existing Secret; required for object_store
+        accessKeyKey: access-key
+        secretKeyKey: secret-key
+    drainWorker:
+      enabled: false
+      inheritGlobalScheduling: true
+      scheduling: {}
+      podAnnotations: {}
+      podLabels: {}
+      imagePullSecrets: []
+      priorityClassName: ""
+      runtimeClassName: ""
+      extraEnvFrom: []
+      extraVolumes: []
+      extraVolumeMounts: []
+      serviceAccount:
+        create: false
+        name: ""
+        annotations: {}
+      # Recreate is deliberate: the queue contract allows exactly one drainer.
+      rollout:
+        strategy: Recreate
+        minReadySeconds: 0
+        progressDeadlineSeconds: 600
+        revisionHistoryLimit: 10
+      podDisruptionBudget:
+        enabled: false
+        type: maxUnavailable
+        value: 1
+      terminationGracePeriodSeconds: 120
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: "1"
+          memory: 512Mi
   # The preStop hook makes readiness fail before termination and lets query-api
   # flush in-memory batches plus drain its durable ingest queue. Increase this
   # for large backlogs or a ClickHouse recovery window.
@@ -105,6 +201,11 @@ queryApi:
     # Allows HTTP from this release namespace and restricts egress to DNS plus
     # the ports used for Kubernetes/HTTPS, ClickHouse, SRE-agent, and SMTP.
     enabled: true
+    # Broad Internet access is off by default. Enable only for OIDC/SAML
+    # discovery, Kubernetes API access, webhooks, or other HTTPS integrations.
+    allowExternalHttpsEgress: false
+    allowExternalClickHouseEgress: false
+    allowSmtpEgress: false
     extraIngress: []
     extraEgress: []
 
@@ -138,6 +239,33 @@ enterprise:
         enabled: false
         inheritGlobalScheduling: true
         scheduling: {}
+        podAnnotations: {}
+        podLabels: {}
+        imagePullSecrets: []
+        priorityClassName: ""
+        runtimeClassName: ""
+        extraEnvFrom: []
+        extraVolumes: []
+        extraVolumeMounts: []
+        serviceAccount:
+          create: false
+          name: ""
+          annotations: {}
+        rollout:
+          strategy: Recreate
+          minReadySeconds: 0
+          progressDeadlineSeconds: 600
+          revisionHistoryLimit: 10
+        podDisruptionBudget:
+          enabled: false
+          type: maxUnavailable
+          value: 1
+        networkPolicy:
+          enabled: true
+          extraIngress: []
+          # Add the external Postgres CIDR and port here. No database-wide
+          # Internet egress is granted by default.
+          extraEgress: []
         image:
           repository: mzupan/postgres-collector
           tag: "0.1.0"
@@ -163,6 +291,18 @@ sreAgent:
   enabled: false                     # disabled by default — requires OPENAI_API_KEY
   inheritGlobalScheduling: true
   scheduling: {}
+  podAnnotations: {}
+  podLabels: {}
+  imagePullSecrets: []
+  priorityClassName: ""
+  runtimeClassName: ""
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  serviceAccount:
+    create: true
+    name: ""
+    annotations: {}
   image:
     repository: mzupan/sre-agent
     tag: "0.1.0"
@@ -170,6 +310,42 @@ sreAgent:
     pullPolicy: Always
   replicas: 1
   port: 8081
+  rollout:
+    strategy: RollingUpdate
+    maxUnavailable: 0
+    maxSurge: 1
+    minReadySeconds: 0
+    progressDeadlineSeconds: 600
+    revisionHistoryLimit: 10
+  podDisruptionBudget:
+    enabled: false
+    type: maxUnavailable
+    value: 1
+  probes:
+    startup:
+      enabled: true
+      path: /healthz
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 60
+      successThreshold: 1
+    readiness:
+      enabled: true
+      path: /healthz
+      initialDelaySeconds: 3
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 3
+      successThreshold: 1
+    liveness:
+      enabled: true
+      path: /healthz
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+      successThreshold: 1
   # Leave blank to auto-generate and preserve a token in the bootstrap Secret.
   internalAuthToken: ""
   env:
@@ -222,6 +398,11 @@ sreAgent:
     port: 8081
   networkPolicy:
     enabled: true
+    # Required for OpenAI/GitHub and for Kubernetes API calls when kube access
+    # is enabled. Kept explicit because it permits TCP/443 to external IPs.
+    allowExternalHttpsEgress: false
+    extraIngress: []
+    extraEgress: []
 
 # ── anomaly engine ──
 # The anomaly engine evaluates rules and sends notifications. By default the
@@ -233,6 +414,34 @@ anomalyEngine:
   enabled: false                     # set true when running multiple query-api pods
   inheritGlobalScheduling: true
   scheduling: {}
+  podAnnotations: {}
+  podLabels: {}
+  imagePullSecrets: []
+  priorityClassName: ""
+  runtimeClassName: ""
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  serviceAccount:
+    create: false
+    name: ""
+    annotations: {}
+  # Recreate prevents duplicate rule evaluation and notification delivery.
+  rollout:
+    strategy: Recreate
+    minReadySeconds: 0
+    progressDeadlineSeconds: 600
+    revisionHistoryLimit: 10
+  podDisruptionBudget:
+    enabled: false
+    type: maxUnavailable
+    value: 1
+  networkPolicy:
+    enabled: true
+    allowExternalHttpsEgress: false
+    allowSmtpEgress: false
+    extraIngress: []
+    extraEgress: []
   # Inherits queryApi.image by default because both workloads run the same Rush
   # API binary. Set only the fields that need to differ for an independent image.
   image: {}
@@ -297,6 +506,18 @@ cloudwatch:
 frontend:
   inheritGlobalScheduling: true
   scheduling: {}
+  podAnnotations: {}
+  podLabels: {}
+  imagePullSecrets: []
+  priorityClassName: ""
+  runtimeClassName: ""
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  serviceAccount:
+    create: false
+    name: ""
+    annotations: {}
   image:
     repository: mzupan/rush-frontend
     tag: "0.1.12"
@@ -312,6 +533,42 @@ frontend:
   # The Service targetPort follows this via the named "http" port.
   containerPort: 8080
   replicas: 1
+  rollout:
+    strategy: RollingUpdate
+    maxUnavailable: 0
+    maxSurge: 1
+    minReadySeconds: 0
+    progressDeadlineSeconds: 600
+    revisionHistoryLimit: 10
+  podDisruptionBudget:
+    enabled: false
+    type: maxUnavailable
+    value: 1
+  probes:
+    startup:
+      enabled: true
+      path: /
+      initialDelaySeconds: 0
+      periodSeconds: 2
+      timeoutSeconds: 2
+      failureThreshold: 30
+      successThreshold: 1
+    readiness:
+      enabled: true
+      path: /
+      initialDelaySeconds: 3
+      periodSeconds: 5
+      timeoutSeconds: 2
+      failureThreshold: 3
+      successThreshold: 1
+    liveness:
+      enabled: true
+      path: /
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+      successThreshold: 1
   resources:
     requests:
       cpu: 50m
@@ -322,6 +579,39 @@ frontend:
   service:
     type: ClusterIP
     port: 80
+  networkPolicy:
+    enabled: true
+    # Allows same-namespace ingress controllers and port-forward helpers.
+    allowSameNamespaceIngress: true
+    extraIngress: []
+    extraEgress: []
+
+# Optional public entry points. The frontend host also proxies /api, /auth,
+# /prom, and /metrics. Enable the API host only when a separate direct API
+# origin is required. ingress.trustedProxyCidrs are added to query-api's trust
+# list so forwarded client addresses are accepted only from known proxies.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  trustedProxyCidrs: []
+  frontend:
+    enabled: true
+    host: ""
+    path: /
+    pathType: Prefix
+    tls:
+      enabled: true
+      secretName: ""
+  api:
+    enabled: false
+    host: ""
+    path: /
+    pathType: Prefix
+    annotations: {}
+    tls:
+      enabled: true
+      secretName: ""
 
 # ── Storage / S3 tiering — SINGLE source of truth ──
 # Lives under `global` so ONE block drives both the query-api rush.toml AND the
@@ -341,6 +631,18 @@ global:
     tolerations: []
     affinity: {}
     topologySpreadConstraints: []
+  # Shared pod defaults. Non-empty component values replace shared lists and
+  # scalar values; annotations and labels merge with component values winning.
+  podAnnotations: {}
+  podLabels: {}
+  imagePullSecrets: []
+  priorityClassName: ""
+  runtimeClassName: ""
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  serviceAccount:
+    annotations: {}
   storage:
     s3:
       enabled: false            # set true + fill in to enable S3 tiered storage
@@ -521,10 +823,6 @@ clickhouse:
     enabled: true
     storageClass: ""      # empty = cluster default
     size: 500Gi
-  initScripts:
-    enabled: true
-    configMapName: "rushobs-clickhouse-init"
-    alwaysRun: true
   service:
     type: ClusterIP
   keeper:
@@ -565,6 +863,32 @@ clickhouse:
 # replicated ClickHouse still needs Keeper and is better handled by the
 # operator mode.
 clickhouseStandalone:
+  podAnnotations: {}
+  podLabels: {}
+  imagePullSecrets: []
+  priorityClassName: ""
+  runtimeClassName: ""
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  serviceAccount:
+    create: false
+    name: ""
+    annotations: {}
+  rollout:
+    strategy: RollingUpdate
+    partition: 0
+    podManagementPolicy: OrderedReady
+    revisionHistoryLimit: 10
+  podDisruptionBudget:
+    enabled: false
+    type: maxUnavailable
+    value: 1
+  networkPolicy:
+    enabled: true
+    allowExternalHttpsEgress: false
+    extraIngress: []
+    extraEgress: []
   persistence:
     enabled: true
     storageClass: ""
@@ -577,6 +901,31 @@ clickhouseStandalone:
     seccompProfile:
       type: RuntimeDefault
   terminationGracePeriodSeconds: 120
+  probes:
+    startup:
+      enabled: true
+      path: /ping
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      timeoutSeconds: 5
+      failureThreshold: 60
+      successThreshold: 1
+    readiness:
+      enabled: true
+      path: /ping
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    liveness:
+      enabled: true
+      path: /ping
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
   # Standalone ClickHouse never inherits global.scheduling.
   nodeSelector: {}
   tolerations: []
@@ -623,6 +972,59 @@ collectors:
   otel:
     inheritGlobalScheduling: true
     scheduling: {}
+    podAnnotations: {}
+    podLabels: {}
+    imagePullSecrets: []
+    priorityClassName: ""
+    runtimeClassName: ""
+    extraEnvFrom: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    serviceAccount:
+      create: false
+      name: ""
+      annotations: {}
+    rollout:
+      strategy: RollingUpdate
+      maxUnavailable: 0
+      maxSurge: 1
+      minReadySeconds: 0
+      progressDeadlineSeconds: 600
+      revisionHistoryLimit: 10
+    podDisruptionBudget:
+      enabled: false
+      type: maxUnavailable
+      value: 1
+    networkPolicy:
+      enabled: true
+      allowSameNamespaceIngress: true
+      extraIngress: []
+      extraEgress: []
+    probes:
+      startup:
+        enabled: true
+        path: /
+        initialDelaySeconds: 0
+        periodSeconds: 5
+        timeoutSeconds: 2
+        failureThreshold: 60
+        successThreshold: 1
+      readiness:
+        enabled: true
+        path: /
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 2
+        failureThreshold: 3
+        successThreshold: 1
+      liveness:
+        enabled: true
+        path: /
+        initialDelaySeconds: 15
+        periodSeconds: 20
+        timeoutSeconds: 2
+        failureThreshold: 3
+        successThreshold: 1
     image:
       repository: otel/opentelemetry-collector-contrib
       tag: "0.118.0"
@@ -675,6 +1077,35 @@ collectors:
     # node rather than restricting it to the shared Rush application node group.
     inheritGlobalScheduling: true
     scheduling: {}
+    podAnnotations: {}
+    podLabels: {}
+    imagePullSecrets: []
+    priorityClassName: ""
+    runtimeClassName: ""
+    extraEnvFrom: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    serviceAccount:
+      create: true
+      name: ""
+      annotations: {}
+    rollout:
+      strategy: RollingUpdate
+      maxUnavailable: 1
+      maxSurge: 0
+      minReadySeconds: 0
+      revisionHistoryLimit: 10
+    podDisruptionBudget:
+      enabled: false
+      type: maxUnavailable
+      value: 1
+    networkPolicy:
+      enabled: true
+      allowSameNamespaceIngress: true
+      # Vector needs Kubernetes API access for pod metadata discovery.
+      allowExternalHttpsEgress: true
+      extraIngress: []
+      extraEgress: []
     image:
       repository: timberio/vector
       # 0.51+ adds native OTLP decoding + an opentelemetry sink (encoding.codec: otlp),
@@ -705,3 +1136,18 @@ collectors:
 
     # Raw vector.yaml override. When set, replaces the generated config.
     configOverride: ""
+
+# Native `helm test` connectivity checks. Jobs are created only as Helm test
+# hooks and use the query-api image, which already contains curl.
+helmTests:
+  enabled: true
+  clickhouseConnectivity: true
+  activeDeadlineSeconds: 180
+  backoffLimit: 1
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi

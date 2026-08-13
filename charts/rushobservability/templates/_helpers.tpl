@@ -141,6 +141,221 @@ topologySpreadConstraints:
 {{- end }}
 {{- end -}}
 
+{{/* Merge global and component pod annotations. */}}
+{{- define "rush.podAnnotations" -}}
+{{- $global := deepCopy (.root.Values.global.podAnnotations | default dict) -}}
+{{- $local := deepCopy (.workload.podAnnotations | default dict) -}}
+{{- $merged := mergeOverwrite $global $local -}}
+{{- with $merged }}{{ toYaml . }}{{- end -}}
+{{- end -}}
+
+{{/* Merge global and component pod labels without replacing selector labels. */}}
+{{- define "rush.podLabels" -}}
+{{- $global := deepCopy (.root.Values.global.podLabels | default dict) -}}
+{{- $local := deepCopy (.workload.podLabels | default dict) -}}
+{{- $merged := mergeOverwrite $global $local -}}
+{{- $_ := unset $merged "app.kubernetes.io/component" -}}
+{{- $_ := unset $merged "app.kubernetes.io/instance" -}}
+{{- with $merged }}{{ toYaml . }}{{- end -}}
+{{- end -}}
+
+{{/* Shared pod-spec options with non-empty component values taking priority. */}}
+{{- define "rush.podSpecOptions" -}}
+{{- $root := .root -}}
+{{- $workload := .workload | default dict -}}
+{{- $pullSecrets := $root.Values.global.imagePullSecrets | default list -}}
+{{- if $workload.imagePullSecrets }}{{- $pullSecrets = $workload.imagePullSecrets -}}{{- end -}}
+{{- $priority := $workload.priorityClassName | default $root.Values.global.priorityClassName -}}
+{{- $runtime := $workload.runtimeClassName | default $root.Values.global.runtimeClassName -}}
+{{- with $pullSecrets }}
+imagePullSecrets:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with $priority }}
+priorityClassName: {{ . | quote }}
+{{- end }}
+{{- with $runtime }}
+runtimeClassName: {{ . | quote }}
+{{- end }}
+{{- end -}}
+
+{{/* Shared envFrom list; non-empty component values replace the global list. */}}
+{{- define "rush.extraEnvFrom" -}}
+{{- $items := .root.Values.global.extraEnvFrom | default list -}}
+{{- if .workload.extraEnvFrom }}{{- $items = .workload.extraEnvFrom -}}{{- end -}}
+{{- with $items }}
+envFrom:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end -}}
+
+{{/* Shared extra volume mounts; non-empty component values replace globals. */}}
+{{- define "rush.extraVolumeMounts" -}}
+{{- $items := .root.Values.global.extraVolumeMounts | default list -}}
+{{- if .workload.extraVolumeMounts }}{{- $items = .workload.extraVolumeMounts -}}{{- end -}}
+{{- with $items }}{{ toYaml . }}{{- end -}}
+{{- end -}}
+
+{{/* Shared extra volumes; non-empty component values replace globals. */}}
+{{- define "rush.extraVolumes" -}}
+{{- $items := .root.Values.global.extraVolumes | default list -}}
+{{- if .workload.extraVolumes }}{{- $items = .workload.extraVolumes -}}{{- end -}}
+{{- with $items }}{{ toYaml . }}{{- end -}}
+{{- end -}}
+
+{{/* Resolve a component's generated, existing, or default ServiceAccount. */}}
+{{- define "rush.serviceAccountName" -}}
+{{- $sa := .workload.serviceAccount | default dict -}}
+{{- if $sa.name -}}
+{{- $sa.name -}}
+{{- else if $sa.create -}}
+{{- include "rush.componentName" (dict "root" .root "component" .component) -}}
+{{- else -}}
+default
+{{- end -}}
+{{- end -}}
+
+{{/* Merge shared and component ServiceAccount annotations. */}}
+{{- define "rush.serviceAccountAnnotations" -}}
+{{- $global := deepCopy (.root.Values.global.serviceAccount.annotations | default dict) -}}
+{{- $local := deepCopy (.workload.serviceAccount.annotations | default dict) -}}
+{{- $merged := mergeOverwrite $global $local -}}
+{{- with $merged }}{{ toYaml . }}{{- end -}}
+{{- end -}}
+
+{{/* Render one optional component ServiceAccount. */}}
+{{- define "rush.serviceAccount" -}}
+{{- if .workload.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "rush.serviceAccountName" . }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" .root "component" .component) | nindent 4 }}
+  {{- with (include "rush.serviceAccountAnnotations" .) }}
+  annotations:
+    {{- . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: false
+{{- end }}
+{{- end -}}
+
+{{/* Public browser origin used by SSO, links, and CSRF validation. */}}
+{{- define "rush.effectiveBaseUrl" -}}
+{{- if .Values.queryApi.baseUrl -}}
+{{- trimSuffix "/" .Values.queryApi.baseUrl -}}
+{{- else if and .Values.ingress.enabled .Values.ingress.frontend.enabled .Values.ingress.frontend.host -}}
+{{- $scheme := ternary "https" "http" .Values.ingress.frontend.tls.enabled -}}
+{{- printf "%s://%s" $scheme .Values.ingress.frontend.host -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Explicit trusted proxies plus ingress-controller CIDRs. */}}
+{{- define "rush.trustedProxyCidrs" -}}
+{{- concat (.Values.queryApi.trustedProxyCidrs | default list) (.Values.ingress.trustedProxyCidrs | default list) | uniq | join "," -}}
+{{- end -}}
+
+{{/* Configurable Deployment rollout policy. Singleton workers use Recreate. */}}
+{{- define "rush.deploymentRollout" -}}
+{{- $rollout := .rollout -}}
+strategy:
+  type: {{ $rollout.strategy }}
+  {{- if eq $rollout.strategy "RollingUpdate" }}
+  rollingUpdate:
+    maxUnavailable: {{ $rollout.maxUnavailable }}
+    maxSurge: {{ $rollout.maxSurge }}
+  {{- end }}
+minReadySeconds: {{ $rollout.minReadySeconds }}
+progressDeadlineSeconds: {{ $rollout.progressDeadlineSeconds }}
+revisionHistoryLimit: {{ $rollout.revisionHistoryLimit }}
+{{- end -}}
+
+{{/* Configurable DaemonSet rollout policy for node-local collectors. */}}
+{{- define "rush.daemonSetRollout" -}}
+{{- $rollout := .rollout -}}
+updateStrategy:
+  type: {{ $rollout.strategy }}
+  {{- if eq $rollout.strategy "RollingUpdate" }}
+  rollingUpdate:
+    maxUnavailable: {{ $rollout.maxUnavailable }}
+    maxSurge: {{ $rollout.maxSurge }}
+  {{- end }}
+minReadySeconds: {{ $rollout.minReadySeconds }}
+revisionHistoryLimit: {{ $rollout.revisionHistoryLimit }}
+{{- end -}}
+
+{{/* HTTP startup/readiness/liveness probe body. The caller owns the probe key. */}}
+{{- define "rush.httpProbe" -}}
+{{- $probe := .probe -}}
+httpGet:
+  path: {{ $probe.path }}
+  port: {{ .port }}
+  scheme: {{ $probe.scheme | default "HTTP" }}
+initialDelaySeconds: {{ $probe.initialDelaySeconds }}
+periodSeconds: {{ $probe.periodSeconds }}
+timeoutSeconds: {{ $probe.timeoutSeconds }}
+failureThreshold: {{ $probe.failureThreshold }}
+successThreshold: {{ $probe.successThreshold }}
+{{- end -}}
+
+{{/* Shared durable ingest-buffer contract for API pods and the drain worker. */}}
+{{- define "rush.queryApiBufferEnv" -}}
+{{- $root := .root -}}
+{{- $buffer := $root.Values.queryApi.buffer -}}
+{{- $drainOnly := .drainOnly | default false -}}
+- name: RUSH_SPOOL_MAX_BYTES
+  value: {{ $buffer.maxBytes | int64 | quote }}
+- name: RUSH_BUFFER_BACKEND
+  value: {{ $buffer.backend | quote }}
+- name: RUSH_BUFFER_REQUIRE_OBJECT_STORE
+  value: {{ eq $buffer.backend "object_store" | quote }}
+- name: RUSH_EXPECTED_QUERY_API_REPLICAS
+  value: {{ $root.Values.queryApi.replicas | quote }}
+- name: RUSH_RUN_REPLAYER
+  value: {{ or $drainOnly (not $buffer.drainWorker.enabled) | quote }}
+{{- if $drainOnly }}
+- name: RUSH_DRAIN_WORKER_ONLY
+  value: "true"
+{{- end }}
+{{- if eq $buffer.backend "object_store" }}
+- name: RUSH_BUFFER_S3_ENDPOINT
+  value: {{ $buffer.objectStore.endpoint | quote }}
+- name: RUSH_BUFFER_S3_BUCKET
+  value: {{ $buffer.objectStore.bucket | quote }}
+- name: RUSH_BUFFER_S3_PREFIX
+  value: {{ $buffer.objectStore.prefix | quote }}
+- name: RUSH_BUFFER_S3_REGION
+  value: {{ $buffer.objectStore.region | quote }}
+- name: RUSH_BUFFER_S3_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $buffer.objectStore.credentialsSecret.name }}
+      key: {{ $buffer.objectStore.credentialsSecret.accessKeyKey }}
+- name: RUSH_BUFFER_S3_SECRET_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $buffer.objectStore.credentialsSecret.name }}
+      key: {{ $buffer.objectStore.credentialsSecret.secretKeyKey }}
+{{- end }}
+{{- end -}}
+
+{{/* Render a policy/v1 PodDisruptionBudget for one component. */}}
+{{- define "rush.podDisruptionBudget" -}}
+{{- if .pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "rush.componentName" (dict "root" .root "component" (printf "%s-pdb" .component)) }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" .root "component" .component) | nindent 4 }}
+spec:
+  {{ .pdb.type }}: {{ .pdb.value }}
+  selector:
+    matchLabels:
+      {{- include "rush.selectorLabels" (dict "root" .root "component" .component) | nindent 6 }}
+{{- end }}
+{{- end -}}
+
 {{/*
 Render an immutable OCI digest when supplied, otherwise an explicit tag. The
 digest is deliberately separate from repository so values remain readable and

@@ -18,9 +18,17 @@ Core services:
   {{- end }}
   • clickhouse    svc/{{ $ch }}                     (8123 HTTP / 9000 native)
 
+{{- if and .Values.ingress.enabled .Values.ingress.frontend.enabled }}
+Reach the UI at:
+  {{ include "rush.effectiveBaseUrl" . }}
+
+The ingress controller must be admitted by frontend.networkPolicy.extraIngress
+when it does not run in this namespace.
+{{- else }}
 Reach the UI with:
   kubectl -n {{ $ns }} port-forward svc/{{ include "rush.componentName" (dict "root" . "component" "frontend") }} 8080:{{ .Values.frontend.service.port }}
   open http://localhost:8080
+{{- end }}
 
 Production browser security:
   Terminate TLS at your ingress or edge proxy and set Strict-Transport-Security
@@ -153,3 +161,8 @@ Docs & quickstarts:
   https://rushobservability.com/docs/quickstart
   https://rushobservability.com/docs/send-otel
   https://rushobservability.com/docs/send-vector
+
+{{- if .Values.helmTests.enabled }}
+Validate the installed release:
+  helm test {{ .Release.Name }} -n {{ $ns }} --logs
+{{- end }}

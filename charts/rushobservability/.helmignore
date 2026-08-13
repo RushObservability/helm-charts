@@ -1,0 +1,16 @@
+# Repository-only tests stay in Git but not in the published chart archive.
+tests/
+
+# Local/operator value overlays are never release inputs.
+*.local.yaml
+*.local.yml
+
+# Editor and operating-system noise.
+.DS_Store
+*.swp
+*.tmp
+*~
+
+# Source-control metadata.
+.git/
+.gitignore

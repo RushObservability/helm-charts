@@ -22,7 +22,7 @@ metadata:
     {{- include "rush.labels" . | nindent 4 }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "rush.fullname" . }}-sre-agent
+    name: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.sreAgent "component" "sre-agent") }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -74,7 +74,7 @@ metadata:
     {{- include "rush.labels" $ | nindent 4 }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "rush.fullname" $ }}-sre-agent
+    name: {{ include "rush.serviceAccountName" (dict "root" $ "workload" $.Values.sreAgent "component" "sre-agent") }}
     namespace: {{ $.Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io

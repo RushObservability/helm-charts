@@ -1,13 +1,9 @@
 {{- if include "rush.vectorEnabled" . }}
+{{- if .Values.collectors.vector.serviceAccount.create }}
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ include "rush.fullname" . }}-vector
-  labels:
-    app.kubernetes.io/component: vector
-    {{- include "rush.labels" . | nindent 4 }}
+{{ include "rush.serviceAccount" (dict "root" . "workload" .Values.collectors.vector "component" "vector") }}
 ---
+{{- end }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -34,6 +30,6 @@ roleRef:
   name: {{ include "rush.fullname" . }}-vector
 subjects:
   - kind: ServiceAccount
-    name: {{ include "rush.fullname" . }}-vector
+    name: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.collectors.vector "component" "vector") }}
     namespace: {{ .Release.Namespace }}
 {{- end }}

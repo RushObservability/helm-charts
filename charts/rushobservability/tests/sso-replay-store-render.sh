@@ -26,13 +26,23 @@ fi
 
 ha="$(helm template sso-replay "$chart_dir" \
   --set queryApi.replicas=2 \
-  --set clickhouse.keeper.enabled=true)"
+  --set clickhouse.keeper.enabled=true \
+  --set queryApi.buffer.backend=object_store \
+  --set queryApi.networkPolicy.allowExternalHttpsEgress=true \
+  --set queryApi.buffer.objectStore.bucket=rush-buffer \
+  --set queryApi.buffer.objectStore.credentialsSecret.name=rush-buffer \
+  --set queryApi.buffer.drainWorker.enabled=true)"
 assert_render "$ha" 'replicas: 2' 'HA query-api deployment'
 assert_render "$ha" 'name: RUSH_SSO_REPLAY_STORE' 'HA replay-store variable'
 
 if helm template sso-replay "$chart_dir" \
   --set queryApi.replicas=2 \
   --set clickhouse.keeper.enabled=true \
+  --set queryApi.buffer.backend=object_store \
+  --set queryApi.networkPolicy.allowExternalHttpsEgress=true \
+  --set queryApi.buffer.objectStore.bucket=rush-buffer \
+  --set queryApi.buffer.objectStore.credentialsSecret.name=rush-buffer \
+  --set queryApi.buffer.drainWorker.enabled=true \
   --set queryApi.ssoReplayStore=local >/dev/null 2>&1; then
   echo 'multi-replica query-api accepted the process-local replay store' >&2
   exit 1

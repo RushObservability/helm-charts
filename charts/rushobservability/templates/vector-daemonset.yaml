@@ -8,6 +8,7 @@ metadata:
   labels:
     {{- include "rush.componentLabels" (dict "root" . "component" "vector") | nindent 4 }}
 spec:
+  {{- include "rush.daemonSetRollout" (dict "rollout" .Values.collectors.vector.rollout) | nindent 2 }}
   selector:
     matchLabels:
       {{- include "rush.selectorLabels" (dict "root" . "component" "vector") | nindent 6 }}
@@ -15,11 +16,19 @@ spec:
     metadata:
       labels:
         {{- include "rush.selectorLabels" (dict "root" . "component" "vector") | nindent 8 }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.collectors.vector)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/vector-configmap.yaml") . | sha256sum }}
+        {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.collectors.vector)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
     spec:
       {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.collectors.vector) | nindent 6 }}
-      serviceAccountName: {{ $fullName }}-vector
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.collectors.vector) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.collectors.vector "component" "vector") }}
+      automountServiceAccountToken: true
       # The kubernetes_logs source needs host access to container stdout/err.
       terminationGracePeriodSeconds: 30
       containers:
@@ -49,6 +58,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.collectors.vector) | nindent 10 }}
           ports:
             - name: api
               containerPort: 8686
@@ -73,6 +83,9 @@ spec:
               readOnly: true
             - name: data
               mountPath: /vector-data-dir
+            {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.collectors.vector)) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.collectors.vector.resources | nindent 12 }}
       volumes:
@@ -90,4 +103,7 @@ spec:
             path: {{ .Values.collectors.vector.hostPath.varLibDockerContainers }}
         - name: data
           emptyDir: {}
+        {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.collectors.vector)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
 {{- end }}
