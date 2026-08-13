@@ -7,7 +7,7 @@ assert_render() {
   local rendered="$1"
   local pattern="$2"
   local description="$3"
-  if ! rg -q --fixed-strings "$pattern" <<<"$rendered"; then
+  if ! grep -Fq "$pattern" <<<"$rendered"; then
     echo "missing ${description}: ${pattern}" >&2
     return 1
   fi

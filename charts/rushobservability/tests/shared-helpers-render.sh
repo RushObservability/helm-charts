@@ -13,7 +13,7 @@ inherited_image="$(helm template shared-helpers "$chart_dir" \
 for expected in \
   'image: "example.test/rush:1.2.3"' \
   'imagePullPolicy: IfNotPresent'; do
-  rg -q --fixed-strings "$expected" <<<"$inherited_image" || {
+  grep -Fq "$expected" <<<"$inherited_image" || {
     echo "anomaly engine did not inherit query-api image field: $expected" >&2
     exit 1
   }
@@ -37,7 +37,7 @@ overridden_image="$(helm template shared-helpers "$chart_dir" \
 for expected in \
   'image: "example.test/anomaly:9.8.7"' \
   'imagePullPolicy: Never'; do
-  rg -q --fixed-strings "$expected" <<<"$overridden_image" || {
+  grep -Fq "$expected" <<<"$overridden_image" || {
     echo "anomaly engine image override was not honored: $expected" >&2
     exit 1
   }
@@ -54,7 +54,7 @@ rendered="$(helm template shared-helpers "$chart_dir" \
   --set queryApi.baseUrl=https://rush.example.com \
   --set queryApi.service.port=18080)"
 
-if [[ "$(rg -c --fixed-strings 'value: "http://shared-helpers-query-api:18080"' <<<"$rendered")" -lt 2 ]]; then
+if [[ "$(grep -Fc 'value: "http://shared-helpers-query-api:18080"' <<<"$rendered")" -lt 2 ]]; then
   echo 'internal consumers did not consistently use the query-api Service port' >&2
   exit 1
 fi
@@ -66,7 +66,7 @@ for collector_template in \
     --show-only "$collector_template" \
     --set collectors.mode=hybrid \
     --set collectors.allowAnonymousIngest=true)"
-  if rg -q 'CLICKHOUSE_(USER|PASSWORD)' <<<"$collector"; then
+  if grep -Eq 'CLICKHOUSE_(USER|PASSWORD)' <<<"$collector"; then
     echo "$collector_template still receives unused ClickHouse credentials" >&2
     exit 1
   fi

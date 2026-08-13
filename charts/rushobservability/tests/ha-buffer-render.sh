@@ -39,7 +39,7 @@ for expected in \
   'value: "object_store"' \
   'name: rush-buffer' \
   'value: "2147483648"'; do
-  rg -q --fixed-strings "$expected" <<<"$rendered" || {
+  grep -Fq "$expected" <<<"$rendered" || {
     echo "HA buffer render missing: $expected" >&2
     exit 1
   }
@@ -55,7 +55,7 @@ worker="$(helm template ha-buffer "$chart_dir" \
   --set queryApi.buffer.objectStore.credentialsSecret.name=rush-buffer \
   --set queryApi.buffer.drainWorker.enabled=true)"
 for expected in 'replicas: 1' 'type: Recreate' 'value: "true"'; do
-  rg -q --fixed-strings "$expected" <<<"$worker" || {
+  grep -Fq "$expected" <<<"$worker" || {
     echo "drain worker contract missing: $expected" >&2
     exit 1
   }
@@ -70,9 +70,9 @@ api="$(helm template ha-buffer "$chart_dir" \
   --set queryApi.buffer.objectStore.bucket=rush-buffer \
   --set queryApi.buffer.objectStore.credentialsSecret.name=rush-buffer \
   --set queryApi.buffer.drainWorker.enabled=true)"
-rg -q --fixed-strings 'name: RUSH_RUN_REPLAYER' <<<"$api"
-rg -q --fixed-strings 'value: "false"' <<<"$api"
-if rg -q --fixed-strings 'name: RUSH_DRAIN_WORKER_ONLY' <<<"$api"; then
+grep -Fq 'name: RUSH_RUN_REPLAYER' <<<"$api"
+grep -Fq 'value: "false"' <<<"$api"
+if grep -Fq 'name: RUSH_DRAIN_WORKER_ONLY' <<<"$api"; then
   echo 'API pods were incorrectly rendered as drain-only workers' >&2
   exit 1
 fi
