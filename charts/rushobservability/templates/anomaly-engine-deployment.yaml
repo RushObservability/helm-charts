@@ -2,21 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "rush.fullname" . }}-anomaly-engine
+  name: {{ include "rush.componentName" (dict "root" . "component" "anomaly-engine") }}
   labels:
-    app.kubernetes.io/component: anomaly-engine
-    {{- include "rush.labels" . | nindent 4 }}
+    {{- include "rush.componentLabels" (dict "root" . "component" "anomaly-engine") | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/component: anomaly-engine
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "rush.selectorLabels" (dict "root" . "component" "anomaly-engine") | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: anomaly-engine
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "rush.selectorLabels" (dict "root" . "component" "anomaly-engine") | nindent 8 }}
       annotations:
         checksum/rush-config: {{ include (print $.Template.BasePath "/rush-config-configmap.yaml") . | sha256sum }}
     spec:
@@ -26,33 +23,14 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
+        {{- $image := mergeOverwrite (deepCopy .Values.queryApi.image) (deepCopy (.Values.anomalyEngine.image | default dict)) }}
         - name: anomaly-engine
-          image: {{ include "rush.image" (dict "image" .Values.anomalyEngine.image "defaultTag" .Chart.AppVersion) | quote }}
-          imagePullPolicy: {{ .Values.anomalyEngine.image.pullPolicy }}
+          image: {{ include "rush.image" (dict "image" $image "defaultTag" .Chart.AppVersion) | quote }}
+          imagePullPolicy: {{ $image.pullPolicy }}
           command: ["anomaly_engine"]
           env:
-            - name: CLICKHOUSE_URL
-              value: {{ include "rush.clickhouseUrl" . | quote }}
-            - name: CLICKHOUSE_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
-                  key: {{ include "rush.clickhouseUserKey" . }}
-            - name: CLICKHOUSE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
-                  key: {{ include "rush.clickhousePasswordKey" . }}
-            - name: CLICKHOUSE_READ_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseReadCredentialsSecret" . }}
-                  key: {{ include "rush.clickhouseReadUserKey" . }}
-            - name: CLICKHOUSE_READ_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseReadCredentialsSecret" . }}
-                  key: {{ include "rush.clickhouseReadPasswordKey" . }}
+            {{- include "rush.clickhouseWriteEnv" . | nindent 12 }}
+            {{- include "rush.clickhouseReadEnv" . | nindent 12 }}
             - name: RUSH_CONFIG
               value: /etc/rush/rush.toml
             {{- range $key, $val := .Values.anomalyEngine.env }}
@@ -66,10 +44,7 @@ spec:
           resources:
             {{- toYaml .Values.anomalyEngine.resources | nindent 12 }}
           securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
+            {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
       volumes:
         - name: rush-config
           configMap:

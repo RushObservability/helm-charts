@@ -8,65 +8,36 @@ metadata:
 data:
   default.conf.template: |
     server {
-        listen {{ .Values.frontend.containerPort | default 80 }};
+        listen {{ .Values.frontend.containerPort | default 8080 }};
+        server_tokens off;
 
-        # Browser-facing defenses belong here (the Rust API headers do not
-        # protect static SPA responses). TLS termination should add HSTS.
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header X-Frame-Options "DENY" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
-
+        # nginx-security-headers.conf is baked into the frontend image. Helm
+        # deliberately consumes that canonical policy instead of copying CSP.
+        # HSTS belongs at the TLS-terminating ingress; see NOTES.txt.
         location / {
             root /usr/share/nginx/html;
             index index.html;
             try_files $uri $uri/ /index.html;
-            add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
-            add_header X-Content-Type-Options "nosniff" always;
-            add_header X-Frame-Options "DENY" always;
-            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-            add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+            include /etc/nginx/security-headers.conf;
             add_header Cache-Control "no-cache, no-store, must-revalidate";
         }
 
-        # Runtime config is generated as a standalone file by the frontend
-        # image entrypoint. Keeping it out of this nginx template prevents
-        # public URL values from being interpolated into nginx syntax.
         location = /runtime-config.js {
             alias /tmp/nginx-runtime/runtime-config.js;
             default_type application/javascript;
-            add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
-            add_header X-Content-Type-Options "nosniff" always;
-            add_header X-Frame-Options "DENY" always;
-            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-            add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+            include /etc/nginx/security-headers.conf;
             add_header Cache-Control "no-cache, no-store, must-revalidate";
         }
 
         location ~* \.(js|css|woff2?|ttf|eot|svg|png|jpg|gif|ico)$ {
             root /usr/share/nginx/html;
             expires 1y;
-            add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
-            add_header X-Content-Type-Options "nosniff" always;
-            add_header X-Frame-Options "DENY" always;
-            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-            add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+            include /etc/nginx/security-headers.conf;
             add_header Cache-Control "public, immutable";
         }
 
-        # SRE-agent routes (/api/v1/investigate, /sessions, /investigation-templates)
-        # are no longer proxied directly to the agent here. query-api fronts the
-        # agent (auth + tenant injection) and forwards to it, so these flow through
-        # the /api/ block below. The /investigate SSE stream stays unbuffered
-        # because query-api sets `X-Accel-Buffering: no` on that response.
-
         location /api/ {
-            add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
-            add_header X-Content-Type-Options "nosniff" always;
-            add_header X-Frame-Options "DENY" always;
-            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-            add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+            include /etc/nginx/security-headers.conf;
             proxy_pass http://${QUERY_API_HOST}/api/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -75,13 +46,29 @@ data:
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
+        location /auth/ {
+            include /etc/nginx/security-headers.conf;
+            proxy_pass http://${QUERY_API_HOST}/auth/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
         location /prom/ {
-            add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
-            add_header X-Content-Type-Options "nosniff" always;
-            add_header X-Frame-Options "DENY" always;
-            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-            add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+            include /etc/nginx/security-headers.conf;
             proxy_pass http://${QUERY_API_HOST}/prom/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location = /metrics {
+            include /etc/nginx/security-headers.conf;
+            proxy_pass http://${QUERY_API_HOST}/metrics;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

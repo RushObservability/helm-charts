@@ -2,23 +2,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "rush.fullname" . }}-sre-agent
+  name: {{ include "rush.sreAgentServiceName" . }}
   labels:
-    app.kubernetes.io/component: sre-agent
-    {{- include "rush.labels" . | nindent 4 }}
+    {{- include "rush.componentLabels" (dict "root" . "component" "sre-agent") | nindent 4 }}
 spec:
   replicas: {{ .Values.sreAgent.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/component: sre-agent
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "rush.selectorLabels" (dict "root" . "component" "sre-agent") | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: sre-agent
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "rush.selectorLabels" (dict "root" . "component" "sre-agent") | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "rush.fullname" . }}-sre-agent
+      serviceAccountName: {{ include "rush.sreAgentServiceName" . }}
       securityContext:
         {{- toYaml .Values.sreAgent.podSecurityContext | nindent 8 }}
       containers:
@@ -37,25 +34,14 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: sre-agent-internal-token
-            - name: CLICKHOUSE_URL
-              value: {{ include "rush.clickhouseUrl" . | quote }}
+            {{- include "rush.clickhouseWriteEnv" . | nindent 12 }}
             - name: CLICKHOUSE_DATABASE
               value: observability
-            - name: CLICKHOUSE_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
-                  key: {{ include "rush.clickhouseUserKey" . }}
-            - name: CLICKHOUSE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
-                  key: {{ include "rush.clickhousePasswordKey" . }}
             # URL of query-api used to fetch user-defined custom skills.
             # query-api owns the custom_skills table; sre-agent is a read-only
             # HTTP consumer so the two services don't need a shared volume.
             - name: QUERY_API_URL
-              value: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.port }}"
+              value: {{ include "rush.queryApiUrl" . | quote }}
             {{- if .Values.sreAgent.githubApp.enabled }}
             - name: GITHUB_APP_ID
               value: {{ required "sreAgent.githubApp.appId is required when GitHub App access is enabled" .Values.sreAgent.githubApp.appId | quote }}
@@ -101,10 +87,7 @@ spec:
           resources:
             {{- toYaml .Values.sreAgent.resources | nindent 12 }}
           securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
+            {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
           {{- if .Values.sreAgent.githubApp.enabled }}
           volumeMounts:
             - name: github-app-private-key

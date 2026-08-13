@@ -41,7 +41,7 @@ frontend:
     tag: "delta-20260620f"
     pullPolicy: IfNotPresent
 
-# SRE agent. LLM_API_KEY comes from the `rush-o11y-sre-llm` secret (api-key) —
+# SRE agent. OPENAI_API_KEY comes from the `rush-o11y-sre-llm` secret (api-key) —
 # seeded with a placeholder; set the real OpenAI key there (see notes) + restart.
 sreAgent:
   enabled: true
@@ -52,8 +52,7 @@ sreAgent:
   env:
     CLICKHOUSE_DATABASE: observability
     RUST_LOG: sre_agent=info,tower_http=info
-    LLM_BASE_URL: "https://api.openai.com"
-    LLM_MODEL: "gpt-4o"
+    OPENAI_BASE_URL: "https://api.openai.com"
   llmApiKeySecret:
     name: rush-o11y-sre-llm
     key: api-key

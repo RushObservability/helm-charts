@@ -2,15 +2,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "rush.fullname" . }}-otel-collector
+  name: {{ include "rush.componentName" (dict "root" . "component" "otel-collector") }}
   labels:
-    app.kubernetes.io/component: otel-collector
-    {{- include "rush.labels" . | nindent 4 }}
+    {{- include "rush.componentLabels" (dict "root" . "component" "otel-collector") | nindent 4 }}
 spec:
   type: {{ .Values.collectors.otel.service.type }}
   selector:
-    app.kubernetes.io/component: otel-collector
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "rush.selectorLabels" (dict "root" . "component" "otel-collector") | nindent 4 }}
   ports:
     - name: otlp-grpc
       port: {{ .Values.collectors.otel.service.grpcPort }}

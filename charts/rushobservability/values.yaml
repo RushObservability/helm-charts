@@ -64,6 +64,19 @@ queryApi:
   loginRateLimit:
     accountPerMinute: 10
     ipPerMinute: 50
+  # Shared request/decompression/entity budgets for every telemetry protocol.
+  # Invalid values fail query-api startup rather than silently disabling limits.
+  ingestLimits:
+    maxCompressedBytes: 8388608
+    maxDecompressedBytes: 33554432
+    maxEntities: 200000
+    maxSeries: 20000
+    maxSamples: 200000
+    maxMetadata: 10000
+    maxLabelsPerSeries: 128
+    maxLabelNameBytes: 256
+    maxLabelValueBytes: 4096
+    decodeConcurrency: 4
   # Browser sessions use a renewable idle deadline plus a hard maximum age.
   # Renewal rotates the HttpOnly bearer and never extends absoluteTimeoutSeconds.
   session:
@@ -210,11 +223,9 @@ sreAgent:
 # evaluated exactly once (no duplicate alerts).
 anomalyEngine:
   enabled: false                     # set true when running multiple query-api pods
-  image:
-    repository: mzupan/rush-api
-    tag: "0.1.32"
-    digest: ""
-    pullPolicy: Always
+  # Inherits queryApi.image by default because both workloads run the same Rush
+  # API binary. Set only the fields that need to differ for an independent image.
+  image: {}
   env:
     CLICKHOUSE_DATABASE: observability
     RUST_LOG: rush_api=info
@@ -285,10 +296,9 @@ frontend:
   # to. Set this when the public API host differs from where admins load the UI
   # (e.g. internal UI + public ingest endpoint). Empty → the UI uses its own origin.
   apiBaseUrl: ""
-  # Container port nginx listens on. The stock nginx image (default) binds 80;
-  # the non-root Chainguard nginx image binds 8080 — set 8080 when using it.
+  # The Rush frontend image runs nginx as uid 65532 and cannot bind below 1024.
   # The Service targetPort follows this via the named "http" port.
-  containerPort: 80
+  containerPort: 8080
   replicas: 1
   resources:
     requests:
@@ -533,7 +543,7 @@ clickhouseStandalone:
 # the Rush ClickHouse. Four modes — pick one:
 #
 #   none    Bring your own collector. Rush deploys nothing here.
-#           Point your collectors at the ClickHouse service directly.
+#           Point your collectors at the query-api OTLP/ingest endpoints.
 #
 #   otel    Deploy an OpenTelemetry Collector (contrib). Accepts OTLP on
 #           :4317 (gRPC) and :4318 (HTTP). Handles traces, metrics, logs.
@@ -607,7 +617,7 @@ collectors:
 
     # Raw collector config override. When set, replaces the generated
     # config entirely. Leave empty to use the generated config which
-    # writes directly to the in-cluster ClickHouse.
+    # forwards signals to the in-cluster Rush query-api.
     configOverride: ""
 
   # ── Vector ──

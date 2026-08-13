@@ -16,10 +16,11 @@
 {{- if and (gt (int .Values.queryApi.replicas) 1) (eq .Values.clickhouse.mode "operator") (not .Values.clickhouse.keeper.enabled) -}}
 {{- fail "queryApi replicas greater than 1 require clickhouse.keeper.enabled=true for atomic SSO replay protection" -}}
 {{- end -}}
+{{- $anomalyImage := mergeOverwrite (deepCopy .Values.queryApi.image) (deepCopy (.Values.anomalyEngine.image | default dict)) -}}
 {{- if .Values.imageSecurity.requireDigests -}}
 {{- if not .Values.queryApi.image.digest -}}{{- fail "imageSecurity.requireDigests=true requires queryApi.image.digest" -}}{{- end -}}
 {{- if not .Values.frontend.image.digest -}}{{- fail "imageSecurity.requireDigests=true requires frontend.image.digest" -}}{{- end -}}
 {{- if and .Values.sreAgent.enabled (not .Values.sreAgent.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires sreAgent.image.digest when enabled" -}}{{- end -}}
-{{- if and .Values.anomalyEngine.enabled (not .Values.anomalyEngine.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires anomalyEngine.image.digest when enabled" -}}{{- end -}}
+{{- if and .Values.anomalyEngine.enabled (not $anomalyImage.digest) -}}{{- fail "imageSecurity.requireDigests=true requires a digest for the anomaly engine (inherited from queryApi.image.digest or set in anomalyEngine.image.digest)" -}}{{- end -}}
 {{- if and .Values.enterprise.license.integrations.postgresCollector.enabled (not .Values.enterprise.license.integrations.postgresCollector.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires postgresCollector.image.digest when enabled" -}}{{- end -}}
 {{- end -}}
