@@ -18,6 +18,7 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/vector-configmap.yaml") . | sha256sum }}
     spec:
+      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.collectors.vector) | nindent 6 }}
       serviceAccountName: {{ $fullName }}-vector
       # The kubernetes_logs source needs host access to container stdout/err.
       terminationGracePeriodSeconds: 30

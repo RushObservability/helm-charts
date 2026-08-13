@@ -49,6 +49,22 @@ spec:
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: {{ .Values.clickhouseStandalone.terminationGracePeriodSeconds }}
+      {{- with .Values.clickhouseStandalone.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.clickhouseStandalone.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.clickhouseStandalone.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.clickhouseStandalone.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       securityContext:
         {{- toYaml .Values.clickhouseStandalone.podSecurityContext | nindent 8 }}
       containers:

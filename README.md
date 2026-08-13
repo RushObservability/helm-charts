@@ -61,6 +61,83 @@ SELECT-only user with grants limited to the telemetry tables listed under
 set `custom_settings_prefixes` to `rush_`; query-api refuses to start if the
 setting, strict row policies, read grants, or separate identity cannot be verified.
 
+## Scheduling and dedicated node groups
+
+`global.scheduling` sets shared scheduling defaults for Rush-owned workloads:
+query-api, frontend, SRE agent, anomaly engine, OTel, Vector, and licensed
+collectors. ClickHouse does not inherit these defaults, so storage pods can use
+a separate node group:
+
+```yaml
+global:
+  scheduling:
+    nodeSelector:
+      nodegroup: rush-apps
+    tolerations:
+      - key: rush-apps
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+
+clickhouse:
+  clickhouse:
+    nodeSelector:
+      nodegroup: clickhouse
+    tolerations:
+      - key: clickhouse
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+  keeper:
+    nodeSelector:
+      nodegroup: clickhouse
+    tolerations:
+      - key: clickhouse
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+  # The operator and CRD hook are control-plane workloads, not ClickHouse data
+  # pods. Schedule them explicitly when every node group is tainted.
+  operator:
+    nodeSelector:
+      nodegroup: rush-apps
+    tolerations:
+      - key: rush-apps
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+    crdHook:
+      nodeSelector:
+        nodegroup: rush-apps
+      tolerations:
+        - key: rush-apps
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+```
+
+Every Rush workload has a `scheduling` override. `nodeSelector` and `affinity`
+maps deep-merge over the global maps; `tolerations` and
+`topologySpreadConstraints` replace the global lists when supplied locally.
+For example, this keeps global affinity and tolerations but moves query-api to
+another node group:
+
+```yaml
+queryApi:
+  scheduling:
+    nodeSelector:
+      nodegroup: rush-api
+```
+
+Set `inheritGlobalScheduling: false` on a workload to ignore all global
+scheduling defaults. This is especially useful for `collectors.vector`, whose
+DaemonSet otherwise runs only on nodes matching the global selector. Standalone
+ClickHouse uses `clickhouseStandalone.nodeSelector`, `tolerations`, `affinity`,
+and `topologySpreadConstraints`. The bundled Altinity operator can be scheduled
+separately with `clickhouse.operator.nodeSelector`, `tolerations`, `affinity`,
+and `topologySpreadConstraints`; its install hook uses the corresponding
+`clickhouse.operator.crdHook` values.
+
 ## Install
 
 ```bash
@@ -381,6 +458,7 @@ Worked example values in [`examples/`](examples) — start from the one closest 
 - [`rush-ha.yaml`](examples/rush-ha.yaml) — replicated query-api and frontend
 - [`rush-retention.yaml`](examples/rush-retention.yaml) — per-signal retention
 - [`rush-s3-tiering.yaml`](examples/rush-s3-tiering.yaml) — move cold data to object storage
+- [`rush-node-groups.yaml`](examples/rush-node-groups.yaml) — Rush workloads and ClickHouse on separate node groups
 
 ```bash
 helm install rush rush/rushobservability -f examples/rush-ha.yaml

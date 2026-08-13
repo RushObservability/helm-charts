@@ -15,6 +15,7 @@ spec:
       labels:
         {{- include "rush.selectorLabels" (dict "root" . "component" "sre-agent") | nindent 8 }}
     spec:
+      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.sreAgent) | nindent 6 }}
       serviceAccountName: {{ include "rush.sreAgentServiceName" . }}
       securityContext:
         {{- toYaml .Values.sreAgent.podSecurityContext | nindent 8 }}

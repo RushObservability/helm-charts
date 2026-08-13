@@ -16,6 +16,7 @@ spec:
       annotations:
         checksum/rush-config: {{ include (print $.Template.BasePath "/rush-config-configmap.yaml") . | sha256sum }}
     spec:
+      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.queryApi) | nindent 6 }}
       serviceAccountName: {{ include "rush.fullname" . }}-query-api
       terminationGracePeriodSeconds: {{ .Values.queryApi.terminationGracePeriodSeconds | default 120 }}
       automountServiceAccountToken: {{ or .Values.kubernetes.enabled .Values.argocd.enabled .Values.fluxcd.enabled }}

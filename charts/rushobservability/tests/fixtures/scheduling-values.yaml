@@ -1,0 +1,75 @@
+queryApi:
+  environment: development
+  scheduling:
+    nodeSelector:
+      nodegroup: query-api
+
+frontend:
+  inheritGlobalScheduling: false
+  scheduling:
+    nodeSelector:
+      nodegroup: frontend-only
+
+sreAgent:
+  enabled: true
+  llmApiKeySecret:
+    name: llm-key
+
+anomalyEngine:
+  enabled: true
+
+enterprise:
+  license:
+    integrations:
+      postgresCollector:
+        enabled: true
+
+global:
+  scheduling:
+    nodeSelector:
+      nodegroup: rush-apps
+      topology-zone: west
+    tolerations:
+      - key: rush-apps
+        operator: Exists
+        effect: NoSchedule
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 50
+            preference:
+              matchExpressions:
+                - key: capacity
+                  operator: In
+                  values: [on-demand]
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: scheduling
+
+collectors:
+  mode: hybrid
+  allowAnonymousIngest: true
+  otel:
+    scheduling:
+      tolerations:
+        - key: otel-only
+          operator: Exists
+
+clickhouse:
+  keeper:
+    enabled: true
+    nodeSelector:
+      nodegroup: clickhouse
+  clickhouse:
+    nodeSelector:
+      nodegroup: clickhouse
+  operator:
+    nodeSelector:
+      nodegroup: rush-apps
+    crdHook:
+      nodeSelector:
+        nodegroup: rush-apps
