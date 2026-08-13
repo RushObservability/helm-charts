@@ -7,7 +7,7 @@ assert_render() {
   local rendered="$1"
   local pattern="$2"
   local description="$3"
-  if ! rg -q --fixed-strings "$pattern" <<<"$rendered"; then
+  if ! grep -Fq "$pattern" <<<"$rendered"; then
     echo "missing ${description}: ${pattern}" >&2
     return 1
   fi
@@ -27,7 +27,7 @@ fi
 anonymous="$(helm template secure-ingest "$chart_dir" \
   --set collectors.mode=otel \
   --set collectors.allowAnonymousIngest=true)"
-if rg -q --fixed-strings 'name: RUSH_INGEST_API_KEY' <<<"$anonymous"; then
+if grep -Fq 'name: RUSH_INGEST_API_KEY' <<<"$anonymous"; then
   echo 'anonymous collector unexpectedly references an ingest-key Secret' >&2
   exit 1
 fi

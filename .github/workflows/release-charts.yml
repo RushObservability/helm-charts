@@ -102,7 +102,8 @@ jobs:
           PKG=$(find .pkg -maxdepth 1 -name '${{ matrix.chart }}-*.tgz' -print -quit)
           helm show chart "$PKG" >/dev/null
           helm template packaged "$PKG" >/dev/null
-          if tar -tzf "$PKG" | grep -q '/tests/'; then
+          tar -tzf "$PKG" > .pkg/manifest.txt
+          if grep -q '/tests/' .pkg/manifest.txt; then
             echo "Published chart unexpectedly contains repository tests" >&2
             exit 1
           fi

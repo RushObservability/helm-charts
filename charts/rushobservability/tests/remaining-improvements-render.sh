@@ -8,19 +8,19 @@ for expected in \
   'name: remaining-query-api' \
   'helm.sh/hook: test' \
   'name: remaining-connectivity-test'; do
-  rg -q --fixed-strings "$expected" <<<"$default_render" || {
+  grep -Fq "$expected" <<<"$default_render" || {
     echo "default chart missing remaining-improvement resource: $expected" >&2
     exit 1
   }
 done
 
 query_policy="$(helm template remaining "$chart_dir" --show-only templates/query-api-networkpolicy.yaml)"
-if rg -q --fixed-strings 'cidr: 0.0.0.0/0' <<<"$query_policy"; then
+if grep -Fq 'cidr: 0.0.0.0/0' <<<"$query_policy"; then
   echo 'query-api still receives broad external egress by default' >&2
   exit 1
 fi
 for peer in frontend helm-test; do
-  rg -q --fixed-strings "app.kubernetes.io/component: $peer" <<<"$query_policy" || {
+  grep -Fq "app.kubernetes.io/component: $peer" <<<"$query_policy" || {
     echo "query-api NetworkPolicy is missing the $peer peer" >&2
     exit 1
   }
@@ -35,12 +35,12 @@ components="$(helm template remaining "$chart_dir" \
   --set anomalyEngine.enabled=true \
   --set enterprise.license.integrations.postgresCollector.enabled=true \
   --set-json 'enterprise.license.integrations.postgresCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":5432}]}]')"
-if [[ "$(rg -c '^kind: NetworkPolicy$' <<<"$components")" -lt 7 ]]; then
+if [[ "$(grep -c '^kind: NetworkPolicy$' <<<"$components")" -lt 7 ]]; then
   echo 'not every enabled first-party workload received a NetworkPolicy' >&2
   exit 1
 fi
 for component in frontend query-api sre-agent anomaly-engine postgres-collector otel-collector vector; do
-  rg -q --fixed-strings "name: remaining-$component" <<<"$components" || {
+  grep -Fq "name: remaining-$component" <<<"$components" || {
     echo "enabled component is missing resources/policy: $component" >&2
     exit 1
   }
@@ -51,8 +51,8 @@ existing_vector_sa="$(helm template remaining "$chart_dir" \
   --set collectors.allowAnonymousIngest=true \
   --set collectors.vector.serviceAccount.create=false \
   --set collectors.vector.serviceAccount.name=existing-vector)"
-if ! rg -q --fixed-strings 'serviceAccountName: existing-vector' <<<"$existing_vector_sa" ||
-   ! rg -q --fixed-strings 'name: existing-vector' <<<"$existing_vector_sa"; then
+if ! grep -Fq 'serviceAccountName: existing-vector' <<<"$existing_vector_sa" ||
+   ! grep -Fq 'name: existing-vector' <<<"$existing_vector_sa"; then
   echo 'existing Vector ServiceAccount was not used by both pod and RBAC binding' >&2
   exit 1
 fi
@@ -73,7 +73,7 @@ for expected in \
   'host: "api.rush.example.test"' \
   'value: "https://rush.example.test"' \
   'value: "10.42.0.0/16"'; do
-  rg -q --fixed-strings "$expected" <<<"$ingress" || {
+  grep -Fq "$expected" <<<"$ingress" || {
     echo "Ingress render missing: $expected" >&2
     exit 1
   }
@@ -110,13 +110,13 @@ for expected in \
   'mountPath: /etc/rush/shared-ca' \
   'name: custom-frontend' \
   'example.com/frontend-identity: ui'; do
-  rg -q --fixed-strings "$expected" <<<"$operational" || {
+  grep -Fq "$expected" <<<"$operational" || {
     echo "operational override missing: $expected" >&2
     exit 1
   }
 done
 
-if rg -q --fixed-strings 'rushobs-clickhouse-init' <<<"$default_render"; then
+if grep -Fq 'rushobs-clickhouse-init' <<<"$default_render"; then
   echo 'obsolete ClickHouse init ConfigMap is still rendered' >&2
   exit 1
 fi
@@ -127,15 +127,17 @@ helm package "$chart_dir" --destination "$package_dir" >/dev/null
 package="$(find "$package_dir" -maxdepth 1 -name 'rushobservability-*.tgz' -print -quit)"
 helm show chart "$package" >/dev/null
 helm template packaged "$package" >/dev/null
-if tar -tzf "$package" | rg -q '/tests/'; then
+package_manifest="$package_dir/manifest.txt"
+tar -tzf "$package" >"$package_manifest"
+if grep -q '/tests/' "$package_manifest"; then
   echo '.helmignore did not exclude repository tests' >&2
   exit 1
 fi
-if ! tar -tzf "$package" | rg -q '/values.schema.json$'; then
+if ! grep -q '/values.schema.json$' "$package_manifest"; then
   echo 'packaged chart omitted values.schema.json' >&2
   exit 1
 fi
-if ! tar -tzf "$package" | rg -q '/templates/helm-test-connectivity.yaml$'; then
+if ! grep -q '/templates/helm-test-connectivity.yaml$' "$package_manifest"; then
   echo 'packaged chart omitted the native Helm test hook' >&2
   exit 1
 fi
