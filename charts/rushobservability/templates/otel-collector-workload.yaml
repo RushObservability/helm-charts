@@ -1,26 +1,22 @@
 {{- if include "rush.otelEnabled" . }}
-{{- $fullName := include "rush.fullname" . -}}
 {{- $isDaemonSet := eq .Values.collectors.otel.kind "daemonset" -}}
 apiVersion: apps/v1
 kind: {{ if $isDaemonSet }}DaemonSet{{ else }}Deployment{{ end }}
 metadata:
-  name: {{ $fullName }}-otel-collector
+  name: {{ include "rush.componentName" (dict "root" . "component" "otel-collector") }}
   labels:
-    app.kubernetes.io/component: otel-collector
-    {{- include "rush.labels" . | nindent 4 }}
+    {{- include "rush.componentLabels" (dict "root" . "component" "otel-collector") | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/component: otel-collector
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "rush.selectorLabels" (dict "root" . "component" "otel-collector") | nindent 6 }}
   {{- if and (not $isDaemonSet) (not .Values.collectors.otel.autoscaling.enabled) }}
   replicas: {{ .Values.collectors.otel.replicas }}
   {{- end }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: otel-collector
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "rush.selectorLabels" (dict "root" . "component" "otel-collector") | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/otel-collector-configmap.yaml") . | sha256sum }}
     spec:
@@ -40,26 +36,16 @@ spec:
             - name: metrics
               containerPort: 8888
               protocol: TCP
+          {{- if .Values.collectors.ingestApiKeySecret.name }}
           env:
-            {{- if .Values.collectors.ingestApiKeySecret.name }}
             - name: RUSH_INGEST_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.collectors.ingestApiKeySecret.name }}
                   key: {{ .Values.collectors.ingestApiKeySecret.key }}
-            {{- else if not .Values.collectors.allowAnonymousIngest }}
-            {{- fail "collectors.ingestApiKeySecret.name is required when an in-cluster collector is enabled" }}
-            {{- end }}
-            - name: CLICKHOUSE_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
-                  key: {{ include "rush.clickhouseUserKey" . }}
-            - name: CLICKHOUSE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
-                  key: {{ include "rush.clickhousePasswordKey" . }}
+          {{- else if not .Values.collectors.allowAnonymousIngest }}
+          {{- fail "collectors.ingestApiKeySecret.name is required when an in-cluster collector is enabled" }}
+          {{- end }}
           volumeMounts:
             - name: config
               mountPath: /etc/otelcol
@@ -82,7 +68,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ $fullName }}-otel-collector
+            name: {{ include "rush.componentName" (dict "root" . "component" "otel-collector") }}
             items:
               - key: collector.yaml
                 path: collector.yaml

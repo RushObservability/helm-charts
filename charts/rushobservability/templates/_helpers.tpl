@@ -8,6 +8,78 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 {{- end -}}
 
+{{/* Stable component resource name. */}}
+{{- define "rush.componentName" -}}
+{{- printf "%s-%s" (include "rush.fullname" .root) .component | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{/* Immutable labels used by workload selectors and pod templates. */}}
+{{- define "rush.selectorLabels" -}}
+app.kubernetes.io/component: {{ .component }}
+app.kubernetes.io/instance: {{ .root.Release.Name }}
+{{- end -}}
+
+{{/* Complete metadata labels for a component resource. */}}
+{{- define "rush.componentLabels" -}}
+app.kubernetes.io/component: {{ .component }}
+{{ include "rush.labels" .root }}
+{{- end -}}
+
+{{/* Canonical in-cluster service endpoints. Always use Service ports here. */}}
+{{- define "rush.queryApiServiceName" -}}
+{{- include "rush.componentName" (dict "root" . "component" "query-api") -}}
+{{- end -}}
+
+{{- define "rush.queryApiUrl" -}}
+{{- printf "http://%s:%v" (include "rush.queryApiServiceName" .) .Values.queryApi.service.port -}}
+{{- end -}}
+
+{{- define "rush.sreAgentServiceName" -}}
+{{- include "rush.componentName" (dict "root" . "component" "sre-agent") -}}
+{{- end -}}
+
+{{- define "rush.sreAgentUrl" -}}
+{{- printf "http://%s:%v" (include "rush.sreAgentServiceName" .) .Values.sreAgent.service.port -}}
+{{- end -}}
+
+{{/* ClickHouse writer connection environment for Rush application workloads. */}}
+{{- define "rush.clickhouseWriteEnv" -}}
+- name: CLICKHOUSE_URL
+  value: {{ include "rush.clickhouseUrl" . | quote }}
+- name: CLICKHOUSE_USER
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "rush.clickhouseCredentialsSecret" . }}
+      key: {{ include "rush.clickhouseUserKey" . }}
+- name: CLICKHOUSE_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "rush.clickhouseCredentialsSecret" . }}
+      key: {{ include "rush.clickhousePasswordKey" . }}
+{{- end -}}
+
+{{/* Tenant-scoped SELECT-only ClickHouse identity. */}}
+{{- define "rush.clickhouseReadEnv" -}}
+- name: CLICKHOUSE_READ_USER
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "rush.clickhouseReadCredentialsSecret" . }}
+      key: {{ include "rush.clickhouseReadUserKey" . }}
+- name: CLICKHOUSE_READ_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "rush.clickhouseReadCredentialsSecret" . }}
+      key: {{ include "rush.clickhouseReadPasswordKey" . }}
+{{- end -}}
+
+{{/* Baseline hardened container policy for first-party stateless workloads. */}}
+{{- define "rush.hardenedContainerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: true
+capabilities:
+  drop: ["ALL"]
+{{- end -}}
+
 {{/*
 Render an immutable OCI digest when supplied, otherwise an explicit tag. The
 digest is deliberately separate from repository so values remain readable and

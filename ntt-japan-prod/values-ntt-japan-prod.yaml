@@ -1,0 +1,108 @@
+# Rush Observability — ntt-japan-prod cluster (witnessai.teleport.sh-ntt-japan-prod)
+# Mirrored from the live `delta` release (rush-o11y / monitoring), with S3 tiered
+# storage REMOVED. ClickHouse keeps all data on its local EBS (ebs-csi @ 500Gi);
+# retention DELETE TTLs still apply. No S3 disk, no cold volume, no S3 IAM SA.
+#
+# Install:
+#   helm upgrade --install rush-o11y helm-charts/charts/rushobservability \
+#     -n monitoring --create-namespace -f helm-charts/ntt-japan-prod/values-ntt-japan-prod.yaml \
+#     --kube-context witnessai.teleport.sh-ntt-japan-prod
+
+# ── query-api ──
+queryApi:
+  image:
+    repository: mzupan/rush-api
+    # ClickHouse 26.6 multi-token search plus slim log rows/lazy attributes.
+    tag: "njp-20260711-slimlazy2"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  env:
+    CLICKHOUSE_DATABASE: observability
+    RUST_LOG: rush_api=info,tower_http=info
+    RUSH_SPOOL_DIR: "/tmp/rush-spool"
+    # Accessed over plain HTTP (port-forward, no TLS). Remove once served over HTTPS.
+    RUSH_INSECURE_COOKIES: "true"
+
+# Single query-api replica runs the anomaly engine in-process; no separate pod.
+anomalyEngine:
+  enabled: false
+  image:
+    repository: mzupan/rush-api
+    tag: "delta-20260616"
+
+# ── frontend ──
+frontend:
+  image:
+    repository: mzupan/rush-frontend
+    # Chainguard 0-CVE base (distroless nginx, non-root uid 65532 → listens 8080).
+    # Built from current web-ui source, so it carries the slim-rows/lazy-attributes
+    # frontend work as well.
+    tag: "njp-20260711-cg"
+    pullPolicy: IfNotPresent
+  # Chainguard nginx runs non-root and binds 8080 (can't bind <1024).
+  containerPort: 8080
+
+# SRE agent. OPENAI_API_KEY comes from the `rush-o11y-sre-llm` secret (api-key).
+# On a fresh cluster this secret must exist before the sre-agent pod is healthy —
+# seed it with a placeholder, then set the real key and restart.
+sreAgent:
+  enabled: true
+  image:
+    repository: mzupan/sre-agent
+    tag: "delta-20260619"
+    pullPolicy: IfNotPresent
+  env:
+    CLICKHOUSE_DATABASE: observability
+    RUST_LOG: sre_agent=info,tower_http=info
+    OPENAI_BASE_URL: "https://api.openai.com"
+  llmApiKeySecret:
+    name: rush-o11y-sre-llm
+    key: api-key
+  # The currently deployed SRE image runs as root. Keep the chart's secure default for
+  # newer images, but preserve compatibility here until that image is rebuilt non-root.
+  podSecurityContext:
+    runAsNonRoot: false
+    seccompProfile:
+      type: RuntimeDefault
+
+# ── ClickHouse (Altinity subchart) ──
+# ntt-japan-prod is AWS EKS with `ebs-csi` as the default StorageClass (same as
+# delta). 500Gi local volume. No S3 tiering here, so NO dedicated S3 IAM
+# ServiceAccount — ClickHouse runs under the chart-default SA.
+clickhouse:
+  clickhouse:
+    persistence:
+      enabled: true
+      size: 500Gi
+      storageClass: "ebs-csi"
+
+# query-api ingests OTLP/logs directly; no in-cluster collector deployed.
+# The existing monitoring/vector daemonset ships logs to query-api (see vector update).
+collectors:
+  mode: none
+
+# Free integrations toggled in-app; enterprise add-ons off.
+enterprise:
+  license:
+    enabled: false
+argocd:
+  enabled: true
+  namespace: argocd
+fluxcd:
+  enabled: false
+kubernetes:
+  enabled: true
+
+# ── NO S3 tiered storage ──
+# S3 is intentionally disabled for ntt-japan-prod. All data stays on ClickHouse's
+# local EBS volume; the retention DELETE TTLs below still prune old data.
+# (Delta sets global.storage.s3.enabled=true + a cold-tier bucket — omitted here.)
+
+# Retention (mirrors delta: metrics 30d, traces & logs 365d). With no cold tier,
+# these are simple DELETE-after-N-days TTLs.
+rushConfig:
+  retention:
+    defaults:
+      metrics_days: 30
+      traces_days: 365
+      logs_days: 365

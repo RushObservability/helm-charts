@@ -1,21 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "rush.fullname" . }}-query-api
+  name: {{ include "rush.queryApiServiceName" . }}
   labels:
-    app.kubernetes.io/component: query-api
-    {{- include "rush.labels" . | nindent 4 }}
+    {{- include "rush.componentLabels" (dict "root" . "component" "query-api") | nindent 4 }}
 spec:
   replicas: {{ .Values.queryApi.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/component: query-api
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: query-api
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 8 }}
       annotations:
         checksum/rush-config: {{ include (print $.Template.BasePath "/rush-config-configmap.yaml") . | sha256sum }}
     spec:
@@ -37,28 +34,8 @@ spec:
             - name: http
               containerPort: {{ .Values.queryApi.port }}
           env:
-            - name: CLICKHOUSE_URL
-              value: {{ include "rush.clickhouseUrl" . | quote }}
-            - name: CLICKHOUSE_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
-                  key: {{ include "rush.clickhouseUserKey" . }}
-            - name: CLICKHOUSE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseCredentialsSecret" . }}
-                  key: {{ include "rush.clickhousePasswordKey" . }}
-            - name: CLICKHOUSE_READ_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseReadCredentialsSecret" . }}
-                  key: {{ include "rush.clickhouseReadUserKey" . }}
-            - name: CLICKHOUSE_READ_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.clickhouseReadCredentialsSecret" . }}
-                  key: {{ include "rush.clickhouseReadPasswordKey" . }}
+            {{- include "rush.clickhouseWriteEnv" . | nindent 12 }}
+            {{- include "rush.clickhouseReadEnv" . | nindent 12 }}
             - name: RUSH_CONFIG
               value: /etc/rush/rush.toml
             - name: RUSH_ENVIRONMENT
@@ -75,6 +52,26 @@ spec:
               value: {{ .Values.queryApi.loginRateLimit.accountPerMinute | quote }}
             - name: RUSH_LOGIN_IP_LIMIT_PER_MINUTE
               value: {{ .Values.queryApi.loginRateLimit.ipPerMinute | quote }}
+            - name: RUSH_INGEST_MAX_COMPRESSED_BYTES
+              value: {{ .Values.queryApi.ingestLimits.maxCompressedBytes | quote }}
+            - name: RUSH_INGEST_MAX_DECOMPRESSED_BYTES
+              value: {{ .Values.queryApi.ingestLimits.maxDecompressedBytes | quote }}
+            - name: RUSH_INGEST_MAX_ENTITIES
+              value: {{ .Values.queryApi.ingestLimits.maxEntities | quote }}
+            - name: RUSH_INGEST_MAX_SERIES
+              value: {{ .Values.queryApi.ingestLimits.maxSeries | quote }}
+            - name: RUSH_INGEST_MAX_SAMPLES
+              value: {{ .Values.queryApi.ingestLimits.maxSamples | quote }}
+            - name: RUSH_INGEST_MAX_METADATA
+              value: {{ .Values.queryApi.ingestLimits.maxMetadata | quote }}
+            - name: RUSH_INGEST_MAX_LABELS_PER_SERIES
+              value: {{ .Values.queryApi.ingestLimits.maxLabelsPerSeries | quote }}
+            - name: RUSH_INGEST_MAX_LABEL_NAME_BYTES
+              value: {{ .Values.queryApi.ingestLimits.maxLabelNameBytes | quote }}
+            - name: RUSH_INGEST_MAX_LABEL_VALUE_BYTES
+              value: {{ .Values.queryApi.ingestLimits.maxLabelValueBytes | quote }}
+            - name: RUSH_INGEST_DECODE_CONCURRENCY
+              value: {{ .Values.queryApi.ingestLimits.decodeConcurrency | quote }}
             - name: RUSH_SESSION_IDLE_TIMEOUT_SECS
               value: {{ .Values.queryApi.session.idleTimeoutSeconds | quote }}
             - name: RUSH_SESSION_ABSOLUTE_TIMEOUT_SECS
@@ -133,7 +130,7 @@ spec:
             # caller's tenant, then forwards /investigate, /sessions, and
             # /investigation-templates to the agent at this URL.
             - name: SRE_AGENT_URL
-              value: "http://{{ include "rush.fullname" . }}-sre-agent:{{ .Values.sreAgent.service.port }}"
+              value: {{ include "rush.sreAgentUrl" . | quote }}
             {{- if .Values.sreAgent.githubApp.enabled }}
             # The API uses the same operator-owned policy as the agent so
             # browser callers can never choose installation/repository IDs.
@@ -207,10 +204,7 @@ spec:
           resources:
             {{- toYaml .Values.queryApi.resources | nindent 12 }}
           securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
+            {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
           {{- if .Values.queryApi.gracefulShutdown.enabled }}
           lifecycle:
             preStop:

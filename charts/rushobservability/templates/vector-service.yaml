@@ -5,15 +5,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "rush.fullname" . }}-vector
+  name: {{ include "rush.componentName" (dict "root" . "component" "vector") }}
   labels:
-    app.kubernetes.io/component: vector
-    {{- include "rush.labels" . | nindent 4 }}
+    {{- include "rush.componentLabels" (dict "root" . "component" "vector") | nindent 4 }}
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/component: vector
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "rush.selectorLabels" (dict "root" . "component" "vector") | nindent 4 }}
   ports:
     - name: otlp-grpc
       port: 4317

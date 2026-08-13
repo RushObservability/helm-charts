@@ -1,48 +1,56 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "rush.fullname" . }}-frontend
+  name: {{ include "rush.componentName" (dict "root" . "component" "frontend") }}
   labels:
-    app.kubernetes.io/component: frontend
-    {{- include "rush.labels" . | nindent 4 }}
+    {{- include "rush.componentLabels" (dict "root" . "component" "frontend") | nindent 4 }}
 spec:
   replicas: {{ .Values.frontend.replicas }}
   selector:
     matchLabels:
-      app.kubernetes.io/component: frontend
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "rush.selectorLabels" (dict "root" . "component" "frontend") | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: frontend
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "rush.selectorLabels" (dict "root" . "component" "frontend") | nindent 8 }}
       annotations:
         checksum/nginx-config: {{ include (print $.Template.BasePath "/frontend-nginx-configmap.yaml") . | sha256sum }}
     spec:
       # The frontend serves static files and proxies /api. It needs no Kubernetes
-      # API token. Port is configurable: the stock nginx image binds 80 (as root
-      # to render its template); the Chainguard image runs non-root and binds 8080
-      # — set frontend.containerPort accordingly (default 80).
+      # API token. The Rush Chainguard image runs as uid 65532 and binds 8080.
       automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: frontend
           image: {{ include "rush.image" (dict "image" .Values.frontend.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.frontend.containerPort | default 80 }}
+              containerPort: {{ .Values.frontend.containerPort | default 8080 }}
           env:
             - name: QUERY_API_HOST
-              value: "{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}"
+              value: "{{ include "rush.queryApiServiceName" . }}:{{ .Values.queryApi.service.port }}"
             # Public base URL (scheme+host, no trailing slash) of the Rush API as
             # seen from outside the cluster, surfaced to the UI (e.g. the CloudWatch
             # ingest endpoint AWS Firehose posts to). Empty → UI uses its origin.
             - name: API_PUBLIC_URL
               value: "{{ .Values.frontend.apiBaseUrl | default "" }}"
+            - name: RUSH_ENVIRONMENT
+              value: "{{ .Values.queryApi.environment }}"
+          securityContext:
+            {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
           volumeMounts:
             - name: nginx-config
               mountPath: /etc/nginx/templates/default.conf.template
               subPath: default.conf.template
+              readOnly: true
+            - name: runtime-tmp
+              mountPath: /tmp
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
           readinessProbe:
@@ -60,4 +68,8 @@ spec:
       volumes:
         - name: nginx-config
           configMap:
-            name: {{ include "rush.fullname" . }}-frontend-nginx
+            name: {{ include "rush.componentName" (dict "root" . "component" "frontend-nginx") }}
+        - name: runtime-tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Mi

@@ -11,16 +11,22 @@
 ╚════════════════════════════════════════════════════════════════════╝
 
 Core services:
-  • rush-api      svc/{{ $fullName }}-query-api     (port 8080)
-  • rush-frontend svc/{{ $fullName }}-frontend      (port 80)
+  • rush-api      svc/{{ include "rush.queryApiServiceName" . }}     (port {{ .Values.queryApi.service.port }})
+  • rush-frontend svc/{{ include "rush.componentName" (dict "root" . "component" "frontend") }}      (port {{ .Values.frontend.service.port }})
   {{- if .Values.sreAgent.enabled }}
-  • sre-agent     svc/{{ $fullName }}-sre-agent     (port {{ .Values.sreAgent.port }})
+  • sre-agent     svc/{{ include "rush.sreAgentServiceName" . }}     (port {{ .Values.sreAgent.service.port }})
   {{- end }}
   • clickhouse    svc/{{ $ch }}                     (8123 HTTP / 9000 native)
 
 Reach the UI with:
-  kubectl -n {{ $ns }} port-forward svc/{{ $fullName }}-frontend 8080:80
+  kubectl -n {{ $ns }} port-forward svc/{{ include "rush.componentName" (dict "root" . "component" "frontend") }} 8080:{{ .Values.frontend.service.port }}
   open http://localhost:8080
+
+Production browser security:
+  Terminate TLS at your ingress or edge proxy and set Strict-Transport-Security
+  there (recommended: max-age=31536000; includeSubDomains after validating every
+  subdomain; add preload only after completing the browser preload checklist).
+  The frontend pod cannot set HSTS correctly because it receives in-cluster HTTP.
 
 Admin login (user "admin"):
 {{- if .Values.queryApi.existingSecret }}
@@ -42,19 +48,14 @@ Admin login (user "admin"):
 
 {{- if eq $mode "none" }}
 
-No collector was deployed. You are responsible for getting telemetry
-into ClickHouse.
+No collector was deployed. You are responsible for sending telemetry to Rush.
 
-  Option 1: run your own OTel Collector pointed at ClickHouse native:
+  Option 1: run your own OTel Collector pointed at the query-api OTLP endpoint:
     exporters:
-      clickhouse:
-        endpoint: tcp://{{ $ch }}.{{ $ns }}.svc.cluster.local:9000
-        database: observability
-        username: ${CLICKHOUSE_USER}
-        password: ${CLICKHOUSE_PASSWORD}
-        traces_table_name: otel_traces
-        logs_table_name: otel_logs
-        create_schema: false
+      otlphttp/rush:
+        endpoint: {{ include "rush.queryApiUrl" . }}
+        headers:
+          Authorization: "Bearer ${env:RUSH_INGEST_API_KEY}"
 
   Option 2: re-install with --set collectors.mode=otel|vector|hybrid
   to let Rush deploy one for you.
@@ -86,8 +87,8 @@ into ClickHouse.
 
   {{- if eq .Values.collectors.vector.mode "logs" }}
 
-  Vector is tailing every pod's stdout/stderr on every node and writing
-  to ClickHouse (database=observability, table=otel_logs).
+  Vector is tailing every pod's stdout/stderr on every node and forwarding
+  logs to Rush.
 
   There is nothing to configure in your apps — write to stdout/stderr
   and Vector picks it up automatically. Structured JSON logs are

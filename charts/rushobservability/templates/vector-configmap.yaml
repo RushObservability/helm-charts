@@ -1,6 +1,4 @@
 {{- if include "rush.vectorEnabled" . }}
-{{- $chDatabase := .Values.queryApi.env.CLICKHOUSE_DATABASE | default "observability" -}}
-{{- $chEndpoint := printf "http://%s:8123" (include "rush.clickhouseService" .) -}}
 {{- $fullOtel := include "rush.vectorFullOtel" . -}}
 apiVersion: v1
 kind: ConfigMap
@@ -114,7 +112,7 @@ data:
         type: http
         inputs:
           - parse_logs
-        uri: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}/api/v1/ingest/logs"
+        uri: "{{ include "rush.queryApiUrl" . }}/api/v1/ingest/logs"
         method: post
         encoding:
           codec: json
@@ -140,7 +138,7 @@ data:
         inputs: ["otlp.traces"]
         protocol:
           type: http
-          uri: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}/v1/traces"
+          uri: "{{ include "rush.queryApiUrl" . }}/v1/traces"
           method: post
           encoding:
             codec: otlp
@@ -157,7 +155,7 @@ data:
         inputs: ["otlp.metrics"]
         protocol:
           type: http
-          uri: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}/v1/metrics"
+          uri: "{{ include "rush.queryApiUrl" . }}/v1/metrics"
           method: post
           encoding:
             codec: otlp
@@ -174,7 +172,7 @@ data:
         inputs: ["otlp.logs"]
         protocol:
           type: http
-          uri: "http://{{ include "rush.fullname" . }}-query-api:{{ .Values.queryApi.service.port }}/v1/logs"
+          uri: "{{ include "rush.queryApiUrl" . }}/v1/logs"
           method: post
           encoding:
             codec: otlp
