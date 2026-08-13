@@ -73,11 +73,6 @@ clickhouse:
       memory: 4Gi
 
   # Init scripts that create the observability schema on first boot
-  initScripts:
-    enabled: true
-    configMapName: "rushobs-clickhouse-init"
-    alwaysRun: true
-
   service:
     type: ClusterIP
 
@@ -98,7 +93,7 @@ collectors:
   mode: none   # none | otel | vector | hybrid
 
 # ── Rush storage / retention ──────────────────────────────────────────────────
-rushConfig:
+global:
   storage:
     s3:
       enabled: false   # no S3 tiering for single-pod dev deployments
@@ -106,6 +101,7 @@ rushConfig:
       metrics_move_after_days: 0
       traces_move_after_days: 0
       logs_move_after_days: 0
+rushConfig:
   retention:
     defaults:
       metrics_days: 30

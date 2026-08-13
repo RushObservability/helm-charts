@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - "charts/**"
+      - "examples/**"
+      - "README.md"
       - ".github/workflows/**"
   push:
     branches: [main]
     paths:
       - "charts/**"
+      - "examples/**"
+      - "README.md"
       - ".github/workflows/**"
 
 permissions:
@@ -21,15 +25,54 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Install Helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
 
       - name: Lint chart
-        run: helm lint charts/rushobservability
+        run: helm lint --strict charts/rushobservability
+
+      - name: Require a chart version bump
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+        run: |
+          BASE_SHA="$PUSH_BASE_SHA"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BASE_SHA="$PR_BASE_SHA"
+          fi
+          if [ -z "$BASE_SHA" ] || echo "$BASE_SHA" | grep -Eq '^0+$'; then
+            echo "No comparable base commit; skipping version comparison"
+            exit 0
+          fi
+          if git diff --quiet "$BASE_SHA" HEAD -- charts/rushobservability; then
+            exit 0
+          fi
+          OLD_VERSION=$(git show "$BASE_SHA:charts/rushobservability/Chart.yaml" 2>/dev/null | awk '/^version:/ { print $2; exit }' || true)
+          NEW_VERSION=$(awk '/^version:/ { print $2; exit }' charts/rushobservability/Chart.yaml)
+          if [ -n "$OLD_VERSION" ] && [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
+            echo "Chart contents changed but version remains $NEW_VERSION" >&2
+            exit 1
+          fi
+          echo "Chart version changed: ${OLD_VERSION:-new} -> $NEW_VERSION"
 
       - name: Run render security tests
         run: |
           for test in charts/rushobservability/tests/*.sh; do
             bash "$test"
           done
+
+      - name: Validate packaged archive
+        run: |
+          mkdir -p .pkg
+          helm package charts/rushobservability --destination .pkg
+          PKG=$(find .pkg -maxdepth 1 -name 'rushobservability-*.tgz' -print -quit)
+          helm show chart "$PKG" >/dev/null
+          helm template packaged "$PKG" >/dev/null
+          if tar -tzf "$PKG" | grep -q '/tests/'; then
+            echo "Published chart unexpectedly contains repository tests" >&2
+            exit 1
+          fi

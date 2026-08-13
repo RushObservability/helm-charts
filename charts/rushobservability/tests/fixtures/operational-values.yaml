@@ -1,0 +1,39 @@
+global:
+  podAnnotations:
+    example.com/global-annotation: shared
+  podLabels:
+    example.com/global-label: shared
+  imagePullSecrets:
+    - name: registry-credentials
+  priorityClassName: rush-critical
+  runtimeClassName: gvisor
+  extraEnvFrom:
+    - configMapRef:
+        name: shared-runtime
+  extraVolumes:
+    - name: shared-ca
+      configMap:
+        name: shared-ca
+  extraVolumeMounts:
+    - name: shared-ca
+      mountPath: /etc/rush/shared-ca
+      readOnly: true
+  serviceAccount:
+    annotations:
+      example.com/workload-identity: shared
+
+queryApi:
+  podAnnotations:
+    example.com/query-annotation: api
+  podLabels:
+    example.com/query-label: api
+  serviceAccount:
+    annotations:
+      example.com/query-identity: api
+
+frontend:
+  serviceAccount:
+    create: true
+    name: custom-frontend
+    annotations:
+      example.com/frontend-identity: ui

@@ -33,6 +33,6 @@ roleRef:
   name: {{ include "rush.fullname" . }}-fluxcd-reader
 subjects:
   - kind: ServiceAccount
-    name: {{ include "rush.fullname" . }}-query-api
+    name: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.queryApi "component" "query-api") }}
     namespace: {{ .Release.Namespace }}
 {{- end }}

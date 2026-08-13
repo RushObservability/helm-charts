@@ -1,0 +1,72 @@
+{{- if and .Values.ingress.enabled .Values.ingress.frontend.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "frontend") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "frontend") | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.ingress.frontend.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.frontend.host | quote }}
+      {{- with .Values.ingress.frontend.tls.secretName }}
+      secretName: {{ . | quote }}
+      {{- end }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.frontend.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.frontend.path | quote }}
+            pathType: {{ .Values.ingress.frontend.pathType }}
+            backend:
+              service:
+                name: {{ include "rush.componentName" (dict "root" . "component" "frontend") }}
+                port:
+                  name: http
+{{- end }}
+{{- if and .Values.ingress.enabled .Values.ingress.api.enabled }}
+---
+{{- $annotations := mergeOverwrite (deepCopy (.Values.ingress.annotations | default dict)) (deepCopy (.Values.ingress.api.annotations | default dict)) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "query-api") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "query-api") | nindent 4 }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.ingress.api.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.api.host | quote }}
+      {{- with .Values.ingress.api.tls.secretName }}
+      secretName: {{ . | quote }}
+      {{- end }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.api.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.api.path | quote }}
+            pathType: {{ .Values.ingress.api.pathType }}
+            backend:
+              service:
+                name: {{ include "rush.queryApiServiceName" . }}
+                port:
+                  name: http
+{{- end }}

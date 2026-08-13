@@ -7,6 +7,7 @@ metadata:
     {{- include "rush.componentLabels" (dict "root" . "component" "sre-agent") | nindent 4 }}
 spec:
   replicas: {{ .Values.sreAgent.replicas }}
+  {{- include "rush.deploymentRollout" (dict "rollout" .Values.sreAgent.rollout) | nindent 2 }}
   selector:
     matchLabels:
       {{- include "rush.selectorLabels" (dict "root" . "component" "sre-agent") | nindent 6 }}
@@ -14,9 +15,18 @@ spec:
     metadata:
       labels:
         {{- include "rush.selectorLabels" (dict "root" . "component" "sre-agent") | nindent 8 }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.sreAgent)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+      {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.sreAgent)) }}
+      annotations:
+        {{- . | nindent 8 }}
+      {{- end }}
     spec:
       {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.sreAgent) | nindent 6 }}
-      serviceAccountName: {{ include "rush.sreAgentServiceName" . }}
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.sreAgent) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.sreAgent "component" "sre-agent") }}
+      automountServiceAccountToken: {{ or (not (empty .Values.sreAgent.kube.tenantNamespaces)) .Values.sreAgent.kube.allowClusterScopedForAdmins .Values.kubernetes.enabled .Values.argocd.enabled .Values.fluxcd.enabled }}
       securityContext:
         {{- toYaml .Values.sreAgent.podSecurityContext | nindent 8 }}
       containers:
@@ -85,6 +95,7 @@ spec:
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.sreAgent) | nindent 10 }}
           resources:
             {{- toYaml .Values.sreAgent.resources | nindent 12 }}
           securityContext:
@@ -96,19 +107,26 @@ spec:
               readOnly: true
             - name: repository-cache
               mountPath: /var/run/rush-repositories
+            {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.sreAgent)) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           {{- end }}
+          {{- if and (not .Values.sreAgent.githubApp.enabled) (include "rush.extraVolumeMounts" (dict "root" . "workload" .Values.sreAgent)) }}
+          volumeMounts:
+            {{- include "rush.extraVolumeMounts" (dict "root" . "workload" .Values.sreAgent) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.sreAgent.probes.startup.enabled }}
+          startupProbe:
+            {{- include "rush.httpProbe" (dict "probe" .Values.sreAgent.probes.startup "port" "http") | nindent 12 }}
+          {{- end }}
+          {{- if .Values.sreAgent.probes.readiness.enabled }}
           readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 3
-            periodSeconds: 5
+            {{- include "rush.httpProbe" (dict "probe" .Values.sreAgent.probes.readiness "port" "http") | nindent 12 }}
+          {{- end }}
+          {{- if .Values.sreAgent.probes.liveness.enabled }}
           livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 10
+            {{- include "rush.httpProbe" (dict "probe" .Values.sreAgent.probes.liveness "port" "http") | nindent 12 }}
+          {{- end }}
       {{- if .Values.sreAgent.githubApp.enabled }}
       volumes:
         - name: github-app-private-key
@@ -121,5 +139,11 @@ spec:
         - name: repository-cache
           emptyDir:
             sizeLimit: {{ .Values.sreAgent.githubApp.cacheSizeLimit }}
+      {{- end }}
+      {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.sreAgent)) }}
+        {{- if not $.Values.sreAgent.githubApp.enabled }}
+      volumes:
+        {{- end }}
+        {{- . | nindent 8 }}
       {{- end }}
 {{- end }}

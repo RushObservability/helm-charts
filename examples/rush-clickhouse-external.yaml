@@ -16,6 +16,11 @@
 # charts/rushobservability/values.yaml. query-api installs and verifies the
 # strict tenant row policies at startup.
 
+queryApi:
+  networkPolicy:
+    # Prefer extraEgress with the ClickHouse CIDR when it is stable.
+    allowExternalClickHouseEgress: true
+
 clickhouse:
   enabled: false
   mode: external

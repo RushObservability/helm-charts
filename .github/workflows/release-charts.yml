@@ -45,6 +45,8 @@ jobs:
         chart: ${{ fromJson(needs.detect-changes.outputs.charts) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
 
       - name: Lowercase owner
         id: owner
@@ -67,7 +69,17 @@ jobs:
           fi
 
       - name: Lint chart
-        run: helm lint charts/${{ matrix.chart }}
+        run: helm lint --strict charts/${{ matrix.chart }}
+
+      - name: Require a chart version bump
+        run: |
+          CHART_DIR="charts/${{ matrix.chart }}"
+          OLD_VERSION=$(git show "HEAD~1:${CHART_DIR}/Chart.yaml" 2>/dev/null | awk '/^version:/ { print $2; exit }' || true)
+          NEW_VERSION=$(awk '/^version:/ { print $2; exit }' "$CHART_DIR/Chart.yaml")
+          if [ -n "$OLD_VERSION" ] && [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
+            echo "$CHART_DIR changed but version remains $NEW_VERSION" >&2
+            exit 1
+          fi
 
       - name: Run render security tests
         if: matrix.chart == 'rushobservability'
@@ -84,6 +96,16 @@ jobs:
 
       - name: Package chart
         run: helm package charts/${{ matrix.chart }} --destination .pkg
+
+      - name: Validate packaged archive
+        run: |
+          PKG=$(find .pkg -maxdepth 1 -name '${{ matrix.chart }}-*.tgz' -print -quit)
+          helm show chart "$PKG" >/dev/null
+          helm template packaged "$PKG" >/dev/null
+          if tar -tzf "$PKG" | grep -q '/tests/'; then
+            echo "Published chart unexpectedly contains repository tests" >&2
+            exit 1
+          fi
 
       - name: Push to GHCR
         run: |

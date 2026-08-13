@@ -32,21 +32,35 @@ metadata:
 spec:
   serviceName: {{ include "rush.clickhouseService" . }}
   replicas: 1
+  podManagementPolicy: {{ .Values.clickhouseStandalone.rollout.podManagementPolicy }}
+  revisionHistoryLimit: {{ .Values.clickhouseStandalone.rollout.revisionHistoryLimit }}
   selector:
     matchLabels:
       app.kubernetes.io/component: clickhouse
       app.kubernetes.io/instance: {{ .Release.Name }}
   updateStrategy:
-    type: RollingUpdate
+    type: {{ .Values.clickhouseStandalone.rollout.strategy }}
+    {{- if eq .Values.clickhouseStandalone.rollout.strategy "RollingUpdate" }}
+    rollingUpdate:
+      partition: {{ .Values.clickhouseStandalone.rollout.partition }}
+    {{- end }}
   template:
     metadata:
       labels:
         app.kubernetes.io/component: clickhouse
         app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.clickhouseStandalone)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/clickhouse-standalone-configmap.yaml") . | sha256sum }}
         checksum/credentials: {{ include (print $.Template.BasePath "/clickhouse-credentials.yaml") . | sha256sum }}
+        {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.clickhouseStandalone)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
     spec:
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.clickhouseStandalone) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.clickhouseStandalone "component" "clickhouse") }}
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: {{ .Values.clickhouseStandalone.terminationGracePeriodSeconds }}
       {{- with .Values.clickhouseStandalone.nodeSelector }}
@@ -95,6 +109,7 @@ spec:
                 secretKeyRef:
                   name: rushobs-clickhouse-read-credentials
                   key: password
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.clickhouseStandalone) | nindent 10 }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/clickhouse
@@ -125,26 +140,27 @@ spec:
             - name: init
               mountPath: /docker-entrypoint-initdb.d
               readOnly: true
+            {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.clickhouseStandalone)) }}
+            {{- . | nindent 12 }}
+            {{- end }}
           resources:
             {{- toYaml .Values.clickhouse.resources | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+          {{- if .Values.clickhouseStandalone.probes.startup.enabled }}
+          startupProbe:
+            {{- include "rush.httpProbe" (dict "probe" .Values.clickhouseStandalone.probes.startup "port" "http") | nindent 12 }}
+          {{- end }}
+          {{- if .Values.clickhouseStandalone.probes.readiness.enabled }}
           readinessProbe:
-            httpGet:
-              path: /ping
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
+            {{- include "rush.httpProbe" (dict "probe" .Values.clickhouseStandalone.probes.readiness "port" "http") | nindent 12 }}
+          {{- end }}
+          {{- if .Values.clickhouseStandalone.probes.liveness.enabled }}
           livenessProbe:
-            httpGet:
-              path: /ping
-              port: http
-            initialDelaySeconds: 30
-            periodSeconds: 20
-            timeoutSeconds: 5
+            {{- include "rush.httpProbe" (dict "probe" .Values.clickhouseStandalone.probes.liveness "port" "http") | nindent 12 }}
+          {{- end }}
       volumes:
         - name: config
           configMap:
@@ -154,6 +170,9 @@ spec:
             name: {{ include "rush.fullname" . }}-clickhouse-standalone-init
         - name: logs
           emptyDir: {}
+        {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.clickhouseStandalone)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
         {{- if not .Values.clickhouseStandalone.persistence.enabled }}
         - name: data
           emptyDir: {}

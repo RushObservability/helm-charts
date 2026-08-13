@@ -1,0 +1,303 @@
+{{- if .Values.frontend.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "frontend") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "frontend") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "rush.selectorLabels" (dict "root" . "component" "frontend") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    {{- if .Values.frontend.networkPolicy.allowSameNamespaceIngress }}
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: http
+    {{- end }}
+    {{- with .Values.frontend.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: http
+    {{- with .Values.frontend.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+
+{{- if and .Values.anomalyEngine.enabled .Values.anomalyEngine.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "anomaly-engine") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "anomaly-engine") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "rush.selectorLabels" (dict "root" . "component" "anomaly-engine") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  {{- with .Values.anomalyEngine.networkPolicy.extraIngress }}
+  ingress:
+    {{- toYaml . | nindent 4 }}
+  {{- else }}
+  ingress: []
+  {{- end }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: clickhouse
+              app.kubernetes.io/instance: {{ .Release.Name }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: clickhouse
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - protocol: TCP
+          port: 8123
+        - protocol: TCP
+          port: 9000
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: http
+    {{- if .Values.anomalyEngine.networkPolicy.allowExternalHttpsEgress }}
+    - to:
+        - ipBlock: { cidr: 0.0.0.0/0 }
+      ports:
+        - { protocol: TCP, port: 443 }
+    {{- end }}
+    {{- if .Values.anomalyEngine.networkPolicy.allowSmtpEgress }}
+    - to:
+        - ipBlock: { cidr: 0.0.0.0/0 }
+      ports:
+        - { protocol: TCP, port: 465 }
+        - { protocol: TCP, port: 587 }
+    {{- end }}
+    {{- with .Values.anomalyEngine.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+
+{{- if and .Values.enterprise.license.integrations.postgresCollector.enabled .Values.enterprise.license.integrations.postgresCollector.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "postgres-collector") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "postgres-collector") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "rush.selectorLabels" (dict "root" . "component" "postgres-collector") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  {{- with .Values.enterprise.license.integrations.postgresCollector.networkPolicy.extraIngress }}
+  ingress:
+    {{- toYaml . | nindent 4 }}
+  {{- else }}
+  ingress: []
+  {{- end }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: http }
+    {{- with .Values.enterprise.license.integrations.postgresCollector.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+
+{{- if and (include "rush.otelEnabled" .) .Values.collectors.otel.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "otel-collector") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "otel-collector") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "rush.selectorLabels" (dict "root" . "component" "otel-collector") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    {{- if .Values.collectors.otel.networkPolicy.allowSameNamespaceIngress }}
+    - from:
+        - podSelector: {}
+      ports:
+        - { protocol: TCP, port: otlp-grpc }
+        - { protocol: TCP, port: otlp-http }
+        - { protocol: TCP, port: 8888 }
+        - { protocol: TCP, port: 13133 }
+    {{- end }}
+    {{- with .Values.collectors.otel.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: http }
+    {{- with .Values.collectors.otel.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+
+{{- if and (include "rush.vectorEnabled" .) .Values.collectors.vector.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "vector") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "vector") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "rush.selectorLabels" (dict "root" . "component" "vector") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    {{- if .Values.collectors.vector.networkPolicy.allowSameNamespaceIngress }}
+    - from:
+        - podSelector: {}
+      ports:
+        - { protocol: TCP, port: 8686 }
+        {{- if include "rush.vectorFullOtel" . }}
+        - { protocol: TCP, port: 4317 }
+        - { protocol: TCP, port: 4318 }
+        {{- end }}
+    {{- end }}
+    {{- with .Values.collectors.vector.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: http }
+    {{- if .Values.collectors.vector.networkPolicy.allowExternalHttpsEgress }}
+    - to:
+        - ipBlock: { cidr: 0.0.0.0/0 }
+      ports:
+        - { protocol: TCP, port: 443 }
+    {{- end }}
+    {{- with .Values.collectors.vector.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+
+{{- if and (eq .Values.clickhouse.mode "standalone") .Values.clickhouseStandalone.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "clickhouse") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "clickhouse") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: clickhouse
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "query-api-drain-worker") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "anomaly-engine") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "sre-agent") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "helm-test") | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: http }
+        - { protocol: TCP, port: tcp }
+    {{- with .Values.clickhouseStandalone.networkPolicy.extraIngress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    {{- if .Values.clickhouseStandalone.networkPolicy.allowExternalHttpsEgress }}
+    - to:
+        - ipBlock: { cidr: 0.0.0.0/0 }
+      ports:
+        - { protocol: TCP, port: 443 }
+    {{- end }}
+    {{- with .Values.clickhouseStandalone.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

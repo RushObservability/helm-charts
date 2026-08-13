@@ -10,6 +10,7 @@ metadata:
     {{- include "rush.componentLabels" (dict "root" . "component" "postgres-collector") | nindent 4 }}
 spec:
   replicas: 1
+  {{- include "rush.deploymentRollout" (dict "rollout" .Values.enterprise.license.integrations.postgresCollector.rollout) | nindent 2 }}
   selector:
     matchLabels:
       {{- include "rush.selectorLabels" (dict "root" . "component" "postgres-collector") | nindent 6 }}
@@ -17,8 +18,18 @@ spec:
     metadata:
       labels:
         {{- include "rush.selectorLabels" (dict "root" . "component" "postgres-collector") | nindent 8 }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.enterprise.license.integrations.postgresCollector)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+      {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.enterprise.license.integrations.postgresCollector)) }}
+      annotations:
+        {{- . | nindent 8 }}
+      {{- end }}
     spec:
       {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.enterprise.license.integrations.postgresCollector) | nindent 6 }}
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.enterprise.license.integrations.postgresCollector) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.enterprise.license.integrations.postgresCollector "component" "postgres-collector") }}
+      automountServiceAccountToken: false
       containers:
         - name: postgres-collector
           image: {{ include "rush.image" (dict "image" .Values.enterprise.license.integrations.postgresCollector.image "defaultTag" .Chart.AppVersion) | quote }}
@@ -46,6 +57,15 @@ spec:
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.enterprise.license.integrations.postgresCollector) | nindent 10 }}
+          {{- with (include "rush.extraVolumeMounts" (dict "root" . "workload" .Values.enterprise.license.integrations.postgresCollector)) }}
+          volumeMounts:
+            {{- . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.enterprise.license.integrations.postgresCollector.resources | nindent 12 }}
+      {{- with (include "rush.extraVolumes" (dict "root" . "workload" .Values.enterprise.license.integrations.postgresCollector)) }}
+      volumes:
+        {{- . | nindent 8 }}
+      {{- end }}
 {{- end }}

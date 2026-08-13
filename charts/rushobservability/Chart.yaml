@@ -1,9 +1,31 @@
 apiVersion: v2
 name: rushobservability
-description: Rush Observability — query-api + ClickHouse
-version: 0.0.2
-appVersion: 0.0.1
+description: Production observability platform with logs, metrics, traces, SLOs, anomaly detection, collectors, SRE automation, and ClickHouse
+version: 0.1.0
+appVersion: 0.1.24
 type: application
+kubeVersion: ">=1.25.0-0"
+home: https://rushobservability.com
+icon: https://rushobservability.com/logos/rush-mark-512.png
+sources:
+  - https://github.com/RushObservability/helm-charts
+  - https://github.com/RushObservability/query-api
+  - https://github.com/RushObservability/frontend
+  - https://github.com/RushObservability/sre-agent
+maintainers:
+  - name: Mike Zupan
+    email: mike@zcentric.com
+    url: https://github.com/mzupan
+keywords:
+  - observability
+  - opentelemetry
+  - prometheus
+  - logs
+  - metrics
+  - tracing
+  - clickhouse
+annotations:
+  artifacthub.io/license: BUSL-1.1
 
 dependencies:
   - name: clickhouse

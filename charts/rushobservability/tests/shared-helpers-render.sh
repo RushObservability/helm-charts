@@ -47,8 +47,10 @@ rendered="$(helm template shared-helpers "$chart_dir" \
   --set collectors.mode=hybrid \
   --set collectors.allowAnonymousIngest=true \
   --set sreAgent.enabled=true \
+  --set sreAgent.networkPolicy.allowExternalHttpsEgress=true \
   --set sreAgent.llmApiKeySecret.name=llm-key \
   --set enterprise.license.integrations.postgresCollector.enabled=true \
+  --set-json 'enterprise.license.integrations.postgresCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":5432}]}]' \
   --set queryApi.baseUrl=https://rush.example.com \
   --set queryApi.service.port=18080)"
 
