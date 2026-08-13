@@ -5,6 +5,10 @@ imageSecurity:
   requireDigests: false
 
 queryApi:
+  # Inherit global.scheduling by default. Values under scheduling override the
+  # global maps/lists; set this false to schedule this workload independently.
+  inheritGlobalScheduling: true
+  scheduling: {}
   image:
     repository: mzupan/rush-api
     tag: "0.1.24"
@@ -132,6 +136,8 @@ enterprise:
       #     --from-literal=api-key='rush_xxx'
       postgresCollector:
         enabled: false
+        inheritGlobalScheduling: true
+        scheduling: {}
         image:
           repository: mzupan/postgres-collector
           tag: "0.1.0"
@@ -155,6 +161,8 @@ enterprise:
 # ── sre-agent ──
 sreAgent:
   enabled: false                     # disabled by default — requires OPENAI_API_KEY
+  inheritGlobalScheduling: true
+  scheduling: {}
   image:
     repository: mzupan/sre-agent
     tag: "0.1.0"
@@ -223,6 +231,8 @@ sreAgent:
 # evaluated exactly once (no duplicate alerts).
 anomalyEngine:
   enabled: false                     # set true when running multiple query-api pods
+  inheritGlobalScheduling: true
+  scheduling: {}
   # Inherits queryApi.image by default because both workloads run the same Rush
   # API binary. Set only the fields that need to differ for an independent image.
   image: {}
@@ -285,6 +295,8 @@ cloudwatch:
 
 # ── frontend ──
 frontend:
+  inheritGlobalScheduling: true
+  scheduling: {}
   image:
     repository: mzupan/rush-frontend
     tag: "0.1.12"
@@ -318,6 +330,17 @@ frontend:
 # tiering with just this block — the chart auto-generates the ClickHouse S3 disk
 # + cold volume (see clickhouse.clickhouse.extraConfig). No hand-written XML.
 global:
+  # Shared scheduling defaults for Rush-owned workloads: query-api, frontend,
+  # SRE agent, anomaly engine, OTel, Vector, and licensed collectors. ClickHouse
+  # is intentionally independent; use clickhouse.clickhouse/keeper scheduling
+  # (or clickhouseStandalone scheduling) for storage-optimized node groups.
+  # Component scheduling maps deep-merge over these defaults. Component lists
+  # replace these lists. Set a component's inheritGlobalScheduling=false to opt out.
+  scheduling:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    topologySpreadConstraints: []
   storage:
     s3:
       enabled: false            # set true + fill in to enable S3 tiered storage
@@ -430,6 +453,12 @@ clickhouse:
         memory: "8Gi"
       limits:
         memory: "8Gi"
+    # Scheduling for ClickHouse server pods is independent from
+    # global.scheduling, allowing a dedicated storage node group.
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    topologySpreadConstraints: []
     # Cache sizes in bytes — right-size with the memory limit above. Referenced by
     # the auto-generated extraConfig below (defaults suit the 8Gi baseline).
     markCacheSize: 2147483648          # 2 GiB
@@ -500,14 +529,27 @@ clickhouse:
     type: ClusterIP
   keeper:
     enabled: false
+    # Keeper supports an independent node selector and tolerations. zoneSpread
+    # adds its built-in zone topology constraint.
+    nodeSelector: {}
+    tolerations: []
   operator:
     # Set to false if the Altinity ClickHouse Operator is already installed
     # cluster-wide (e.g. shared by multiple teams or managed separately).
     # Rush will still deploy the ClickHouseInstallation CRD resource; it just
     # won't install the operator Deployment, RBAC, or CRDs again.
     enabled: true
+    # Dependency-owned control-plane workload. Configure explicitly when node
+    # groups are tainted; it does not inherit global.scheduling.
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    topologySpreadConstraints: []
     # Override the upstream chart's floating kubectl:latest CRD hook.
     crdHook:
+      nodeSelector: {}
+      tolerations: []
+      affinity: {}
       image:
         repository: bitnami/kubectl
         tag: "1.33.4"
@@ -535,6 +577,11 @@ clickhouseStandalone:
     seccompProfile:
       type: RuntimeDefault
   terminationGracePeriodSeconds: 120
+  # Standalone ClickHouse never inherits global.scheduling.
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  topologySpreadConstraints: []
 
 # ═══════════════════════════════════════════════════════════════════════
 # Data collectors (optional)
@@ -574,6 +621,8 @@ collectors:
 
   # ── OpenTelemetry Collector ──
   otel:
+    inheritGlobalScheduling: true
+    scheduling: {}
     image:
       repository: otel/opentelemetry-collector-contrib
       tag: "0.118.0"
@@ -622,6 +671,10 @@ collectors:
 
   # ── Vector ──
   vector:
+    # Set inheritGlobalScheduling=false to keep this DaemonSet on every eligible
+    # node rather than restricting it to the shared Rush application node group.
+    inheritGlobalScheduling: true
+    scheduling: {}
     image:
       repository: timberio/vector
       # 0.51+ adds native OTLP decoding + an opentelemetry sink (encoding.codec: otlp),

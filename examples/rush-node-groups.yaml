@@ -1,0 +1,70 @@
+# Run stateless Rush workloads on an application node group and keep ClickHouse
+# plus Keeper on a storage-optimized node group. The example assumes the nodes
+# have matching `nodegroup` labels and NoSchedule taints.
+
+global:
+  scheduling:
+    nodeSelector:
+      nodegroup: rush-apps
+    tolerations:
+      - key: rush-apps
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: rush
+
+clickhouse:
+  clickhouse:
+    nodeSelector:
+      nodegroup: clickhouse
+    tolerations:
+      - key: clickhouse
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+  keeper:
+    enabled: true
+    nodeSelector:
+      nodegroup: clickhouse
+    tolerations:
+      - key: clickhouse
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+  # The dependency-owned operator and its CRD hook do not consume
+  # global.scheduling, so place them with the stateless application workloads.
+  operator:
+    nodeSelector:
+      nodegroup: rush-apps
+    tolerations:
+      - key: rush-apps
+        operator: Equal
+        value: "true"
+        effect: NoSchedule
+    crdHook:
+      nodeSelector:
+        nodegroup: rush-apps
+      tolerations:
+        - key: rush-apps
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+
+# Optional component override: retain the global toleration and spread policy,
+# but put query-api on its own node group.
+# queryApi:
+#   scheduling:
+#     nodeSelector:
+#       nodegroup: rush-api
+
+# Vector is a node-local log collector. Opt it out when it should run on every
+# otherwise eligible node instead of only the rush-apps node group.
+# collectors:
+#   vector:
+#     inheritGlobalScheduling: false

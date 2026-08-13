@@ -17,6 +17,7 @@ spec:
       annotations:
         checksum/rush-config: {{ include (print $.Template.BasePath "/rush-config-configmap.yaml") . | sha256sum }}
     spec:
+      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.anomalyEngine) | nindent 6 }}
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true

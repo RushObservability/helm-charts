@@ -81,6 +81,67 @@ capabilities:
 {{- end -}}
 
 {{/*
+Layer shared Rush-workload scheduling defaults with a component override.
+
+Maps (nodeSelector and affinity) are deep-merged, with component keys winning.
+Lists (tolerations and topologySpreadConstraints) are replaced when the
+component supplies that key. Set inheritGlobalScheduling=false on a workload to
+ignore every global scheduling default. ClickHouse is intentionally excluded;
+its operator/keeper and standalone values remain independent.
+*/}}
+{{- define "rush.workloadScheduling" -}}
+{{- $root := .root -}}
+{{- $workload := .workload | default dict -}}
+{{- $global := $root.Values.global.scheduling | default dict -}}
+{{- $local := $workload.scheduling | default dict -}}
+{{- $inherit := true -}}
+{{- if hasKey $workload "inheritGlobalScheduling" -}}
+{{- $inherit = $workload.inheritGlobalScheduling -}}
+{{- end -}}
+
+{{- $nodeSelector := dict -}}
+{{- $affinity := dict -}}
+{{- $tolerations := list -}}
+{{- $topologySpreadConstraints := list -}}
+{{- if $inherit -}}
+{{- $nodeSelector = deepCopy ($global.nodeSelector | default dict) -}}
+{{- $affinity = deepCopy ($global.affinity | default dict) -}}
+{{- $tolerations = deepCopy ($global.tolerations | default list) -}}
+{{- $topologySpreadConstraints = deepCopy ($global.topologySpreadConstraints | default list) -}}
+{{- end -}}
+
+{{- if hasKey $local "nodeSelector" -}}
+{{- $nodeSelector = mergeOverwrite $nodeSelector (deepCopy ($local.nodeSelector | default dict)) -}}
+{{- end -}}
+{{- if hasKey $local "affinity" -}}
+{{- $affinity = mergeOverwrite $affinity (deepCopy ($local.affinity | default dict)) -}}
+{{- end -}}
+{{- if hasKey $local "tolerations" -}}
+{{- $tolerations = deepCopy ($local.tolerations | default list) -}}
+{{- end -}}
+{{- if hasKey $local "topologySpreadConstraints" -}}
+{{- $topologySpreadConstraints = deepCopy ($local.topologySpreadConstraints | default list) -}}
+{{- end -}}
+
+{{- with $nodeSelector }}
+nodeSelector:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with $tolerations }}
+tolerations:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with $affinity }}
+affinity:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with $topologySpreadConstraints }}
+topologySpreadConstraints:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Render an immutable OCI digest when supplied, otherwise an explicit tag. The
 digest is deliberately separate from repository so values remain readable and
 policy validation can distinguish immutable production configuration.

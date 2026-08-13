@@ -18,6 +18,7 @@ spec:
       labels:
         {{- include "rush.selectorLabels" (dict "root" . "component" "postgres-collector") | nindent 8 }}
     spec:
+      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.enterprise.license.integrations.postgresCollector) | nindent 6 }}
       containers:
         - name: postgres-collector
           image: {{ include "rush.image" (dict "image" .Values.enterprise.license.integrations.postgresCollector.image "defaultTag" .Chart.AppVersion) | quote }}
