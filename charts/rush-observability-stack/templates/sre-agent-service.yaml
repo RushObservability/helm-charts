@@ -1,4 +1,4 @@
-{{- if .Values.sreAgent.enabled }}
+{{- if .Values.global.sreAgent.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -6,10 +6,10 @@ metadata:
   labels:
     {{- include "rush.componentLabels" (dict "root" . "component" "sre-agent") | nindent 4 }}
 spec:
-  type: {{ .Values.sreAgent.service.type }}
+  type: {{ .Values.global.sreAgent.service.type }}
   ports:
     - name: http
-      port: {{ .Values.sreAgent.service.port }}
+      port: {{ .Values.global.sreAgent.service.port }}
       targetPort: http
   selector:
     {{- include "rush.selectorLabels" (dict "root" . "component" "sre-agent") | nindent 4 }}

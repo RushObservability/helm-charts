@@ -15,25 +15,15 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "rush.selectorLabels" (dict "root" . "component" "frontend") | nindent 14 }}
-        {{- if include "rush.otelEnabled" . }}
-        - podSelector:
-            matchLabels:
-              {{- include "rush.selectorLabels" (dict "root" . "component" "otel-collector") | nindent 14 }}
-        {{- end }}
-        {{- if include "rush.vectorEnabled" . }}
-        - podSelector:
-            matchLabels:
-              {{- include "rush.selectorLabels" (dict "root" . "component" "vector") | nindent 14 }}
-        {{- end }}
-        {{- if .Values.enterprise.license.integrations.postgresCollector.enabled }}
-        - podSelector:
-            matchLabels:
-              {{- include "rush.selectorLabels" (dict "root" . "component" "postgres-collector") | nindent 14 }}
-        {{- end }}
         {{- if .Values.helmTests.enabled }}
         - podSelector:
             matchLabels:
               {{- include "rush.selectorLabels" (dict "root" . "component" "helm-test") | nindent 14 }}
+        {{- end }}
+        {{- range .Values.global.rush.queryApiIngressComponents }}
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" $ "component" .) | nindent 14 }}
         {{- end }}
       ports:
         - protocol: TCP
@@ -65,7 +55,7 @@ spec:
           port: 8123
         - protocol: TCP
           port: 9000
-    {{- if .Values.sreAgent.enabled }}
+    {{- if .Values.global.sreAgent.enabled }}
     - to:
         - podSelector:
             matchLabels:

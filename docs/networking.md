@@ -4,9 +4,9 @@
 
 ## Network isolation
 
-NetworkPolicies are enabled for Query API, frontend, SRE agent, anomaly engine,
-OpenTelemetry Collector, Vector, PostgreSQL collector, drain worker, and
-standalone ClickHouse.
+The core chart enables NetworkPolicies for Query API, frontend, anomaly engine,
+drain worker, and standalone ClickHouse. The stack adds policies for SRE agent,
+OpenTelemetry Collector, Vector, and PostgreSQL collector.
 
 Default rules allow required component traffic, DNS, and same-namespace
 collector ingestion. Query API does not accept traffic from every pod in the
@@ -24,14 +24,16 @@ queryApi:
     extraIngress: []                   # ingress controller or external collector
     extraEgress: []
 
-sreAgent:
-  enabled: true
-  networkPolicy:
-    allowExternalHttpsEgress: true     # OpenAI, GitHub, Kubernetes API
+global:
+  sreAgent:
+    enabled: true
+    networkPolicy:
+      allowExternalHttpsEgress: true   # OpenAI, GitHub, Kubernetes API
 ```
 
-The PostgreSQL collector needs an explicit `networkPolicy.extraEgress` rule for
-the monitored database. External ClickHouse needs
+The stack's PostgreSQL collector needs an explicit
+`postgresCollector.networkPolicy.extraEgress` rule for the monitored database.
+External ClickHouse needs
 `allowExternalClickHouseEgress` or an explicit rule. The chart fails rendering
 when a required external service would be unreachable.
 
@@ -66,4 +68,3 @@ host. `ingress.trustedProxyCidrs` is merged into Query API's trusted proxy list.
 
 If the ingress controller runs outside the release namespace, add an
 `extraIngress` rule matching its namespace and pod labels.
-

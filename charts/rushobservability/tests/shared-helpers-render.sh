@@ -43,33 +43,4 @@ for expected in \
   }
 done
 
-rendered="$(helm template shared-helpers "$chart_dir" \
-  --set collectors.mode=hybrid \
-  --set collectors.allowAnonymousIngest=true \
-  --set sreAgent.enabled=true \
-  --set sreAgent.networkPolicy.allowExternalHttpsEgress=true \
-  --set sreAgent.llmApiKeySecret.name=llm-key \
-  --set enterprise.license.integrations.postgresCollector.enabled=true \
-  --set-json 'enterprise.license.integrations.postgresCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":5432}]}]' \
-  --set queryApi.baseUrl=https://rush.example.com \
-  --set queryApi.service.port=18080)"
-
-if [[ "$(grep -Fc 'value: "http://shared-helpers-query-api:18080"' <<<"$rendered")" -lt 2 ]]; then
-  echo 'internal consumers did not consistently use the query-api Service port' >&2
-  exit 1
-fi
-
-for collector_template in \
-  templates/otel-collector-workload.yaml \
-  templates/vector-daemonset.yaml; do
-  collector="$(helm template shared-helpers "$chart_dir" \
-    --show-only "$collector_template" \
-    --set collectors.mode=hybrid \
-    --set collectors.allowAnonymousIngest=true)"
-  if grep -Eq 'CLICKHOUSE_(USER|PASSWORD)' <<<"$collector"; then
-    echo "$collector_template still receives unused ClickHouse credentials" >&2
-    exit 1
-  fi
-done
-
 echo 'shared Helm helper renders passed'

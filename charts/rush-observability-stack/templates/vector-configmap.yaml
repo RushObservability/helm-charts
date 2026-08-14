@@ -1,5 +1,5 @@
-{{- if include "rush.vectorEnabled" . }}
-{{- $fullOtel := include "rush.vectorFullOtel" . -}}
+{{- if include "rush.stackVectorEnabled" . }}
+{{- $fullOtel := include "rush.stackVectorFullOtel" . -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -112,7 +112,7 @@ data:
         type: http
         inputs:
           - parse_logs
-        uri: "{{ include "rush.queryApiUrl" . }}/api/v1/ingest/logs"
+        uri: "{{ include "rush.stackQueryApiUrl" . }}/api/v1/ingest/logs"
         method: post
         encoding:
           codec: json
@@ -120,7 +120,7 @@ data:
           max_events: 1000
           timeout_secs: 5
         request:
-          {{- if .Values.collectors.ingestApiKeySecret.name }}
+          {{- if .Values.global.rush.ingestApiKeySecret.name }}
           headers:
             Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
           {{- end }}
@@ -138,12 +138,12 @@ data:
         inputs: ["otlp.traces"]
         protocol:
           type: http
-          uri: "{{ include "rush.queryApiUrl" . }}/v1/traces"
+          uri: "{{ include "rush.stackQueryApiUrl" . }}/v1/traces"
           method: post
           encoding:
             codec: otlp
         request:
-          {{- if .Values.collectors.ingestApiKeySecret.name }}
+          {{- if .Values.global.rush.ingestApiKeySecret.name }}
           headers:
             Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
           {{- end }}
@@ -155,12 +155,12 @@ data:
         inputs: ["otlp.metrics"]
         protocol:
           type: http
-          uri: "{{ include "rush.queryApiUrl" . }}/v1/metrics"
+          uri: "{{ include "rush.stackQueryApiUrl" . }}/v1/metrics"
           method: post
           encoding:
             codec: otlp
         request:
-          {{- if .Values.collectors.ingestApiKeySecret.name }}
+          {{- if .Values.global.rush.ingestApiKeySecret.name }}
           headers:
             Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
           {{- end }}
@@ -172,12 +172,12 @@ data:
         inputs: ["otlp.logs"]
         protocol:
           type: http
-          uri: "{{ include "rush.queryApiUrl" . }}/v1/logs"
+          uri: "{{ include "rush.stackQueryApiUrl" . }}/v1/logs"
           method: post
           encoding:
             codec: otlp
         request:
-          {{- if .Values.collectors.ingestApiKeySecret.name }}
+          {{- if .Values.global.rush.ingestApiKeySecret.name }}
           headers:
             Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
           {{- end }}

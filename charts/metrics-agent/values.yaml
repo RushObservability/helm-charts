@@ -1,0 +1,166 @@
+image:
+  repository: ghcr.io/rushobservability/metrics-agent
+  pullPolicy: IfNotPresent
+  tag: ""
+  # Prefer a digest in production. When set, digest takes precedence over tag.
+  digest: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Populated by rush-observability-stack. Standalone installs leave this disabled
+# and must continue to set rushRemoteWrite.url and bearerTokenSecret explicitly.
+global:
+  rush:
+    stack:
+      enabled: false
+    queryApi:
+      serviceName: ""
+      port: 8080
+    ingestApiKeySecret:
+      name: ""
+      key: api-key
+
+# The controller is intentionally single-replica until leader election is
+# implemented. The deployment template rejects values other than one.
+replicaCount: 1
+
+controller:
+  logLevel: info
+  workers: 2
+  resyncPeriod: 5m
+
+scrape:
+  enabled: true
+  interval: 15s
+  timeout: 10s
+
+serviceAccount:
+  create: true
+  # The controller needs a projected Kubernetes token to watch cluster-scoped
+  # resources. Kubernetes rotates this token automatically.
+  automountServiceAccountToken: true
+  annotations: {}
+  name: ""
+
+rbac:
+  create: true
+
+podAnnotations: {}
+podLabels: {}
+
+# Labels added to every Prometheus remote-write series. These values override
+# same-named labels supplied by a scrape target so the deployment label remains
+# consistent across workload and metrics-agent self-metrics.
+extraLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  privileged: false
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 48Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+# Explicitly disable host namespace sharing and service-link environment
+# injection. The agent only needs network access to the Kubernetes API and its
+# configured scrape/remote-write endpoints.
+hostNetwork: false
+hostPID: false
+hostIPC: false
+shareProcessNamespace: false
+enableServiceLinks: false
+terminationGracePeriodSeconds: 30
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+
+service:
+  type: ClusterIP
+  port: 7070
+  annotations: {}
+
+ui:
+  # The embedded UI is enabled by default and is served through the existing
+  # metrics-agent HTTP Service.
+  enabled: true
+  path: /ui/
+  # Empty uses service.port. Set this only when the UI/server should listen on
+  # a different port; the chart will expose that port through the Service.
+  port: ""
+  # Empty binds the UI to all interfaces on the selected HTTP port.
+  address: ""
+
+status:
+  livenessPath: /livez
+  readinessPath: /readyz
+  metricsPath: /metrics
+
+# Optional Prometheus Operator scrape of the agent's /metrics endpoint for
+# clusters that already run a separate Prometheus. This is not required for
+# Rush publishing; use rushRemoteWrite for direct delivery to Rush.
+selfMetrics:
+  enabled: false
+
+# Additional non-secret environment variables for the metrics-agent container.
+env: []
+
+serviceMonitor:
+  enabled: false
+  annotations: {}
+  labels: {}
+  interval: 30s
+
+rushRemoteWrite:
+  # The Rust agent publishes its own /metrics payload directly to this URL.
+  enabled: false
+  url: ""
+  interval: 15s
+  # Set true only when the target Rush tenant explicitly has "Require ingest
+  # key" disabled. Otherwise bearerTokenSecret.name is required.
+  allowAnonymous: false
+  # Optional tenant name/id routing hint. It never authorizes access; the
+  # ingest-only bearer key must already belong to this tenant.
+  tenant: ""
+  bearerTokenSecret:
+    # Required when enabled. The key must be a Rush ingest-only API key with
+    # the metrics signal enabled, not a query/user or legacy key.
+    name: ""
+    key: token
+
+# The VictoriaMetrics Operator's Prometheus converter must be enabled with
+# VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES=true. See README.md.
+precedence:
+  enabled: true
+
+networkPolicy:
+  enabled: false
+  # NetworkPolicy cannot identify the Kubernetes API server or a remote-write
+  # destination portably across clusters. Set enabled=true and provide the
+  # narrowest ingress/egress rules for your cluster; empty lists are deny-all.
+  # See examples/values-secure.yaml.
+  ingress: []
+  egress: []

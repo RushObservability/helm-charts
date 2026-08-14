@@ -9,73 +9,46 @@
 
 </div>
 
-The `rushobservability` chart installs the Rush platform: ClickHouse, Query API,
-and frontend, with optional SRE agent and telemetry collectors.
+## Choose a chart
+
+| Chart | Installs | Use it when |
+|---|---|---|
+| `rushobservability` | Query API, frontend, anomaly engine, and ClickHouse | You already collect telemetry or want only the Rush platform. |
+| `rush-observability-stack` | Core Rush plus optional SRE agent, metrics-agent, Vector, OTel Collector, and PostgreSQL collector | You want one chart to manage the complete observability stack. |
+| `metrics-agent` | The standalone Rush metrics agent | You only need Kubernetes metric discovery and remote write. |
 
 ## Quick install
+
+Install the complete stack with add-ons disabled until you create an ingest key:
 
 ```bash
 helm repo add rush https://RushObservability.github.io/helm-charts
 helm repo update
+helm install rush rush/rush-observability-stack \
+  --namespace observability \
+  --create-namespace
+```
+
+Install only core Rush:
+
+```bash
 helm install rush rush/rushobservability \
   --namespace observability \
   --create-namespace
 ```
 
-Check the release:
+## Next steps
 
-```bash
-helm test rush --namespace observability --logs
-```
+- [Configure the complete stack](docs/stack.md)
+- [Choose a ClickHouse mode](docs/clickhouse.md)
+- [Secure ingest and secrets](docs/security.md)
+- [Run Rush reliably](docs/reliability.md)
+- [Browse all documentation](docs/README.md)
 
-## Choose a collector
-
-Set `collectors.mode` based on how telemetry reaches Rush:
-
-| Mode | Chart-managed collector |
-|---|---|
-| `none` | None. Send telemetry from your existing pipeline. This is the default. |
-| `otel` | OpenTelemetry Collector with OTLP ingestion. |
-| `vector` | Vector DaemonSet that tails Kubernetes pod logs. |
-| `hybrid` | OpenTelemetry Collector and Vector. |
-
-Before enabling a collector, create an ingest key under **Settings → API Keys**.
-See [ingest key setup](docs/security.md#ingest-keys).
-
-## Start from an example
-
-| Deployment | Values file |
-|---|---|
-| Single-node, operator-managed ClickHouse | [`rush-single.yaml`](examples/rush-single.yaml) |
-| Standalone ClickHouse without an operator | [`rush-clickhouse-standalone.yaml`](examples/rush-clickhouse-standalone.yaml) |
-| Existing external ClickHouse | [`rush-clickhouse-external.yaml`](examples/rush-clickhouse-external.yaml) |
-| High availability | [`rush-ha.yaml`](examples/rush-ha.yaml) |
-| Per-signal retention | [`rush-retention.yaml`](examples/rush-retention.yaml) |
-| S3 cold-data tiering | [`rush-s3-tiering.yaml`](examples/rush-s3-tiering.yaml) |
-| Dedicated application and ClickHouse nodes | [`rush-node-groups.yaml`](examples/rush-node-groups.yaml) |
-
-Install with an example:
-
-```bash
-helm install rush rush/rushobservability \
-  --namespace observability \
-  --create-namespace \
-  -f examples/rush-ha.yaml
-```
-
-## Documentation
-
-- [All Helm chart docs](docs/README.md)
-- [ClickHouse deployment modes](docs/clickhouse.md)
-- [Reliability and high availability](docs/reliability.md)
-- [Networking and ingress](docs/networking.md)
-- [Security, ingest keys, and secrets](docs/security.md)
-- [Scheduling and dedicated node groups](docs/scheduling.md)
-- [Access and integrations](docs/access-and-integrations.md)
-- [Operations and release testing](docs/operations.md)
-
-For every setting, see the [default values](charts/rushobservability/values.yaml)
-and [values schema](charts/rushobservability/values.schema.json).
+Core examples are in [`examples/`](examples/). For every setting, see the
+[core values](charts/rushobservability/values.yaml), [stack
+values](charts/rush-observability-stack/values.yaml), and [metrics-agent
+values](charts/metrics-agent/values.yaml).
 
 ## License
 

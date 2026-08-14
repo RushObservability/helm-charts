@@ -1,0 +1,35 @@
+{{- if not (has .Values.collectors.mode (list "none" "otel" "vector" "hybrid")) -}}
+{{- fail "collectors.mode must be one of: none, otel, vector, hybrid" -}}
+{{- end -}}
+{{- if not (has .Values.collectors.vector.mode (list "logs" "full-otel")) -}}
+{{- fail "collectors.vector.mode must be one of: logs, full-otel" -}}
+{{- end -}}
+{{- if not (has .Values.collectors.otel.kind (list "deployment" "daemonset")) -}}
+{{- fail "collectors.otel.kind must be one of: deployment, daemonset" -}}
+{{- end -}}
+{{- $collectorEnabled := ne .Values.collectors.mode "none" -}}
+{{- $metricsNeedsKey := and .Values.metricsAgent.enabled .Values.metricsAgent.rushRemoteWrite.enabled (not .Values.metricsAgent.rushRemoteWrite.allowAnonymous) -}}
+{{- if and .Values.metricsAgent.enabled (not (semverCompare ">=1.27.0-0" .Capabilities.KubeVersion.Version)) -}}
+{{- fail "metricsAgent.enabled=true requires Kubernetes 1.27 or newer" -}}
+{{- end -}}
+{{- if and (or (and $collectorEnabled (not .Values.collectors.allowAnonymousIngest)) $metricsNeedsKey) (not .Values.global.rush.ingestApiKeySecret.name) -}}
+{{- fail "global.rush.ingestApiKeySecret.name is required by enabled collectors or metrics-agent remote write" -}}
+{{- end -}}
+{{- if and .Values.global.sreAgent.enabled (not .Values.global.sreAgent.llmApiKey) (not .Values.global.sreAgent.llmApiKeySecret.name) -}}
+{{- fail "global.sreAgent.llmApiKeySecret.name (or llmApiKey) is required when the SRE agent is enabled" -}}
+{{- end -}}
+{{- if and .Values.global.sreAgent.enabled .Values.global.sreAgent.networkPolicy.enabled (not .Values.global.sreAgent.networkPolicy.allowExternalHttpsEgress) (empty .Values.global.sreAgent.networkPolicy.extraEgress) -}}
+{{- fail "the SRE agent NetworkPolicy requires allowExternalHttpsEgress=true or explicit extraEgress rules" -}}
+{{- end -}}
+{{- if and .Values.postgresCollector.enabled (not .Values.rushobservability.enterprise.license.enabled) -}}
+{{- fail "postgresCollector.enabled=true requires rushobservability.enterprise.license.enabled=true" -}}
+{{- end -}}
+{{- if and .Values.postgresCollector.enabled .Values.postgresCollector.networkPolicy.enabled (empty .Values.postgresCollector.networkPolicy.extraEgress) -}}
+{{- fail "postgresCollector NetworkPolicy requires an explicit extraEgress rule for the Postgres server" -}}
+{{- end -}}
+{{- if .Values.rushobservability.imageSecurity.requireDigests -}}
+{{- if and .Values.global.sreAgent.enabled (not .Values.global.sreAgent.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires global.sreAgent.image.digest" -}}{{- end -}}
+{{- if and .Values.postgresCollector.enabled (not .Values.postgresCollector.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires postgresCollector.image.digest" -}}{{- end -}}
+{{- if and (include "rush.stackOtelEnabled" .) (not .Values.collectors.otel.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires collectors.otel.image.digest" -}}{{- end -}}
+{{- if and (include "rush.stackVectorEnabled" .) (not .Values.collectors.vector.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires collectors.vector.image.digest" -}}{{- end -}}
+{{- end -}}

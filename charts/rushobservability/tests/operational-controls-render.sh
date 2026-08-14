@@ -38,22 +38,6 @@ if grep -Fq 'startupProbe:' <<<"$without_startup"; then
   exit 1
 fi
 
-daemonset="$(helm template controls "$chart_dir" \
-  --show-only templates/otel-collector-workload.yaml \
-  --set collectors.mode=otel \
-  --set collectors.allowAnonymousIngest=true \
-  --set collectors.otel.kind=daemonset)"
-if grep -q '^  strategy:' <<<"$daemonset"; then
-  echo 'Deployment rollout strategy leaked into the OTel DaemonSet' >&2
-  exit 1
-fi
-for expected in 'updateStrategy:' 'maxSurge: 1' 'startupProbe:'; do
-  grep -Fq "$expected" <<<"$daemonset" || {
-    echo "OTel DaemonSet control missing: $expected" >&2
-    exit 1
-  }
-done
-
 standalone="$(helm template controls "$chart_dir" \
   --set clickhouse.enabled=false \
   --set clickhouse.mode=standalone \

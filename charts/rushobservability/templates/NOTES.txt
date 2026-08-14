@@ -1,168 +1,32 @@
 {{- $fullName := include "rush.fullname" . -}}
 {{- $ns := .Release.Namespace -}}
-{{- $ch := include "rush.clickhouseService" . -}}
-{{- $mode := .Values.collectors.mode -}}
-{{- $otelEnabled := include "rush.otelEnabled" . -}}
-{{- $vectorEnabled := include "rush.vectorEnabled" . -}}
-{{- $vectorFullOtel := include "rush.vectorFullOtel" . -}}
 
-╔════════════════════════════════════════════════════════════════════╗
-║  Rush Observability — release "{{ .Release.Name }}" installed      ║
-╚════════════════════════════════════════════════════════════════════╝
+Rush core is installed.
 
-Core services:
-  • rush-api      svc/{{ include "rush.queryApiServiceName" . }}     (port {{ .Values.queryApi.service.port }})
-  • rush-frontend svc/{{ include "rush.componentName" (dict "root" . "component" "frontend") }}      (port {{ .Values.frontend.service.port }})
-  {{- if .Values.sreAgent.enabled }}
-  • sre-agent     svc/{{ include "rush.sreAgentServiceName" . }}     (port {{ .Values.sreAgent.service.port }})
-  {{- end }}
-  • clickhouse    svc/{{ $ch }}                     (8123 HTTP / 9000 native)
+Services:
+  Query API: svc/{{ include "rush.queryApiServiceName" . }}:{{ .Values.queryApi.service.port }}
+  Frontend:  svc/{{ include "rush.componentName" (dict "root" . "component" "frontend") }}:{{ .Values.frontend.service.port }}
+  ClickHouse: svc/{{ include "rush.clickhouseService" . }}:8123
 
 {{- if and .Values.ingress.enabled .Values.ingress.frontend.enabled }}
-Reach the UI at:
-  {{ include "rush.effectiveBaseUrl" . }}
-
-The ingress controller must be admitted by frontend.networkPolicy.extraIngress
-when it does not run in this namespace.
+UI: {{ include "rush.effectiveBaseUrl" . }}
 {{- else }}
-Reach the UI with:
+Open the UI:
   kubectl -n {{ $ns }} port-forward svc/{{ include "rush.componentName" (dict "root" . "component" "frontend") }} 8080:{{ .Values.frontend.service.port }}
   open http://localhost:8080
 {{- end }}
 
-Production browser security:
-  Terminate TLS at your ingress or edge proxy and set Strict-Transport-Security
-  there (recommended: max-age=31536000; includeSubDomains after validating every
-  subdomain; add preload only after completing the browser preload checklist).
-  The frontend pod cannot set HSTS correctly because it receives in-cluster HTTP.
-
-Admin login (user "admin"):
 {{- if .Values.queryApi.existingSecret }}
-  Password comes from your Secret "{{ .Values.queryApi.existingSecret }}" (key initial-admin-password).
-{{- else if .Values.queryApi.adminPassword }}
-  Password was preset via queryApi.adminPassword.
-{{- else }}
-  An initial password was auto-generated. Retrieve it with:
-    kubectl -n {{ $ns }} get secret {{ $fullName }}-bootstrap \
-      -o jsonpath="{.data.initial-admin-password}" | base64 -d ; echo
-{{- end }}
-  Change it after first login. The audit/session HMAC keys live in the same
-  Secret. For a planned audit-key rotation, change queryApi.audit.keyId and
-  retain the old key in audit-hmac-previous-keys so old segments still verify.
-
-────────────────────────────────────────────────────────────────────
-  Data ingestion — collectors.mode = "{{ $mode }}"
-────────────────────────────────────────────────────────────────────
-
-{{- if eq $mode "none" }}
-
-No collector was deployed. You are responsible for sending telemetry to Rush.
-
-  Option 1: run your own OTel Collector pointed at the query-api OTLP endpoint:
-    exporters:
-      otlphttp/rush:
-        endpoint: {{ include "rush.queryApiUrl" . }}
-        headers:
-          Authorization: "Bearer ${env:RUSH_INGEST_API_KEY}"
-
-  Option 2: re-install with --set collectors.mode=otel|vector|hybrid
-  to let Rush deploy one for you.
-
-{{- else if eq $mode "otel" }}
-
-✓ OpenTelemetry Collector deployed as a {{ .Values.collectors.otel.kind }}.
-
-  Endpoints (in-cluster):
-    gRPC:  {{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.grpcPort }}
-    HTTP:  http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.httpPort }}
-
-  Signals enabled: {{ if .Values.collectors.otel.signals.traces }}traces {{ end }}{{ if .Values.collectors.otel.signals.metrics }}metrics {{ end }}{{ if .Values.collectors.otel.signals.logs }}logs{{ end }}
-
-  ── Point your app at the collector ──
-
-  Env vars (OTel SDK auto-discovers these):
-    OTEL_EXPORTER_OTLP_ENDPOINT=http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.httpPort }}
-    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-    OTEL_SERVICE_NAME=my-service
-
-  Or via gRPC (lower overhead):
-    OTEL_EXPORTER_OTLP_ENDPOINT=http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.grpcPort }}
-    OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-
-{{- else if eq $mode "vector" }}
-
-✓ Vector DaemonSet deployed in "{{ .Values.collectors.vector.mode }}" mode.
-
-  {{- if eq .Values.collectors.vector.mode "logs" }}
-
-  Vector is tailing every pod's stdout/stderr on every node and forwarding
-  logs to Rush.
-
-  There is nothing to configure in your apps — write to stdout/stderr
-  and Vector picks it up automatically. Structured JSON logs are
-  parsed; free-form lines fall back to the Body field.
-
-  Inspect Vector itself:
-    kubectl -n {{ $ns }} port-forward ds/{{ $fullName }}-vector 8686:8686
-    curl http://localhost:8686/health
-  {{- else }}
-
-  Vector accepts OTLP on 4317/4318 AND tails kubernetes logs.
-
-  Endpoints (in-cluster):
-    gRPC:  {{ $fullName }}-vector.{{ $ns }}.svc.cluster.local:4317
-    HTTP:  http://{{ $fullName }}-vector.{{ $ns }}.svc.cluster.local:4318
-    API:   http://{{ $fullName }}-vector.{{ $ns }}.svc.cluster.local:8686
-
-  Env vars for your apps:
-    OTEL_EXPORTER_OTLP_ENDPOINT=http://{{ $fullName }}-vector.{{ $ns }}.svc.cluster.local:4318
-    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-  {{- end }}
-
-  If you need metrics/traces in ClickHouse too, switch to mode=hybrid:
-    helm upgrade {{ .Release.Name }} . --set collectors.mode=hybrid
-
-{{- else if eq $mode "hybrid" }}
-
-✓ Hybrid mode: OTel Collector for metrics+traces, Vector DaemonSet for logs.
-
-  OTel Collector (traces + metrics):
-    gRPC:  {{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.grpcPort }}
-    HTTP:  http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.httpPort }}
-
-  Vector DaemonSet: automatically tails every pod's stdout/stderr on
-  every node. No app-side config needed for logs.
-
-  ── Point your app at the OTel Collector ──
-
-  Env vars:
-    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.httpPort }}
-    OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://{{ $fullName }}-otel-collector.{{ $ns }}.svc.cluster.local:{{ .Values.collectors.otel.service.httpPort }}
-    OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-    OTEL_LOGS_EXPORTER=none        # logs are handled by Vector from kube stdout
-    OTEL_SERVICE_NAME=my-service
-
-{{- else }}
-
-Unknown collectors.mode "{{ $mode }}" — expected one of: none, otel, vector, hybrid.
-
+The initial admin password is in Secret {{ .Values.queryApi.existingSecret }}.
+{{- else if not .Values.queryApi.adminPassword }}
+Retrieve the generated initial admin password:
+  kubectl -n {{ $ns }} get secret {{ $fullName }}-bootstrap \
+    -o jsonpath="{.data.initial-admin-password}" | base64 -d ; echo
 {{- end }}
 
-{{- if or (eq $mode "otel") (eq $mode "hybrid") }}
+This core chart does not install telemetry collectors or agents. Use the
+rush-observability-stack chart for SRE agent, metrics agent, Vector, and the
+OpenTelemetry Collector.
 
-  Inspect the collector's own self-metrics:
-    kubectl -n {{ $ns }} port-forward svc/{{ $fullName }}-otel-collector 8888:8888
-    curl http://localhost:8888/metrics | grep otelcol_exporter
-{{- end }}
-
-────────────────────────────────────────────────────────────────────
-
-Docs & quickstarts:
-  https://rushobservability.com/docs/quickstart
-  https://rushobservability.com/docs/send-otel
-  https://rushobservability.com/docs/send-vector
-
-{{- if .Values.helmTests.enabled }}
-Validate the installed release:
-  helm test {{ .Release.Name }} -n {{ $ns }} --logs
-{{- end }}
+When TLS terminates outside the frontend pod, configure
+Strict-Transport-Security at that ingress, gateway, or load balancer.

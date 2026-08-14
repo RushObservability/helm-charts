@@ -1,0 +1,16 @@
+metrics-agent has been installed.
+
+The Rust agent watches supported scrape CRDs through the Kubernetes API and can
+publish its own health metrics directly to Rush.
+
+{{- if .Values.rushRemoteWrite.enabled }}
+
+Direct Rush remote write is enabled at:
+  {{ .Values.rushRemoteWrite.url }}
+{{- end }}
+{{- if .Values.ui.enabled }}
+
+The embedded metrics-agent UI is enabled at:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "metrics-agent.fullname" . }} {{ include "metrics-agent.httpPort" . }}:{{ include "metrics-agent.httpPort" . }}
+  open http://localhost:{{ include "metrics-agent.httpPort" . }}{{ .Values.ui.path }}
+{{- end }}

@@ -39,8 +39,8 @@
 #   shardsCount: 1
 #   replicasCount: 1
 #   image:
-#     repository: altinity/clickhouse-server
-#     tag: "25.3.6.10034.altinitystable"
+#     repository: clickhouse/clickhouse-server
+#     tag: "26.6.1.1193"
 #     pullPolicy: IfNotPresent
 #   clickhouse:
 #     defaultUser:
@@ -153,8 +153,8 @@
 #   shardsCount: 1
 #   replicasCount: 1
 #   image:
-#     repository: altinity/clickhouse-server
-#     tag: "25.3.6.10034.altinitystable"
+#     repository: clickhouse/clickhouse-server
+#     tag: "26.6.1.1193"
 #     pullPolicy: IfNotPresent
 #   clickhouse:
 #     defaultUser:
@@ -253,8 +253,8 @@ clickhouse:
   shardsCount: 1
   replicasCount: 1
   image:
-    repository: altinity/clickhouse-server
-    tag: "25.3.6.10034.altinitystable"
+    repository: clickhouse/clickhouse-server
+    tag: "26.6.1.1193"
     pullPolicy: IfNotPresent
   clickhouse:
     defaultUser:
@@ -377,8 +377,8 @@ rushConfig:
 #   shardsCount: 1
 #   replicasCount: 1
 #   image:
-#     repository: altinity/clickhouse-server
-#     tag: "25.3.6.10034.altinitystable"
+#     repository: clickhouse/clickhouse-server
+#     tag: "26.6.1.1193"
 #     pullPolicy: IfNotPresent
 #   clickhouse:
 #     defaultUser:

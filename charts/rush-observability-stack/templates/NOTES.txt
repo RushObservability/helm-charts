@@ -1,0 +1,14 @@
+Rush Observability stack is installed.
+
+Core Rush:
+  Query API: {{ include "rush.stackQueryApiUrl" . }}
+  Frontend:  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ .Release.Name }}-frontend 3000:3000
+
+Enabled add-ons:
+  SRE agent:          {{ ternary "yes" "no" .Values.global.sreAgent.enabled }}
+  Metrics agent:      {{ ternary "yes" "no" .Values.metricsAgent.enabled }}
+  PostgreSQL add-on:  {{ ternary "yes" "no" .Values.postgresCollector.enabled }}
+  Collector topology: {{ .Values.collectors.mode }}
+
+Create an ingest-only API key in Rush, store it in a Secret, then set:
+  global.rush.ingestApiKeySecret.name=<secret-name>

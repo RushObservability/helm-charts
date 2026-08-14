@@ -62,9 +62,3 @@ clickhouse:
 #   scheduling:
 #     nodeSelector:
 #       nodegroup: rush-api
-
-# Vector is a node-local log collector. Opt it out when it should run on every
-# otherwise eligible node instead of only the rush-apps node group.
-# collectors:
-#   vector:
-#     inheritGlobalScheduling: false

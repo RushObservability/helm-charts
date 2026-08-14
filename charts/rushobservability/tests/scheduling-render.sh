@@ -31,24 +31,7 @@ for inherited in 'topology-zone: west' 'key: rush-apps' 'nodeAffinity:' 'topolog
   fi
 done
 
-otel="$(helm template scheduling "$chart_dir" \
-  --show-only templates/otel-collector-workload.yaml -f "$fixture")"
-for expected in 'nodegroup: rush-apps' 'key: otel-only' 'nodeAffinity:' 'topologySpreadConstraints:'; do
-  grep -Fq "$expected" <<<"$otel" || {
-    echo "OTel scheduling merge is missing: $expected" >&2
-    exit 1
-  }
-done
-if grep -Fq 'key: rush-apps' <<<"$otel"; then
-  echo 'component tolerations did not replace the global tolerations list' >&2
-  exit 1
-fi
-
-for workload_template in \
-  templates/sre-agent-deployment.yaml \
-  templates/anomaly-engine-deployment.yaml \
-  templates/vector-daemonset.yaml \
-  templates/postgres-collector-deployment.yaml; do
+for workload_template in templates/anomaly-engine-deployment.yaml; do
   workload="$(helm template scheduling "$chart_dir" \
     --show-only "$workload_template" -f "$fixture")"
   grep -Fq 'nodegroup: rush-apps' <<<"$workload" || {

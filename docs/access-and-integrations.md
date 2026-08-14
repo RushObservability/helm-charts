@@ -60,22 +60,25 @@ Configure an operator-owned tenant repository policy. Find a repository's
 stable ID with `gh api repos/OWNER/REPO --jq .id`. The installation ID is at the
 end of the installed-app settings URL.
 
+The SRE agent is installed by `rush-observability-stack`:
+
 ```yaml
-sreAgent:
-  enabled: true
-  networkPolicy:
-    allowExternalHttpsEgress: true
-  githubApp:
+global:
+  sreAgent:
     enabled: true
-    appId: "123456"
-    tenantRepositories:
-      acme:
-        - repository: acme/api
-          installationId: 654321
-          repositoryId: 123456789
-    privateKeySecret:
-      name: rush-github-app
-      key: private-key.pem
+    networkPolicy:
+      allowExternalHttpsEgress: true
+    githubApp:
+      enabled: true
+      appId: "123456"
+      tenantRepositories:
+        acme:
+          - repository: acme/api
+            installationId: 654321
+            repositoryId: 123456789
+      privateKeySecret:
+        name: rush-github-app
+        key: private-key.pem
 ```
 
 Query API and SRE agent receive the same deny-by-default policy. Only tenant
@@ -94,17 +97,17 @@ chart creates a dedicated service account with read-only RoleBindings in only
 those namespaces:
 
 ```yaml
-sreAgent:
-  enabled: true
-  kube:
-    tenantNamespaces:
-      acme: [acme-prod, acme-staging]
-      "*": [shared-observability]
-    allowClusterScopedForAdmins: false
+global:
+  sreAgent:
+    enabled: true
+    kube:
+      tenantNamespaces:
+        acme: [acme-prod, acme-staging]
+        "*": [shared-observability]
+      allowClusterScopedForAdmins: false
 ```
 
 By default, the agent cannot read Secrets, pod logs, nodes, or the namespace
 list. Set `allowClusterScopedForAdmins: true` only for node-level diagnostics.
 This adds read-only nodes and namespaces RBAC, but Query API grants the required
 `kube_cluster` scope only to administrators.
-

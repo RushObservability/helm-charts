@@ -1,0 +1,15 @@
+{{- if and .Values.global.sreAgent.enabled .Values.global.sreAgent.podDisruptionBudget.enabled }}
+{{ include "rush.podDisruptionBudget" (dict "root" . "component" "sre-agent" "pdb" .Values.global.sreAgent.podDisruptionBudget) }}
+---
+{{- end }}
+{{- if and .Values.postgresCollector.enabled .Values.postgresCollector.podDisruptionBudget.enabled }}
+{{ include "rush.podDisruptionBudget" (dict "root" . "component" "postgres-collector" "pdb" .Values.postgresCollector.podDisruptionBudget) }}
+---
+{{- end }}
+{{- if and (include "rush.stackOtelEnabled" .) .Values.collectors.otel.podDisruptionBudget.enabled }}
+{{ include "rush.podDisruptionBudget" (dict "root" . "component" "otel-collector" "pdb" .Values.collectors.otel.podDisruptionBudget) }}
+---
+{{- end }}
+{{- if and (include "rush.stackVectorEnabled" .) .Values.collectors.vector.podDisruptionBudget.enabled }}
+{{ include "rush.podDisruptionBudget" (dict "root" . "component" "vector" "pdb" .Values.collectors.vector.podDisruptionBudget) }}
+{{- end }}

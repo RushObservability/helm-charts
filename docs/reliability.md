@@ -59,8 +59,9 @@ First-party Deployments expose a `rollout` block. Each workload also exposes an
 optional `podDisruptionBudget`.
 
 Stateless serving paths default to zero-unavailable rolling updates. Singleton
-consumers such as the anomaly engine, PostgreSQL collector, and ingest drain
-worker default to `Recreate` to avoid duplicate work.
+core consumers such as the anomaly engine and ingest drain worker default to
+`Recreate` to avoid duplicate work. The stack applies the same rule to the
+PostgreSQL collector.
 
 ```yaml
 queryApi:
@@ -78,15 +79,16 @@ queryApi:
 ```
 
 Do not set `minAvailable: 1` on a singleton unless you intend to block
-voluntary node drains. OpenTelemetry Collector and Vector DaemonSets also have
-configurable update strategies. Standalone ClickHouse exposes its StatefulSet
-update strategy and PDB under `clickhouseStandalone`.
+voluntary node drains. The stack's OpenTelemetry Collector and Vector
+DaemonSets also have configurable update strategies. Standalone ClickHouse
+exposes its StatefulSet update strategy and PDB under `clickhouseStandalone`.
 
 ## Health probes and validation
 
-Query API, frontend, SRE agent, OpenTelemetry Collector, and standalone
-ClickHouse expose startup, readiness, and liveness settings. A startup probe
-protects slow initialization from premature liveness restarts.
+Query API, frontend, and standalone ClickHouse expose startup, readiness, and
+liveness settings. The stack adds the same controls for SRE agent and
+OpenTelemetry Collector. A startup probe protects slow initialization from
+premature liveness restarts.
 
 ```yaml
 queryApi:
@@ -104,4 +106,3 @@ queryApi:
 The included `values.schema.json` validates core enums, numeric ranges, image
 digests, rollout/PDB/probe shapes, and the HA buffer contract during `helm
 lint`, `helm template`, install, and upgrade.
-

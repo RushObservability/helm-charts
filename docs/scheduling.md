@@ -2,9 +2,9 @@
 
 [← Documentation](README.md)
 
-`global.scheduling` sets defaults for Rush-owned workloads: Query API,
-frontend, SRE agent, anomaly engine, OpenTelemetry Collector, Vector, and
-licensed collectors.
+In the core chart, `global.scheduling` applies to Query API, frontend, and the
+anomaly engine. In `rush-observability-stack`, the same global block also
+applies to SRE agent, OpenTelemetry Collector, Vector, and licensed collectors.
 
 ClickHouse does not inherit these defaults, so its storage pods can use a
 separate node group:
@@ -71,12 +71,12 @@ queryApi:
 ```
 
 Set `inheritGlobalScheduling: false` on a workload to ignore global scheduling.
-This is useful for `collectors.vector`, whose DaemonSet otherwise runs only on
-nodes matching the global selector.
+In the stack, this is useful for `collectors.vector`, whose DaemonSet otherwise
+runs only on nodes matching the global selector. Core component overrides live
+under `rushobservability` when using the stack.
 
 Standalone ClickHouse uses `clickhouseStandalone.nodeSelector`, `tolerations`,
 `affinity`, and `topologySpreadConstraints`. The bundled operator uses the
 corresponding `clickhouse.operator` and `clickhouse.operator.crdHook` values.
 
 See [the node-group example](../examples/rush-node-groups.yaml).
-

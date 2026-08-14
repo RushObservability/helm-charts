@@ -1,0 +1,306 @@
+# rush-observability-stack installs the core Rush chart and keeps every
+# cluster-wide agent or collector opt-in. Configure core Rush under this key.
+# The fields below are also the bridge used by stack add-ons; every other core
+# value is inherited from the rushobservability dependency as usual.
+rushobservability:
+  imageSecurity:
+    requireDigests: false
+  queryApi:
+    existingSecret: ""
+  clickhouse:
+    mode: operator
+    fullnameOverride: ""
+    external:
+      url: ""
+      credentialsSecret: ""
+      userKey: user
+      passwordKey: password
+  enterprise:
+    license:
+      enabled: false
+      secret:
+        name: rush-license
+        key: license-key
+  kubernetes:
+    enabled: false
+  argocd:
+    enabled: false
+    namespace: argocd
+  fluxcd:
+    enabled: false
+    namespace: flux-system
+
+global:
+  # Shared by the stack templates, the core Rush dependency, and metrics-agent.
+  rush:
+    stack:
+      enabled: true
+    queryApiIngressComponents:
+      - otel-collector
+      - vector
+      - postgres-collector
+      - metrics-agent
+    queryApi:
+      # Blank resolves to <release>-query-api.
+      serviceName: ""
+      port: 8080
+    # Existing Secret containing a Rush ingest-only API key. OTel Collector,
+    # Vector, and metrics-agent all use this one setting.
+    ingestApiKeySecret:
+      name: ""
+      key: api-key
+
+  scheduling:
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    topologySpreadConstraints: []
+  podAnnotations: {}
+  podLabels: {}
+  imagePullSecrets: []
+  priorityClassName: ""
+  runtimeClassName: ""
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  serviceAccount:
+    annotations: {}
+
+  # SRE agent configuration is global because the core Query API needs its
+  # service address and internal token when the add-on is enabled.
+  sreAgent:
+    enabled: false
+    inheritGlobalScheduling: true
+    scheduling: {}
+    podAnnotations: {}
+    podLabels: {}
+    imagePullSecrets: []
+    priorityClassName: ""
+    runtimeClassName: ""
+    extraEnvFrom: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    serviceAccount:
+      create: true
+      name: ""
+      annotations: {}
+    image:
+      repository: mzupan/sre-agent
+      tag: "0.1.0"
+      digest: ""
+      pullPolicy: Always
+    replicas: 1
+    port: 8081
+    rollout:
+      strategy: RollingUpdate
+      maxUnavailable: 0
+      maxSurge: 1
+      minReadySeconds: 0
+      progressDeadlineSeconds: 600
+      revisionHistoryLimit: 10
+    podDisruptionBudget:
+      enabled: false
+      type: maxUnavailable
+      value: 1
+    probes:
+      startup: { enabled: true, path: /healthz, initialDelaySeconds: 0, periodSeconds: 5, timeoutSeconds: 2, failureThreshold: 60, successThreshold: 1 }
+      readiness: { enabled: true, path: /healthz, initialDelaySeconds: 3, periodSeconds: 5, timeoutSeconds: 2, failureThreshold: 3, successThreshold: 1 }
+      liveness: { enabled: true, path: /healthz, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 2, failureThreshold: 3, successThreshold: 1 }
+    internalAuthToken: ""
+    env:
+      CLICKHOUSE_DATABASE: observability
+      RUST_LOG: sre_agent=info,tower_http=info
+      OPENAI_BASE_URL: https://api.openai.com
+    kube:
+      tenantNamespaces: {}
+      allowClusterScopedForAdmins: false
+    llmApiKey: ""
+    llmApiKeySecret:
+      name: ""
+      key: api-key
+    githubApp:
+      enabled: false
+      appId: ""
+      apiUrl: https://api.github.com
+      tenantRepositories: {}
+      privateKeySecret:
+        name: ""
+        key: private-key.pem
+      cacheSizeLimit: 1Gi
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: "1", memory: 512Mi }
+    podSecurityContext:
+      runAsNonRoot: true
+      fsGroup: 65532
+      fsGroupChangePolicy: OnRootMismatch
+      seccompProfile: { type: RuntimeDefault }
+    service:
+      type: ClusterIP
+      port: 8081
+    networkPolicy:
+      enabled: true
+      allowExternalHttpsEgress: false
+      extraIngress: []
+      extraEgress: []
+
+# Cluster metrics discovery and direct Prometheus remote write to Rush.
+metricsAgent:
+  enabled: false
+  rushRemoteWrite:
+    enabled: true
+    url: ""
+    allowAnonymous: false
+  extraLabels: {}
+
+# Paid Postgres monitoring add-on. Requires the Rush license secret configured
+# under rushobservability.enterprise.license and a DSN/API-key Secret below.
+postgresCollector:
+  enabled: false
+  inheritGlobalScheduling: true
+  scheduling: {}
+  podAnnotations: {}
+  podLabels: {}
+  imagePullSecrets: []
+  priorityClassName: ""
+  runtimeClassName: ""
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  serviceAccount:
+    create: false
+    name: ""
+    annotations: {}
+  rollout:
+    strategy: Recreate
+    minReadySeconds: 0
+    progressDeadlineSeconds: 600
+    revisionHistoryLimit: 10
+  podDisruptionBudget:
+    enabled: false
+    type: maxUnavailable
+    value: 1
+  networkPolicy:
+    enabled: true
+    extraIngress: []
+    extraEgress: []
+  image:
+    repository: mzupan/postgres-collector
+    tag: "0.1.0"
+    digest: ""
+    pullPolicy: Always
+  secret:
+    name: rush-pg-collector
+    dsnKey: dsn
+    apiKeyKey: api-key
+  env:
+    COLLECTOR_ENVIRONMENT: production
+    RUST_LOG: info
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: "500m", memory: 256Mi }
+
+# Choose one collection topology. "none" is the secure bootstrap default.
+collectors:
+  mode: none # none | otel | vector | hybrid
+  allowAnonymousIngest: false
+  otel:
+    inheritGlobalScheduling: true
+    scheduling: {}
+    podAnnotations: {}
+    podLabels: {}
+    imagePullSecrets: []
+    priorityClassName: ""
+    runtimeClassName: ""
+    extraEnvFrom: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    serviceAccount:
+      create: false
+      name: ""
+      annotations: {}
+    rollout:
+      strategy: RollingUpdate
+      maxUnavailable: 0
+      maxSurge: 1
+      minReadySeconds: 0
+      progressDeadlineSeconds: 600
+      revisionHistoryLimit: 10
+    podDisruptionBudget:
+      enabled: false
+      type: maxUnavailable
+      value: 1
+    networkPolicy:
+      enabled: true
+      allowSameNamespaceIngress: true
+      extraIngress: []
+      extraEgress: []
+    probes:
+      startup: { enabled: true, path: /, initialDelaySeconds: 0, periodSeconds: 5, timeoutSeconds: 2, failureThreshold: 60, successThreshold: 1 }
+      readiness: { enabled: true, path: /, initialDelaySeconds: 5, periodSeconds: 10, timeoutSeconds: 2, failureThreshold: 3, successThreshold: 1 }
+      liveness: { enabled: true, path: /, initialDelaySeconds: 15, periodSeconds: 20, timeoutSeconds: 2, failureThreshold: 3, successThreshold: 1 }
+    image:
+      repository: otel/opentelemetry-collector-contrib
+      tag: "0.118.0"
+      digest: ""
+      pullPolicy: IfNotPresent
+    kind: deployment
+    replicas: 2
+    autoscaling:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+    signals: { traces: true, metrics: true, logs: true }
+    resources:
+      requests: { cpu: 200m, memory: 256Mi }
+      limits: { cpu: "2", memory: 1Gi }
+    service:
+      type: ClusterIP
+      grpcPort: 4317
+      httpPort: 4318
+    configOverride: ""
+  vector:
+    inheritGlobalScheduling: true
+    scheduling: {}
+    podAnnotations: {}
+    podLabels: {}
+    imagePullSecrets: []
+    priorityClassName: ""
+    runtimeClassName: ""
+    extraEnvFrom: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    serviceAccount:
+      create: true
+      name: ""
+      annotations: {}
+    rollout:
+      strategy: RollingUpdate
+      maxUnavailable: 1
+      maxSurge: 0
+      minReadySeconds: 0
+      revisionHistoryLimit: 10
+    podDisruptionBudget:
+      enabled: false
+      type: maxUnavailable
+      value: 1
+    networkPolicy:
+      enabled: true
+      allowSameNamespaceIngress: true
+      allowExternalHttpsEgress: true
+      extraIngress: []
+      extraEgress: []
+    image:
+      repository: timberio/vector
+      tag: "0.56.0-distroless-libc"
+      digest: ""
+      pullPolicy: IfNotPresent
+    mode: logs # logs | full-otel
+    resources:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits: { cpu: "1", memory: 512Mi }
+    hostPath:
+      varLog: /var/log
+      varLibDockerContainers: /var/lib/docker/containers
+    configOverride: ""

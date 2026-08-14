@@ -1,6 +1,6 @@
-{{- if include "rush.vectorEnabled" . }}
+{{- if include "rush.stackVectorEnabled" . }}
 {{- $fullName := include "rush.fullname" . -}}
-{{- $fullOtel := include "rush.vectorFullOtel" . -}}
+{{- $fullOtel := include "rush.stackVectorFullOtel" . -}}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -37,14 +37,14 @@ spec:
           imagePullPolicy: {{ .Values.collectors.vector.image.pullPolicy }}
           args: ["--config", "/etc/vector/vector.yaml"]
           env:
-            {{- if .Values.collectors.ingestApiKeySecret.name }}
+            {{- if .Values.global.rush.ingestApiKeySecret.name }}
             - name: RUSH_INGEST_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.collectors.ingestApiKeySecret.name }}
-                  key: {{ .Values.collectors.ingestApiKeySecret.key }}
+                  name: {{ .Values.global.rush.ingestApiKeySecret.name }}
+                  key: {{ .Values.global.rush.ingestApiKeySecret.key }}
             {{- else if not .Values.collectors.allowAnonymousIngest }}
-            {{- fail "collectors.ingestApiKeySecret.name is required when an in-cluster collector is enabled" }}
+            {{- fail "global.rush.ingestApiKeySecret.name is required when an in-cluster collector is enabled" }}
             {{- end }}
             - name: VECTOR_SELF_NODE_NAME
               valueFrom:

@@ -1,7 +1,7 @@
 apiVersion: v2
 name: rushobservability
-description: Production observability platform with logs, metrics, traces, SLOs, anomaly detection, collectors, SRE automation, and ClickHouse
-version: 0.1.0
+description: Core Rush observability platform with Query API, frontend, anomaly processing, and ClickHouse
+version: 0.2.0
 appVersion: 0.1.24
 type: application
 kubeVersion: ">=1.25.0-0"
@@ -11,7 +11,6 @@ sources:
   - https://github.com/RushObservability/helm-charts
   - https://github.com/RushObservability/query-api
   - https://github.com/RushObservability/frontend
-  - https://github.com/RushObservability/sre-agent
 maintainers:
   - name: Mike Zupan
     email: mike@zcentric.com

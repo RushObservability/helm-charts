@@ -15,7 +15,8 @@ assert_rejected() {
 }
 
 assert_rejected 'zero API replicas' --set queryApi.replicas=0
-assert_rejected 'an unknown collector mode' --set collectors.mode=unknown
+assert_rejected 'the removed collectors block' --set collectors.mode=otel
+assert_rejected 'the removed top-level SRE agent block' --set sreAgent.enabled=true
 assert_rejected 'an invalid image digest' --set queryApi.image.digest=sha256:nope
 assert_rejected 'a zero probe timeout' --set queryApi.probes.readiness.timeoutSeconds=0
 assert_rejected 'an unknown rollout strategy' --set frontend.rollout.strategy=BlueGreen

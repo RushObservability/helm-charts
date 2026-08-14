@@ -5,6 +5,7 @@ on:
     paths:
       - "charts/**"
       - "examples/**"
+      - "docs/**"
       - "README.md"
       - ".github/workflows/**"
   push:
@@ -12,6 +13,7 @@ on:
     paths:
       - "charts/**"
       - "examples/**"
+      - "docs/**"
       - "README.md"
       - ".github/workflows/**"
 
@@ -31,8 +33,23 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
 
-      - name: Lint chart
-        run: helm lint --strict charts/rushobservability
+      - name: Build missing chart dependencies
+        run: |
+          for chart in charts/*; do
+            [ -f "$chart/Chart.lock" ] || continue
+            if helm dependency list "$chart" | awk 'NR > 1 && NF && $NF != "ok" { bad=1 } END { exit bad }'; then
+              continue
+            fi
+            helm repo add altinity https://helm.altinity.com || true
+            helm dependency build "$chart"
+          done
+
+      - name: Lint charts
+        run: |
+          for chart in charts/*; do
+            [ -f "$chart/Chart.yaml" ] || continue
+            helm lint --strict "$chart"
+          done
 
       - name: Require a chart version bump
         env:
@@ -48,32 +65,43 @@ jobs:
             echo "No comparable base commit; skipping version comparison"
             exit 0
           fi
-          if git diff --quiet "$BASE_SHA" HEAD -- charts/rushobservability; then
-            exit 0
-          fi
-          OLD_VERSION=$(git show "$BASE_SHA:charts/rushobservability/Chart.yaml" 2>/dev/null | awk '/^version:/ { print $2; exit }' || true)
-          NEW_VERSION=$(awk '/^version:/ { print $2; exit }' charts/rushobservability/Chart.yaml)
-          if [ -n "$OLD_VERSION" ] && [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
-            echo "Chart contents changed but version remains $NEW_VERSION" >&2
-            exit 1
-          fi
-          echo "Chart version changed: ${OLD_VERSION:-new} -> $NEW_VERSION"
+          for chart in charts/*; do
+            [ -f "$chart/Chart.yaml" ] || continue
+            if git diff --quiet "$BASE_SHA" HEAD -- "$chart"; then
+              continue
+            fi
+            OLD_VERSION=$(git show "$BASE_SHA:$chart/Chart.yaml" 2>/dev/null | awk '/^version:/ { print $2; exit }' || true)
+            NEW_VERSION=$(awk '/^version:/ { print $2; exit }' "$chart/Chart.yaml")
+            if [ -n "$OLD_VERSION" ] && [ "$OLD_VERSION" = "$NEW_VERSION" ]; then
+              echo "$chart changed but version remains $NEW_VERSION" >&2
+              exit 1
+            fi
+            echo "$chart version changed: ${OLD_VERSION:-new} -> $NEW_VERSION"
+          done
 
-      - name: Run render security tests
+      - name: Run render tests
         run: |
-          for test in charts/rushobservability/tests/*.sh; do
-            bash "$test"
+          for test_dir in charts/*/tests; do
+            [ -d "$test_dir" ] || continue
+            for test in "$test_dir"/*.sh; do
+              [ -f "$test" ] || continue
+              bash "$test"
+            done
           done
 
       - name: Validate packaged archive
         run: |
           mkdir -p .pkg
-          helm package charts/rushobservability --destination .pkg
-          PKG=$(find .pkg -maxdepth 1 -name 'rushobservability-*.tgz' -print -quit)
-          helm show chart "$PKG" >/dev/null
-          helm template packaged "$PKG" >/dev/null
-          tar -tzf "$PKG" > .pkg/manifest.txt
-          if grep -q '/tests/' .pkg/manifest.txt; then
-            echo "Published chart unexpectedly contains repository tests" >&2
-            exit 1
-          fi
+          for chart in charts/*; do
+            [ -f "$chart/Chart.yaml" ] || continue
+            name=$(awk '/^name:/ { print $2; exit }' "$chart/Chart.yaml")
+            helm package "$chart" --destination .pkg
+            PKG=$(find .pkg -maxdepth 1 -name "$name-*.tgz" -print -quit)
+            helm show chart "$PKG" >/dev/null
+            helm template packaged "$PKG" >/dev/null
+            tar -tzf "$PKG" > ".pkg/$name-manifest.txt"
+            if grep -q '/tests/' ".pkg/$name-manifest.txt"; then
+              echo "$name package unexpectedly contains repository tests" >&2
+              exit 1
+            fi
+          done

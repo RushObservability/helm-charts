@@ -39,7 +39,7 @@ app.kubernetes.io/component: {{ .component }}
 {{- end -}}
 
 {{- define "rush.sreAgentUrl" -}}
-{{- printf "http://%s:%v" (include "rush.sreAgentServiceName" .) .Values.sreAgent.service.port -}}
+{{- printf "http://%s:%v" (include "rush.sreAgentServiceName" .) .Values.global.sreAgent.service.port -}}
 {{- end -}}
 
 {{/* ClickHouse writer connection environment for Rush application workloads. */}}
@@ -547,29 +547,4 @@ through `tpl`. Reads `.Values.global.storage` (shared with subcharts via global)
     </policies>
   </storage_configuration>
 </clickhouse>
-{{- end -}}
-
-{{/*
-Whether the OpenTelemetry Collector should be deployed, based on the
-selected collectors.mode.
-*/}}
-{{- define "rush.otelEnabled" -}}
-{{- $m := .Values.collectors.mode -}}
-{{- if or (eq $m "otel") (eq $m "hybrid") -}}true{{- end -}}
-{{- end -}}
-
-{{/*
-Whether Vector should be deployed, based on collectors.mode.
-*/}}
-{{- define "rush.vectorEnabled" -}}
-{{- $m := .Values.collectors.mode -}}
-{{- if or (eq $m "vector") (eq $m "hybrid") -}}true{{- end -}}
-{{- end -}}
-
-{{/*
-Whether Vector is running in "full-otel" sub-mode (accepts OTLP + tails
-logs). Only meaningful when collectors.mode = "vector".
-*/}}
-{{- define "rush.vectorFullOtel" -}}
-{{- if and (eq .Values.collectors.mode "vector") (eq .Values.collectors.vector.mode "full-otel") -}}true{{- end -}}
 {{- end -}}

@@ -63,10 +63,6 @@ frontend:
     enabled: true
     type: minAvailable
     value: 1
-
-sreAgent:
-  enabled: false   # enable + set llmApiKey when you want AI-powered root cause
-
 # ── ClickHouse — 1 shard × 3 replicas with ClickHouse Keeper ─────────────────
 clickhouse:
   enabled: true
@@ -80,8 +76,8 @@ clickhouse:
   replicasCount: 3   # 3 replicas per shard — quorum survives 1 failure
 
   image:
-    repository: altinity/clickhouse-server
-    tag: "25.3.6.10034.altinitystable"
+    repository: clickhouse/clickhouse-server
+    tag: "26.6.1.1193"
     pullPolicy: IfNotPresent
 
   clickhouse:
@@ -154,46 +150,6 @@ clickhouse:
   # CR and the existing operator will reconcile it.
   operator:
     enabled: true
-
-# ── Collector ─────────────────────────────────────────────────────────────────
-# OTel Collector (2 replicas) + Vector DaemonSet for logs is the recommended
-# production setup. Set mode: hybrid to deploy both.
-collectors:
-  mode: hybrid   # otel for traces/metrics, vector daemonset for logs
-
-  otel:
-    kind: deployment
-    replicas: 2
-    podDisruptionBudget:
-      enabled: true
-      type: minAvailable
-      value: 1
-    autoscaling:
-      enabled: true
-      minReplicas: 2
-      maxReplicas: 8
-      targetCPUUtilizationPercentage: 70
-    signals:
-      traces: true
-      metrics: true
-      logs: false   # vector handles logs in hybrid mode
-    resources:
-      requests:
-        cpu: 250m
-        memory: 256Mi
-      limits:
-        cpu: "2"
-        memory: 1Gi
-
-  vector:
-    mode: logs
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: "1"
-        memory: 512Mi
 
 # ── Rush storage / retention ──────────────────────────────────────────────────
 # In production, enable S3 tiering to keep ClickHouse disks lean.

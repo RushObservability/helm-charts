@@ -10,29 +10,8 @@ frontend:
     nodeSelector:
       nodegroup: frontend-only
 
-sreAgent:
-  enabled: true
-  networkPolicy:
-    allowExternalHttpsEgress: true
-  llmApiKeySecret:
-    name: llm-key
-
 anomalyEngine:
   enabled: true
-
-enterprise:
-  license:
-    integrations:
-      postgresCollector:
-        enabled: true
-        networkPolicy:
-          extraEgress:
-            - to:
-                - ipBlock:
-                    cidr: 10.0.0.0/8
-              ports:
-                - protocol: TCP
-                  port: 5432
 
 global:
   scheduling:
@@ -59,15 +38,6 @@ global:
         labelSelector:
           matchLabels:
             app.kubernetes.io/instance: scheduling
-
-collectors:
-  mode: hybrid
-  allowAnonymousIngest: true
-  otel:
-    scheduling:
-      tolerations:
-        - key: otel-only
-          operator: Exists
 
 clickhouse:
   keeper:

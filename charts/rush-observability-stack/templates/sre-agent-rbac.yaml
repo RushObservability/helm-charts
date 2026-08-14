@@ -1,5 +1,5 @@
-{{- if .Values.sreAgent.enabled }}
-{{- if .Values.sreAgent.kube.allowClusterScopedForAdmins }}
+{{- if .Values.global.sreAgent.enabled }}
+{{- if .Values.global.sreAgent.kube.allowClusterScopedForAdmins }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -22,15 +22,15 @@ metadata:
     {{- include "rush.labels" . | nindent 4 }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.sreAgent "component" "sre-agent") }}
+    name: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.global.sreAgent "component" "sre-agent") }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: {{ include "rush.fullname" . }}-sre-agent-cluster-reader
 {{- end }}
-{{- if .Values.sreAgent.kube.tenantNamespaces }}
-{{- range $tenant, $namespaces := .Values.sreAgent.kube.tenantNamespaces }}
+{{- if .Values.global.sreAgent.kube.tenantNamespaces }}
+{{- range $tenant, $namespaces := .Values.global.sreAgent.kube.tenantNamespaces }}
 {{- range $namespace := $namespaces }}
 {{- $suffix := sha256sum (printf "%s/%s" $tenant $namespace) | trunc 12 }}
 ---
@@ -74,7 +74,7 @@ metadata:
     {{- include "rush.labels" $ | nindent 4 }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "rush.serviceAccountName" (dict "root" $ "workload" $.Values.sreAgent "component" "sre-agent") }}
+    name: {{ include "rush.serviceAccountName" (dict "root" $ "workload" $.Values.global.sreAgent "component" "sre-agent") }}
     namespace: {{ $.Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
