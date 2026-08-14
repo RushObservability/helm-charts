@@ -1,6 +1,6 @@
 {{- if .Values.postgresCollector.enabled }}
 # Paid Postgres monitoring add-on. Self-gates on the license: requires
-# RUSH_LICENSE_KEY (from .Values.rushobservability.enterprise.license.secret) with the "postgres" entitlement,
+# RUSH_LICENSE_KEY (from (index .Values "rush-observability").enterprise.license.secret) with the "postgres" entitlement,
 # or the container exits. Single replica — running two would double-count metrics.
 apiVersion: apps/v1
 kind: Deployment
@@ -49,8 +49,8 @@ spec:
             - name: RUSH_LICENSE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.rushobservability.enterprise.license.secret.name }}
-                  key: {{ .Values.rushobservability.enterprise.license.secret.key }}
+                  name: {{ (index .Values "rush-observability").enterprise.license.secret.name }}
+                  key: {{ (index .Values "rush-observability").enterprise.license.secret.key }}
             - name: RUSH_OTLP_ENDPOINT
               value: {{ include "rush.stackQueryApiUrl" . | quote }}
             {{- range $key, $val := .Values.postgresCollector.env }}

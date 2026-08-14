@@ -24,9 +24,9 @@ annotations:
   artifacthub.io/license: BUSL-1.1
 
 dependencies:
-  - name: rushobservability
+  - name: rush-observability
     version: "0.2.0"
-    repository: "file://../rushobservability"
+    repository: "file://../rush-observability"
   - name: metrics-agent
     alias: metricsAgent
     version: "0.1.2"

@@ -1,8 +1,8 @@
 # rush-observability-stack installs the core Rush chart and keeps every
 # cluster-wide agent or collector opt-in. Configure core Rush under this key.
 # The fields below are also the bridge used by stack add-ons; every other core
-# value is inherited from the rushobservability dependency as usual.
-rushobservability:
+# value is inherited from the rush-observability dependency as usual.
+rush-observability:
   imageSecurity:
     requireDigests: false
   queryApi:
@@ -154,7 +154,7 @@ metricsAgent:
   extraLabels: {}
 
 # Paid Postgres monitoring add-on. Requires the Rush license secret configured
-# under rushobservability.enterprise.license and a DSN/API-key Secret below.
+# under rush-observability.enterprise.license and a DSN/API-key Secret below.
 postgresCollector:
   enabled: false
   inheritGlobalScheduling: true

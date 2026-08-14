@@ -26,7 +26,7 @@ spec:
       {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.global.sreAgent) | nindent 6 }}
       {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.global.sreAgent) | nindent 6 }}
       serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.global.sreAgent "component" "sre-agent") }}
-      automountServiceAccountToken: {{ or (not (empty .Values.global.sreAgent.kube.tenantNamespaces)) .Values.global.sreAgent.kube.allowClusterScopedForAdmins .Values.rushobservability.kubernetes.enabled .Values.rushobservability.argocd.enabled .Values.rushobservability.fluxcd.enabled }}
+      automountServiceAccountToken: {{ or (not (empty .Values.global.sreAgent.kube.tenantNamespaces)) .Values.global.sreAgent.kube.allowClusterScopedForAdmins (index .Values "rush-observability").kubernetes.enabled (index .Values "rush-observability").argocd.enabled (index .Values "rush-observability").fluxcd.enabled }}
       securityContext:
         {{- toYaml .Values.global.sreAgent.podSecurityContext | nindent 8 }}
       containers:
@@ -36,7 +36,7 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.global.sreAgent.port }}
-          {{- $bootstrapSecret := .Values.rushobservability.queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
+          {{- $bootstrapSecret := (index .Values "rush-observability").queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
           env:
             - name: SRE_AGENT_PORT
               value: {{ .Values.global.sreAgent.port | quote }}
@@ -75,15 +75,15 @@ spec:
                   name: {{ include "rush.fullname" . }}-sre-agent-llm
                   key: api-key
                   {{- end }}
-            {{- if .Values.rushobservability.argocd.enabled }}
+            {{- if (index .Values "rush-observability").argocd.enabled }}
             - name: ARGOCD_NAMESPACE
-              value: {{ .Values.rushobservability.argocd.namespace | quote }}
+              value: {{ (index .Values "rush-observability").argocd.namespace | quote }}
             {{- end }}
-            {{- if .Values.rushobservability.fluxcd.enabled }}
+            {{- if (index .Values "rush-observability").fluxcd.enabled }}
             - name: FLUXCD_NAMESPACE
-              value: {{ .Values.rushobservability.fluxcd.namespace | quote }}
+              value: {{ (index .Values "rush-observability").fluxcd.namespace | quote }}
             {{- end }}
-            {{- if .Values.rushobservability.kubernetes.enabled }}
+            {{- if (index .Values "rush-observability").kubernetes.enabled }}
             - name: KUBERNETES_ENABLED
               value: "true"
             {{- end }}

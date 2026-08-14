@@ -8,7 +8,7 @@
 {{- end -}}
 
 {{- define "rush.stackClickhouseService" -}}
-{{- $ch := .Values.rushobservability.clickhouse -}}
+{{- $ch := (index .Values "rush-observability").clickhouse -}}
 {{- if eq $ch.mode "standalone" -}}
 {{- printf "%s-clickhouse" .Release.Name -}}
 {{- else -}}
@@ -25,8 +25,8 @@
 {{- end -}}
 
 {{- define "rush.stackClickhouseUrl" -}}
-{{- if eq .Values.rushobservability.clickhouse.mode "external" -}}
-{{- required "rushobservability.clickhouse.external.url is required in external mode" .Values.rushobservability.clickhouse.external.url -}}
+{{- if eq (index .Values "rush-observability").clickhouse.mode "external" -}}
+{{- required "rush-observability.clickhouse.external.url is required in external mode" (index .Values "rush-observability").clickhouse.external.url -}}
 {{- else -}}
 {{- printf "http://%s:8123" (include "rush.stackClickhouseService" .) -}}
 {{- end -}}
@@ -38,13 +38,13 @@
 - name: CLICKHOUSE_USER
   valueFrom:
     secretKeyRef:
-      name: {{ if eq .Values.rushobservability.clickhouse.mode "external" }}{{ required "rushobservability.clickhouse.external.credentialsSecret is required in external mode" .Values.rushobservability.clickhouse.external.credentialsSecret }}{{ else }}rushobs-clickhouse-credentials{{ end }}
-      key: {{ if eq .Values.rushobservability.clickhouse.mode "external" }}{{ .Values.rushobservability.clickhouse.external.userKey }}{{ else }}user{{ end }}
+      name: {{ if eq (index .Values "rush-observability").clickhouse.mode "external" }}{{ required "rush-observability.clickhouse.external.credentialsSecret is required in external mode" (index .Values "rush-observability").clickhouse.external.credentialsSecret }}{{ else }}rushobs-clickhouse-credentials{{ end }}
+      key: {{ if eq (index .Values "rush-observability").clickhouse.mode "external" }}{{ (index .Values "rush-observability").clickhouse.external.userKey }}{{ else }}user{{ end }}
 - name: CLICKHOUSE_PASSWORD
   valueFrom:
     secretKeyRef:
-      name: {{ if eq .Values.rushobservability.clickhouse.mode "external" }}{{ required "rushobservability.clickhouse.external.credentialsSecret is required in external mode" .Values.rushobservability.clickhouse.external.credentialsSecret }}{{ else }}rushobs-clickhouse-credentials{{ end }}
-      key: {{ if eq .Values.rushobservability.clickhouse.mode "external" }}{{ .Values.rushobservability.clickhouse.external.passwordKey }}{{ else }}password{{ end }}
+      name: {{ if eq (index .Values "rush-observability").clickhouse.mode "external" }}{{ required "rush-observability.clickhouse.external.credentialsSecret is required in external mode" (index .Values "rush-observability").clickhouse.external.credentialsSecret }}{{ else }}rushobs-clickhouse-credentials{{ end }}
+      key: {{ if eq (index .Values "rush-observability").clickhouse.mode "external" }}{{ (index .Values "rush-observability").clickhouse.external.passwordKey }}{{ else }}password{{ end }}
 {{- end -}}
 
 {{- define "rush.stackOtelEnabled" -}}
