@@ -21,13 +21,13 @@
 {{- if and .Values.global.sreAgent.enabled .Values.global.sreAgent.networkPolicy.enabled (not .Values.global.sreAgent.networkPolicy.allowExternalHttpsEgress) (empty .Values.global.sreAgent.networkPolicy.extraEgress) -}}
 {{- fail "the SRE agent NetworkPolicy requires allowExternalHttpsEgress=true or explicit extraEgress rules" -}}
 {{- end -}}
-{{- if and .Values.postgresCollector.enabled (not .Values.rushobservability.enterprise.license.enabled) -}}
-{{- fail "postgresCollector.enabled=true requires rushobservability.enterprise.license.enabled=true" -}}
+{{- if and .Values.postgresCollector.enabled (not (index .Values "rush-observability").enterprise.license.enabled) -}}
+{{- fail "postgresCollector.enabled=true requires rush-observability.enterprise.license.enabled=true" -}}
 {{- end -}}
 {{- if and .Values.postgresCollector.enabled .Values.postgresCollector.networkPolicy.enabled (empty .Values.postgresCollector.networkPolicy.extraEgress) -}}
 {{- fail "postgresCollector NetworkPolicy requires an explicit extraEgress rule for the Postgres server" -}}
 {{- end -}}
-{{- if .Values.rushobservability.imageSecurity.requireDigests -}}
+{{- if (index .Values "rush-observability").imageSecurity.requireDigests -}}
 {{- if and .Values.global.sreAgent.enabled (not .Values.global.sreAgent.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires global.sreAgent.image.digest" -}}{{- end -}}
 {{- if and .Values.postgresCollector.enabled (not .Values.postgresCollector.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires postgresCollector.image.digest" -}}{{- end -}}
 {{- if and (include "rush.stackOtelEnabled" .) (not .Values.collectors.otel.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires collectors.otel.image.digest" -}}{{- end -}}

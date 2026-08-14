@@ -13,7 +13,7 @@
 
 | Chart | Installs | Use it when |
 |---|---|---|
-| `rushobservability` | Query API, frontend, anomaly engine, and ClickHouse | You already collect telemetry or want only the Rush platform. |
+| `rush-observability` | Query API, frontend, anomaly engine, and ClickHouse | You already collect telemetry or want only the Rush platform. |
 | `rush-observability-stack` | Core Rush plus optional SRE agent, metrics-agent, Vector, OTel Collector, and PostgreSQL collector | You want one chart to manage the complete observability stack. |
 | `metrics-agent` | The standalone Rush metrics agent | You only need Kubernetes metric discovery and remote write. |
 
@@ -32,7 +32,7 @@ helm install rush rush/rush-observability-stack \
 Install only core Rush:
 
 ```bash
-helm install rush rush/rushobservability \
+helm install rush rush/rush-observability \
   --namespace observability \
   --create-namespace
 ```
@@ -46,7 +46,7 @@ helm install rush rush/rushobservability \
 - [Browse all documentation](docs/README.md)
 
 Core examples are in [`examples/`](examples/). For every setting, see the
-[core values](charts/rushobservability/values.yaml), [stack
+[core values](charts/rush-observability/values.yaml), [stack
 values](charts/rush-observability-stack/values.yaml), and [metrics-agent
 values](charts/metrics-agent/values.yaml).
 

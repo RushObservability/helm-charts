@@ -73,7 +73,7 @@ queryApi:
 Set `inheritGlobalScheduling: false` on a workload to ignore global scheduling.
 In the stack, this is useful for `collectors.vector`, whose DaemonSet otherwise
 runs only on nodes matching the global selector. Core component overrides live
-under `rushobservability` when using the stack.
+under `rush-observability` when using the stack.
 
 Standalone ClickHouse uses `clickhouseStandalone.nodeSelector`, `tolerations`,
 `affinity`, and `topologySpreadConstraints`. The bundled operator uses the

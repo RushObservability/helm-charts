@@ -16,8 +16,8 @@ Use these guides after the [quick install](../README.md#quick-install).
 ## Reference
 
 - [Example values](../examples/)
-- [Default values](../charts/rushobservability/values.yaml)
+- [Default values](../charts/rush-observability/values.yaml)
 - [Stack default values](../charts/rush-observability-stack/values.yaml)
 - [Metrics-agent default values](../charts/metrics-agent/values.yaml)
-- [Values schema](../charts/rushobservability/values.schema.json)
-- [Chart source](../charts/rushobservability/)
+- [Values schema](../charts/rush-observability/values.schema.json)
+- [Chart source](../charts/rush-observability/)

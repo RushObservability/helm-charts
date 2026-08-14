@@ -1,6 +1,6 @@
 # Apply this file to rush-observability-stack after creating the rush-ingest
-# Secret. Configure core Rush under rushobservability.
-rushobservability:
+# Secret. Configure core Rush under rush-observability.
+rush-observability:
   queryApi:
     replicas: 1
   clickhouse:

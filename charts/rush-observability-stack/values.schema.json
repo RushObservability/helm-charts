@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["rushobservability", "global", "collectors", "metricsAgent", "postgresCollector"],
+  "required": ["rush-observability", "global", "collectors", "metricsAgent", "postgresCollector"],
   "additionalProperties": true,
   "properties": {
-    "rushobservability": { "type": "object", "additionalProperties": true },
+    "rush-observability": { "type": "object", "additionalProperties": true },
     "global": {
       "type": "object",
       "required": ["rush", "sreAgent"],

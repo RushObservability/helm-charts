@@ -77,7 +77,7 @@ frontend:
 ```
 
 `imageSecurity.requireDigests=true` rejects tag-only core Rush images. In the
-stack, set `rushobservability.imageSecurity.requireDigests=true`; the same
+stack, set `rush-observability.imageSecurity.requireDigests=true`; the same
 policy also covers enabled SRE agent and collector images. Empty and `latest`
 tags are always rejected.
 
@@ -118,7 +118,7 @@ non-whitespace character, and not match a bundled common password. The default
 ### Option 2: Set values
 
 ```bash
-helm install rush rush/rushobservability \
+helm install rush rush/rush-observability \
   --set queryApi.adminPassword="$(openssl rand -base64 18)" \
   --set queryApi.auditHmacSecret="$(openssl rand -hex 32)" \
   --set queryApi.sessionHmacSecret="$(openssl rand -hex 32)" \
@@ -138,7 +138,7 @@ kubectl create secret generic rush-bootstrap -n <namespace> \
   --from-literal=config-encryption-key="$(openssl rand -hex 32)" \
   --from-literal=sre-agent-internal-token="$(openssl rand -hex 32)"
 
-helm install rush rush/rushobservability -n <namespace> \
+helm install rush rush/rush-observability -n <namespace> \
   --set queryApi.existingSecret=rush-bootstrap
 ```
 

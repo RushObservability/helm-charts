@@ -61,6 +61,10 @@ jobs:
       - name: Build dependencies (if not vendored)
         run: |
           CHART_DIR="charts/${{ matrix.chart }}"
+          if [ "${{ matrix.chart }}" = "rush-observability-stack" ]; then
+            helm repo add altinity https://helm.altinity.com || true
+            helm dependency build charts/rush-observability
+          fi
           if [ -f "$CHART_DIR/Chart.lock" ] && ls "$CHART_DIR"/charts/*.tgz 1>/dev/null 2>&1; then
             echo "Dependencies already vendored, skipping build"
           else

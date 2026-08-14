@@ -2,15 +2,19 @@
 set -euo pipefail
 
 chart_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-common=(--set rushobservability.queryApi.environment=development)
+core_chart_dir="$chart_dir/../rush-observability"
+common=(--set rush-observability.queryApi.environment=development)
 
+if ! helm dependency list "$core_chart_dir" | awk 'NR > 1 && NF && $NF != "ok" { bad=1 } END { exit bad }'; then
+  helm dependency build "$core_chart_dir" >/dev/null
+fi
 if ! helm dependency list "$chart_dir" | awk 'NR > 1 && NF && $NF != "ok" { bad=1 } END { exit bad }'; then
   helm dependency build "$chart_dir" >/dev/null
 fi
 helm lint "$chart_dir" >/dev/null
 helm template stack-example "$chart_dir" \
   -f "$chart_dir/../../examples/rush-stack.yaml" \
-  --set rushobservability.queryApi.environment=development >/dev/null
+  --set rush-observability.queryApi.environment=development >/dev/null
 
 defaults="$(helm template stack "$chart_dir" "${common[@]}")"
 for core in stack-query-api stack-frontend; do
@@ -85,7 +89,7 @@ done
 
 postgres="$(helm template stack "$chart_dir" "${common[@]}" \
   --set postgresCollector.enabled=true \
-  --set rushobservability.enterprise.license.enabled=true \
+  --set rush-observability.enterprise.license.enabled=true \
   --set-json 'postgresCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":5432}]}]')"
 for expected in 'name: stack-postgres-collector' 'name: RUSH_LICENSE_KEY' 'value: "http://stack-query-api:8080"'; do
   grep -Fq "$expected" <<<"$postgres" || {

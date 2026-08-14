@@ -13,7 +13,7 @@
 #
 # Configure custom_settings_prefixes='rush_' on the external ClickHouse and
 # create the SELECT-only rushquery user with the telemetry-table grants shown in
-# charts/rushobservability/values.yaml. query-api installs and verifies the
+# charts/rush-observability/values.yaml. query-api installs and verifies the
 # strict tenant row policies at startup.
 
 queryApi:

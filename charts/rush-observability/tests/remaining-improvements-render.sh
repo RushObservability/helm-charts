@@ -101,7 +101,7 @@ fi
 package_dir="$(mktemp -d)"
 trap 'rm -rf "$package_dir"' EXIT
 helm package "$chart_dir" --destination "$package_dir" >/dev/null
-package="$(find "$package_dir" -maxdepth 1 -name 'rushobservability-*.tgz' -print -quit)"
+package="$(find "$package_dir" -maxdepth 1 -name 'rush-observability-*.tgz' -print -quit)"
 helm show chart "$package" >/dev/null
 helm template packaged "$package" >/dev/null
 package_manifest="$package_dir/manifest.txt"

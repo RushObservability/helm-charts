@@ -15,7 +15,7 @@ configuration, storage, scaling, upgrades, and cluster reconciliation.
 Use the operator-free profile for a single ClickHouse pod:
 
 ```bash
-helm install rush rush/rushobservability \
+helm install rush rush/rush-observability \
   --namespace observability --create-namespace \
   -f examples/rush-clickhouse-standalone.yaml
 ```
@@ -57,4 +57,3 @@ refuses to start when it cannot verify that setting, strict row policies, read
 grants, or separate read and write identities.
 
 See [the external ClickHouse example](../examples/rush-clickhouse-external.yaml).
-

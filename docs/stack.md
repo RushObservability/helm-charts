@@ -3,7 +3,7 @@
 [← Documentation](README.md)
 
 `rush-observability-stack` is the umbrella chart. It installs the
-`rushobservability` core chart and can also install cluster agents and
+`rush-observability` core chart and can also install cluster agents and
 collectors with the same release.
 
 ## What is included
@@ -22,11 +22,11 @@ credentials, or a paid license.
 
 ## Values layout
 
-Core settings live under `rushobservability`. Stack add-ons remain at the top
+Core settings live under `rush-observability`. Stack add-ons remain at the top
 level. Shared connection settings live under `global`.
 
 ```yaml
-rushobservability:
+rush-observability:
   queryApi:
     replicas: 2
   clickhouse:
@@ -57,12 +57,12 @@ Install `rush-observability-stack` with the same release name, then move values:
 
 | Old core value | Stack value |
 |---|---|
-| Core settings such as `queryApi` and `clickhouse` | `rushobservability.queryApi`, `rushobservability.clickhouse` |
+| Core settings such as `queryApi` and `clickhouse` | `rush-observability.queryApi`, `rush-observability.clickhouse` |
 | `sreAgent` | `global.sreAgent` |
 | `collectors` | `collectors` |
 | `collectors.ingestApiKeySecret` | `global.rush.ingestApiKeySecret` |
 | `enterprise.license.integrations.postgresCollector` | `postgresCollector` |
-| `enterprise.license` | `rushobservability.enterprise.license` |
+| `enterprise.license` | `rush-observability.enterprise.license` |
 
 The core chart now rejects the removed top-level collector and SRE-agent keys
 so upgrades do not silently ignore old values.
