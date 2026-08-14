@@ -1,0 +1,31 @@
+# Apply this file to rush-observability-stack after creating the rush-ingest
+# Secret. Configure core Rush under rushobservability.
+rushobservability:
+  queryApi:
+    replicas: 1
+  clickhouse:
+    mode: operator
+
+global:
+  rush:
+    ingestApiKeySecret:
+      name: rush-ingest
+      key: api-key
+  sreAgent:
+    enabled: false
+
+# OTel handles traces and metrics; Vector tails Kubernetes container logs.
+collectors:
+  mode: hybrid
+  otel:
+    signals:
+      traces: true
+      metrics: true
+      logs: false
+  vector:
+    mode: logs
+
+metricsAgent:
+  enabled: true
+  extraLabels:
+    env: dev

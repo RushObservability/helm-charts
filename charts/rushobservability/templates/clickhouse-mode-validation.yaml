@@ -40,12 +40,6 @@
 {{- if and .Values.ingress.api.enabled (not .Values.ingress.api.host) -}}{{- fail "ingress.api.host is required when ingress.api.enabled=true" -}}{{- end -}}
 {{- if and .Values.ingress.api.enabled (eq .Values.ingress.api.host .Values.ingress.frontend.host) -}}{{- fail "ingress.api.host must differ from ingress.frontend.host; the frontend already proxies API paths on its own host" -}}{{- end -}}
 {{- end -}}
-{{- if and .Values.sreAgent.enabled .Values.sreAgent.networkPolicy.enabled (not .Values.sreAgent.networkPolicy.allowExternalHttpsEgress) (empty .Values.sreAgent.networkPolicy.extraEgress) -}}
-{{- fail "sreAgent requires allowExternalHttpsEgress=true or an explicit sreAgent.networkPolicy.extraEgress rule for its LLM/GitHub endpoint" -}}
-{{- end -}}
-{{- if and .Values.enterprise.license.integrations.postgresCollector.enabled .Values.enterprise.license.integrations.postgresCollector.networkPolicy.enabled (empty .Values.enterprise.license.integrations.postgresCollector.networkPolicy.extraEgress) -}}
-{{- fail "postgresCollector requires an explicit networkPolicy.extraEgress rule for the monitored PostgreSQL endpoint" -}}
-{{- end -}}
 {{- if and (eq .Values.clickhouse.mode "external") .Values.queryApi.networkPolicy.enabled (not .Values.queryApi.networkPolicy.allowExternalClickHouseEgress) (empty .Values.queryApi.networkPolicy.extraEgress) -}}
 {{- fail "external ClickHouse with queryApi.networkPolicy.enabled requires allowExternalClickHouseEgress=true or an explicit queryApi.networkPolicy.extraEgress rule" -}}
 {{- end -}}
@@ -56,7 +50,5 @@
 {{- if .Values.imageSecurity.requireDigests -}}
 {{- if not .Values.queryApi.image.digest -}}{{- fail "imageSecurity.requireDigests=true requires queryApi.image.digest" -}}{{- end -}}
 {{- if not .Values.frontend.image.digest -}}{{- fail "imageSecurity.requireDigests=true requires frontend.image.digest" -}}{{- end -}}
-{{- if and .Values.sreAgent.enabled (not .Values.sreAgent.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires sreAgent.image.digest when enabled" -}}{{- end -}}
 {{- if and .Values.anomalyEngine.enabled (not $anomalyImage.digest) -}}{{- fail "imageSecurity.requireDigests=true requires a digest for the anomaly engine (inherited from queryApi.image.digest or set in anomalyEngine.image.digest)" -}}{{- end -}}
-{{- if and .Values.enterprise.license.integrations.postgresCollector.enabled (not .Values.enterprise.license.integrations.postgresCollector.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires postgresCollector.image.digest when enabled" -}}{{- end -}}
 {{- end -}}

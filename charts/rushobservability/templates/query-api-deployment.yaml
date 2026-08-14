@@ -130,22 +130,17 @@ spec:
             - name: CLOUDWATCH_ENABLED
               value: "true"
             {{- end }}
-            {{- if .Values.sreAgent.enabled }}
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.sreAgent.llmApiKeySecret.name }}
-                  key: {{ .Values.sreAgent.llmApiKeySecret.key }}
+            {{- if .Values.global.sreAgent.enabled }}
             # query-api fronts the SRE agent: it authenticates + injects the
             # caller's tenant, then forwards /investigate, /sessions, and
             # /investigation-templates to the agent at this URL.
             - name: SRE_AGENT_URL
               value: {{ include "rush.sreAgentUrl" . | quote }}
-            {{- if .Values.sreAgent.githubApp.enabled }}
+            {{- if .Values.global.sreAgent.githubApp.enabled }}
             # The API uses the same operator-owned policy as the agent so
             # browser callers can never choose installation/repository IDs.
             - name: SRE_AGENT_GITHUB_REPOSITORY_POLICY
-              value: {{ .Values.sreAgent.githubApp.tenantRepositories | toJson | quote }}
+              value: {{ .Values.global.sreAgent.githubApp.tenantRepositories | toJson | quote }}
             {{- end }}
             {{- end }}
             {{- if .Values.enterprise.license.enabled }}
@@ -192,7 +187,7 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: config-encryption-key
-            {{- if .Values.sreAgent.enabled }}
+            {{- if .Values.global.sreAgent.enabled }}
             - name: SRE_AGENT_INTERNAL_TOKEN
               valueFrom:
                 secretKeyRef:

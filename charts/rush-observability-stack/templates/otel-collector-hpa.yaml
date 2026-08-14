@@ -1,4 +1,4 @@
-{{- if and (include "rush.otelEnabled" .) (eq .Values.collectors.otel.kind "deployment") .Values.collectors.otel.autoscaling.enabled }}
+{{- if and (include "rush.stackOtelEnabled" .) (eq .Values.collectors.otel.kind "deployment") .Values.collectors.otel.autoscaling.enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

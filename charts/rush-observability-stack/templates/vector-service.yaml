@@ -1,4 +1,4 @@
-{{- if and (include "rush.vectorEnabled" .) (include "rush.vectorFullOtel" .) }}
+{{- if and (include "rush.stackVectorEnabled" .) (include "rush.stackVectorFullOtel" .) }}
 # Vector is accepting OTLP traffic (full-otel sub-mode). Expose a
 # ClusterIP service so in-cluster apps can push traces/metrics/logs
 # without hitting a specific node.

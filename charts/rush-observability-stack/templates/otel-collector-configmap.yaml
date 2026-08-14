@@ -1,4 +1,4 @@
-{{- if include "rush.otelEnabled" . }}
+{{- if include "rush.stackOtelEnabled" . }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -46,8 +46,8 @@ data:
       # ClickHouse (it owns the durable disk spool + 429 backpressure).
       # otlphttp posts protobuf to {endpoint}/v1/{traces,logs,metrics}.
       otlphttp:
-        endpoint: {{ include "rush.queryApiUrl" . }}
-        {{- if .Values.collectors.ingestApiKeySecret.name }}
+        endpoint: {{ include "rush.stackQueryApiUrl" . }}
+        {{- if .Values.global.rush.ingestApiKeySecret.name }}
         headers:
           Authorization: "Bearer ${env:RUSH_INGEST_API_KEY}"
         {{- end }}

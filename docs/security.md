@@ -10,7 +10,7 @@ request rate, and optional source CIDRs.
 
 For a new installation:
 
-1. Install with the default `collectors.mode: none`.
+1. Install `rush-observability-stack`; add-ons default to off.
 2. Sign in and create an ingest key under **Settings → API Keys**.
 3. Store the key in the release namespace.
 4. Enable the collector.
@@ -19,20 +19,20 @@ For a new installation:
 kubectl -n observability create secret generic rush-collector-ingest \
   --from-literal=api-key='rush_ing_...'
 
-helm upgrade rush rush/rushobservability -n observability \
+helm upgrade rush rush/rush-observability-stack -n observability \
   --set collectors.mode=otel \
-  --set collectors.ingestApiKeySecret.name=rush-collector-ingest
+  --set global.rush.ingestApiKeySecret.name=rush-collector-ingest
 ```
 
 Generated OpenTelemetry Collector and Vector configurations send the key as a
 Bearer token. The chart refuses to render an enabled collector without
-`collectors.ingestApiKeySecret.name`.
+`global.rush.ingestApiKeySecret.name`.
 
 If the target tenant has **Require ingest key** turned off, explicitly allow
 anonymous collector ingestion:
 
 ```bash
-helm upgrade rush rush/rushobservability -n observability \
+helm upgrade rush rush/rush-observability-stack -n observability \
   --set collectors.mode=otel \
   --set collectors.allowAnonymousIngest=true
 ```
@@ -76,9 +76,10 @@ frontend:
     digest: sha256:<release-digest>
 ```
 
-`imageSecurity.requireDigests=true` rejects tag-only Query API and frontend
-images. It also covers SRE agent, anomaly engine, and PostgreSQL collector
-images when enabled. Empty and `latest` tags are always rejected.
+`imageSecurity.requireDigests=true` rejects tag-only core Rush images. In the
+stack, set `rushobservability.imageSecurity.requireDigests=true`; the same
+policy also covers enabled SRE agent and collector images. Empty and `latest`
+tags are always rejected.
 
 Copy digests from each component's release workflow summary. Verify GitHub
 provenance and SBOM attestations before deployment, and retain the named SPDX
@@ -121,7 +122,7 @@ helm install rush rush/rushobservability \
   --set queryApi.adminPassword="$(openssl rand -base64 18)" \
   --set queryApi.auditHmacSecret="$(openssl rand -hex 32)" \
   --set queryApi.sessionHmacSecret="$(openssl rand -hex 32)" \
-  --set sreAgent.internalAuthToken="$(openssl rand -hex 32)"
+  --set global.sreAgent.internalAuthToken="$(openssl rand -hex 32)"
 ```
 
 ### Option 3: Bring your own Secret
@@ -218,4 +219,3 @@ Administrators can inspect and revoke sessions under **Settings → Users**.
 Inventory reads, revocations, and bearer rotations are audited without storing
 tokens or token hashes. ClickHouse stores keyed HMAC digests only. The first
 upgrade to keyed storage revokes legacy raw or unkeyed session rows.
-

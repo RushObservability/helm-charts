@@ -1,4 +1,4 @@
-{{- if include "rush.vectorEnabled" . }}
+{{- if include "rush.stackVectorEnabled" . }}
 {{- if .Values.collectors.vector.serviceAccount.create }}
 ---
 {{ include "rush.serviceAccount" (dict "root" . "workload" .Values.collectors.vector "component" "vector") }}

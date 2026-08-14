@@ -1,4 +1,4 @@
-{{- if and .Values.sreAgent.enabled .Values.sreAgent.networkPolicy.enabled }}
+{{- if and .Values.global.sreAgent.enabled .Values.global.sreAgent.networkPolicy.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -18,7 +18,7 @@ spec:
       ports:
         - protocol: TCP
           port: http
-    {{- with .Values.sreAgent.networkPolicy.extraIngress }}
+    {{- with .Values.global.sreAgent.networkPolicy.extraIngress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   egress:
@@ -52,7 +52,7 @@ spec:
       ports:
         - protocol: TCP
           port: http
-    {{- if .Values.sreAgent.networkPolicy.allowExternalHttpsEgress }}
+    {{- if .Values.global.sreAgent.networkPolicy.allowExternalHttpsEgress }}
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
@@ -60,7 +60,7 @@ spec:
         - protocol: TCP
           port: 443
     {{- end }}
-    {{- with .Values.sreAgent.networkPolicy.extraEgress }}
+    {{- with .Values.global.sreAgent.networkPolicy.extraEgress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}

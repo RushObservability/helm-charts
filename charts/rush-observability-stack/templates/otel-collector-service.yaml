@@ -1,4 +1,4 @@
-{{- if include "rush.otelEnabled" . }}
+{{- if include "rush.stackOtelEnabled" . }}
 apiVersion: v1
 kind: Service
 metadata:

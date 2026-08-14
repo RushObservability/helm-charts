@@ -1,4 +1,4 @@
-{{- if include "rush.otelEnabled" . }}
+{{- if include "rush.stackOtelEnabled" . }}
 {{- $isDaemonSet := eq .Values.collectors.otel.kind "daemonset" -}}
 apiVersion: apps/v1
 kind: {{ if $isDaemonSet }}DaemonSet{{ else }}Deployment{{ end }}
@@ -51,15 +51,15 @@ spec:
             - name: metrics
               containerPort: 8888
               protocol: TCP
-          {{- if .Values.collectors.ingestApiKeySecret.name }}
+          {{- if .Values.global.rush.ingestApiKeySecret.name }}
           env:
             - name: RUSH_INGEST_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.collectors.ingestApiKeySecret.name }}
-                  key: {{ .Values.collectors.ingestApiKeySecret.key }}
+                  name: {{ .Values.global.rush.ingestApiKeySecret.name }}
+                  key: {{ .Values.global.rush.ingestApiKeySecret.key }}
           {{- else if not .Values.collectors.allowAnonymousIngest }}
-          {{- fail "collectors.ingestApiKeySecret.name is required when an in-cluster collector is enabled" }}
+          {{- fail "global.rush.ingestApiKeySecret.name is required when an in-cluster collector is enabled" }}
           {{- end }}
           {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.collectors.otel) | nindent 10 }}
           volumeMounts:

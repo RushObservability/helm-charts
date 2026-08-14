@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["rushobservability", "global", "collectors", "metricsAgent", "postgresCollector"],
+  "additionalProperties": true,
+  "properties": {
+    "rushobservability": { "type": "object", "additionalProperties": true },
+    "global": {
+      "type": "object",
+      "required": ["rush", "sreAgent"],
+      "additionalProperties": true,
+      "properties": {
+        "rush": {
+          "type": "object",
+          "required": ["stack", "queryApi", "ingestApiKeySecret"],
+          "additionalProperties": true,
+          "properties": {
+            "stack": {
+              "type": "object",
+              "required": ["enabled"],
+              "properties": { "enabled": { "const": true } },
+              "additionalProperties": true
+            },
+            "queryApiIngressComponents": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "queryApi": {
+              "type": "object",
+              "required": ["serviceName", "port"],
+              "properties": {
+                "serviceName": { "type": "string" },
+                "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+              },
+              "additionalProperties": true
+            },
+            "ingestApiKeySecret": {
+              "type": "object",
+              "required": ["name", "key"],
+              "properties": {
+                "name": { "type": "string" },
+                "key": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "sreAgent": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": { "enabled": { "type": "boolean" } },
+          "additionalProperties": true
+        }
+      }
+    },
+    "collectors": {
+      "type": "object",
+      "required": ["mode", "allowAnonymousIngest", "otel", "vector"],
+      "additionalProperties": true,
+      "properties": {
+        "mode": { "type": "string", "enum": ["none", "otel", "vector", "hybrid"] },
+        "allowAnonymousIngest": { "type": "boolean" },
+        "otel": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "kind": { "type": "string", "enum": ["deployment", "daemonset"] },
+            "replicas": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "vector": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": { "mode": { "type": "string", "enum": ["logs", "full-otel"] } }
+        }
+      }
+    },
+    "metricsAgent": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": { "enabled": { "type": "boolean" } },
+      "additionalProperties": true
+    },
+    "postgresCollector": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": { "enabled": { "type": "boolean" } },
+      "additionalProperties": true
+    }
+  }
+}

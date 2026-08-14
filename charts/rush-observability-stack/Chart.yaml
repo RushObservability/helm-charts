@@ -1,0 +1,34 @@
+apiVersion: v2
+name: rush-observability-stack
+description: Rush Observability with optional cluster agents and telemetry collectors
+version: 0.1.0
+appVersion: "0.1.24"
+type: application
+kubeVersion: ">=1.25.0-0"
+home: https://rushobservability.com
+icon: https://rushobservability.com/logos/rush-mark-512.png
+sources:
+  - https://github.com/RushObservability/helm-charts
+maintainers:
+  - name: Mike Zupan
+    email: mike@zcentric.com
+    url: https://github.com/mzupan
+keywords:
+  - observability
+  - opentelemetry
+  - prometheus
+  - logs
+  - metrics
+  - tracing
+annotations:
+  artifacthub.io/license: BUSL-1.1
+
+dependencies:
+  - name: rushobservability
+    version: "0.2.0"
+    repository: "file://../rushobservability"
+  - name: metrics-agent
+    alias: metricsAgent
+    version: "0.1.2"
+    repository: "file://../metrics-agent"
+    condition: metricsAgent.enabled

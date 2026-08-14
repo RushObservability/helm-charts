@@ -1,0 +1,71 @@
+{{- if .Values.postgresCollector.enabled }}
+# Paid Postgres monitoring add-on. Self-gates on the license: requires
+# RUSH_LICENSE_KEY (from .Values.rushobservability.enterprise.license.secret) with the "postgres" entitlement,
+# or the container exits. Single replica — running two would double-count metrics.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "postgres-collector") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "postgres-collector") | nindent 4 }}
+spec:
+  replicas: 1
+  {{- include "rush.deploymentRollout" (dict "rollout" .Values.postgresCollector.rollout) | nindent 2 }}
+  selector:
+    matchLabels:
+      {{- include "rush.selectorLabels" (dict "root" . "component" "postgres-collector") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rush.selectorLabels" (dict "root" . "component" "postgres-collector") | nindent 8 }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.postgresCollector)) }}
+        {{- . | nindent 8 }}
+        {{- end }}
+      {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.postgresCollector)) }}
+      annotations:
+        {{- . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.postgresCollector) | nindent 6 }}
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.postgresCollector) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.postgresCollector "component" "postgres-collector") }}
+      automountServiceAccountToken: false
+      containers:
+        - name: postgres-collector
+          image: {{ include "rush.image" (dict "image" .Values.postgresCollector.image "defaultTag" .Chart.AppVersion) | quote }}
+          imagePullPolicy: {{ .Values.postgresCollector.image.pullPolicy }}
+          env:
+            - name: PG_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresCollector.secret.name }}
+                  key: {{ .Values.postgresCollector.secret.dsnKey }}
+            - name: RUSH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresCollector.secret.name }}
+                  key: {{ .Values.postgresCollector.secret.apiKeyKey }}
+            # License token (Ed25519 JWT) — verified offline; needs "postgres" entitlement.
+            - name: RUSH_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.rushobservability.enterprise.license.secret.name }}
+                  key: {{ .Values.rushobservability.enterprise.license.secret.key }}
+            - name: RUSH_OTLP_ENDPOINT
+              value: {{ include "rush.stackQueryApiUrl" . | quote }}
+            {{- range $key, $val := .Values.postgresCollector.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.postgresCollector) | nindent 10 }}
+          {{- with (include "rush.extraVolumeMounts" (dict "root" . "workload" .Values.postgresCollector)) }}
+          volumeMounts:
+            {{- . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.postgresCollector.resources | nindent 12 }}
+      {{- with (include "rush.extraVolumes" (dict "root" . "workload" .Values.postgresCollector)) }}
+      volumes:
+        {{- . | nindent 8 }}
+      {{- end }}
+{{- end }}

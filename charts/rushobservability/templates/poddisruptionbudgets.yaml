@@ -6,24 +6,8 @@
 {{ include "rush.podDisruptionBudget" (dict "root" . "component" "frontend" "pdb" .Values.frontend.podDisruptionBudget) }}
 ---
 {{- end }}
-{{- if and .Values.sreAgent.enabled .Values.sreAgent.podDisruptionBudget.enabled }}
-{{ include "rush.podDisruptionBudget" (dict "root" . "component" "sre-agent" "pdb" .Values.sreAgent.podDisruptionBudget) }}
----
-{{- end }}
 {{- if and .Values.anomalyEngine.enabled .Values.anomalyEngine.podDisruptionBudget.enabled }}
 {{ include "rush.podDisruptionBudget" (dict "root" . "component" "anomaly-engine" "pdb" .Values.anomalyEngine.podDisruptionBudget) }}
----
-{{- end }}
-{{- if and .Values.enterprise.license.integrations.postgresCollector.enabled .Values.enterprise.license.integrations.postgresCollector.podDisruptionBudget.enabled }}
-{{ include "rush.podDisruptionBudget" (dict "root" . "component" "postgres-collector" "pdb" .Values.enterprise.license.integrations.postgresCollector.podDisruptionBudget) }}
----
-{{- end }}
-{{- if and (include "rush.otelEnabled" .) .Values.collectors.otel.podDisruptionBudget.enabled }}
-{{ include "rush.podDisruptionBudget" (dict "root" . "component" "otel-collector" "pdb" .Values.collectors.otel.podDisruptionBudget) }}
----
-{{- end }}
-{{- if and (include "rush.vectorEnabled" .) .Values.collectors.vector.podDisruptionBudget.enabled }}
-{{ include "rush.podDisruptionBudget" (dict "root" . "component" "vector" "pdb" .Values.collectors.vector.podDisruptionBudget) }}
 ---
 {{- end }}
 {{- if and (eq .Values.clickhouse.mode "standalone") .Values.clickhouseStandalone.podDisruptionBudget.enabled }}

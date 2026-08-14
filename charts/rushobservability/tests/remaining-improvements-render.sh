@@ -26,36 +26,13 @@ for peer in frontend helm-test; do
   }
 done
 
-components="$(helm template remaining "$chart_dir" \
-  --set collectors.mode=hybrid \
-  --set collectors.allowAnonymousIngest=true \
-  --set sreAgent.enabled=true \
-  --set sreAgent.networkPolicy.allowExternalHttpsEgress=true \
-  --set sreAgent.llmApiKeySecret.name=llm \
-  --set anomalyEngine.enabled=true \
-  --set enterprise.license.integrations.postgresCollector.enabled=true \
-  --set-json 'enterprise.license.integrations.postgresCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":5432}]}]')"
-if [[ "$(grep -c '^kind: NetworkPolicy$' <<<"$components")" -lt 7 ]]; then
-  echo 'not every enabled first-party workload received a NetworkPolicy' >&2
-  exit 1
-fi
-for component in frontend query-api sre-agent anomaly-engine postgres-collector otel-collector vector; do
+components="$(helm template remaining "$chart_dir" --set anomalyEngine.enabled=true)"
+for component in frontend query-api anomaly-engine; do
   grep -Fq "name: remaining-$component" <<<"$components" || {
-    echo "enabled component is missing resources/policy: $component" >&2
+    echo "enabled core component is missing resources/policy: $component" >&2
     exit 1
   }
 done
-
-existing_vector_sa="$(helm template remaining "$chart_dir" \
-  --set collectors.mode=vector \
-  --set collectors.allowAnonymousIngest=true \
-  --set collectors.vector.serviceAccount.create=false \
-  --set collectors.vector.serviceAccount.name=existing-vector)"
-if ! grep -Fq 'serviceAccountName: existing-vector' <<<"$existing_vector_sa" ||
-   ! grep -Fq 'name: existing-vector' <<<"$existing_vector_sa"; then
-  echo 'existing Vector ServiceAccount was not used by both pod and RBAC binding' >&2
-  exit 1
-fi
 
 ingress="$(helm template remaining "$chart_dir" \
   --set ingress.enabled=true \

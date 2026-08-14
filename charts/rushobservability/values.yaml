@@ -210,8 +210,8 @@ queryApi:
     extraEgress: []
 
 # ══ Enterprise (commercial, license-gated) ══════════════════════════════
-# Groups the commercial license and the paid add-ons it unlocks. Free
-# integrations (ArgoCD) and core features (sre-agent) stay top-level.
+# Commercial license configuration used by Query API. Add-on workloads are
+# installed by the rush-observability-stack chart.
 enterprise:
 
   # ── Commercial license ──
@@ -224,185 +224,7 @@ enterprise:
       name: rush-license
       key: license-key
 
-    # ── Integrations unlocked by the license ──
-    integrations:
 
-      # ── postgres collector (paid add-on) ──
-      # Monitors an external Postgres and ships metrics + query stats into Rush over
-      # OTLP. Requires a license with the "postgres" entitlement — RUSH_LICENSE_KEY is
-      # injected from .Values.enterprise.license.secret, so create that secret too.
-      # Provide the Postgres DSN and the tenant ingest API key via a Secret:
-      #   kubectl create secret generic rush-pg-collector \
-      #     --from-literal=dsn='host=… user=rush_monitor password=… dbname=…' \
-      #     --from-literal=api-key='rush_xxx'
-      postgresCollector:
-        enabled: false
-        inheritGlobalScheduling: true
-        scheduling: {}
-        podAnnotations: {}
-        podLabels: {}
-        imagePullSecrets: []
-        priorityClassName: ""
-        runtimeClassName: ""
-        extraEnvFrom: []
-        extraVolumes: []
-        extraVolumeMounts: []
-        serviceAccount:
-          create: false
-          name: ""
-          annotations: {}
-        rollout:
-          strategy: Recreate
-          minReadySeconds: 0
-          progressDeadlineSeconds: 600
-          revisionHistoryLimit: 10
-        podDisruptionBudget:
-          enabled: false
-          type: maxUnavailable
-          value: 1
-        networkPolicy:
-          enabled: true
-          extraIngress: []
-          # Add the external Postgres CIDR and port here. No database-wide
-          # Internet egress is granted by default.
-          extraEgress: []
-        image:
-          repository: mzupan/postgres-collector
-          tag: "0.1.0"
-          digest: ""
-          pullPolicy: Always
-        secret:
-          name: rush-pg-collector
-          dsnKey: dsn
-          apiKeyKey: api-key
-        env:
-          COLLECTOR_ENVIRONMENT: production
-          RUST_LOG: info
-        resources:
-          requests:
-            cpu: 50m
-            memory: 64Mi
-          limits:
-            cpu: "500m"
-            memory: 256Mi
-
-# ── sre-agent ──
-sreAgent:
-  enabled: false                     # disabled by default — requires OPENAI_API_KEY
-  inheritGlobalScheduling: true
-  scheduling: {}
-  podAnnotations: {}
-  podLabels: {}
-  imagePullSecrets: []
-  priorityClassName: ""
-  runtimeClassName: ""
-  extraEnvFrom: []
-  extraVolumes: []
-  extraVolumeMounts: []
-  serviceAccount:
-    create: true
-    name: ""
-    annotations: {}
-  image:
-    repository: mzupan/sre-agent
-    tag: "0.1.0"
-    digest: ""
-    pullPolicy: Always
-  replicas: 1
-  port: 8081
-  rollout:
-    strategy: RollingUpdate
-    maxUnavailable: 0
-    maxSurge: 1
-    minReadySeconds: 0
-    progressDeadlineSeconds: 600
-    revisionHistoryLimit: 10
-  podDisruptionBudget:
-    enabled: false
-    type: maxUnavailable
-    value: 1
-  probes:
-    startup:
-      enabled: true
-      path: /healthz
-      initialDelaySeconds: 0
-      periodSeconds: 5
-      timeoutSeconds: 2
-      failureThreshold: 60
-      successThreshold: 1
-    readiness:
-      enabled: true
-      path: /healthz
-      initialDelaySeconds: 3
-      periodSeconds: 5
-      timeoutSeconds: 2
-      failureThreshold: 3
-      successThreshold: 1
-    liveness:
-      enabled: true
-      path: /healthz
-      initialDelaySeconds: 10
-      periodSeconds: 10
-      timeoutSeconds: 2
-      failureThreshold: 3
-      successThreshold: 1
-  # Leave blank to auto-generate and preserve a token in the bootstrap Secret.
-  internalAuthToken: ""
-  env:
-    CLICKHOUSE_DATABASE: observability
-    RUST_LOG: sre_agent=info,tower_http=info
-    OPENAI_BASE_URL: "https://api.openai.com"
-  # Kubernetes access is deny-by-default for the agent. Map each Rush tenant
-  # to the namespaces it may inspect; the chart serializes this map into the
-  # agent's namespace policy. Example: { acme: [acme-prod], '*': [shared] }
-  kube:
-    tenantNamespaces: {}
-    allowClusterScopedForAdmins: false
-  # LLM API key — provide via --set or external secret
-  # llmApiKey: "sk-..."
-  llmApiKeySecret:
-    name: ""                         # existing secret name (overrides llmApiKey)
-    key: "api-key"
-  githubApp:
-    enabled: false
-    appId: ""                        # numeric GitHub App ID (not the client ID)
-    apiUrl: "https://api.github.com" # override for GitHub Enterprise Server
-    # Operator-owned, deny-by-default repository grants. Browser/API callers
-    # cannot supply these IDs. GitHub repository IDs are available from the
-    # GitHub API (GET /repos/{owner}/{repo}).
-    # tenantRepositories:
-    #   acme:
-    #     - repository: acme/api
-    #       installationId: 654321
-    #       repositoryId: 123456789
-    tenantRepositories: {}
-    privateKeySecret:
-      name: ""                       # existing Secret containing the App's PEM private key
-      key: "private-key.pem"
-    cacheSizeLimit: 1Gi               # ephemeral, tenant-keyed source snapshots
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: "1"
-      memory: 512Mi
-  podSecurityContext:
-    runAsNonRoot: true
-    fsGroup: 65532
-    fsGroupChangePolicy: OnRootMismatch
-    seccompProfile:
-      type: RuntimeDefault
-  service:
-    type: ClusterIP
-    port: 8081
-  networkPolicy:
-    enabled: true
-    # Required for OpenAI/GitHub and for Kubernetes API calls when kube access
-    # is enabled. Kept explicit because it permits TCP/443 to external IPs.
-    allowExternalHttpsEgress: false
-    extraIngress: []
-    extraEgress: []
 
 # ── anomaly engine ──
 # The anomaly engine evaluates rules and sends notifications. By default the
@@ -620,10 +442,27 @@ ingress:
 # tiering with just this block — the chart auto-generates the ClickHouse S3 disk
 # + cold volume (see clickhouse.clickhouse.extraConfig). No hand-written XML.
 global:
-  # Shared scheduling defaults for Rush-owned workloads: query-api, frontend,
-  # SRE agent, anomaly engine, OTel, Vector, and licensed collectors. ClickHouse
-  # is intentionally independent; use clickhouse.clickhouse/keeper scheduling
-  # (or clickhouseStandalone scheduling) for storage-optimized node groups.
+  rush:
+    # Component labels allowed to send telemetry to Query API. The umbrella
+    # chart fills this with its enabled add-on component identities.
+    queryApiIngressComponents: []
+
+  # Optional connection to an SRE agent installed separately or by the
+  # rush-observability-stack chart. This core chart does not deploy the agent.
+  sreAgent:
+    enabled: false
+    port: 8081
+    internalAuthToken: ""
+    service:
+      port: 8081
+    githubApp:
+      enabled: false
+      tenantRepositories: {}
+
+  # Shared scheduling defaults for core Rush workloads: Query API, frontend,
+  # and anomaly engine. ClickHouse is intentionally independent; use
+  # clickhouse.clickhouse/keeper scheduling (or clickhouseStandalone scheduling)
+  # for storage-optimized node groups.
   # Component scheduling maps deep-merge over these defaults. Component lists
   # replace these lists. Set a component's inheritGlobalScheduling=false to opt out.
   scheduling:
@@ -932,210 +771,6 @@ clickhouseStandalone:
   affinity: {}
   topologySpreadConstraints: []
 
-# ═══════════════════════════════════════════════════════════════════════
-# Data collectors (optional)
-#
-# Deploy an ingestion pipeline that forwards metrics / traces / logs into
-# the Rush ClickHouse. Four modes — pick one:
-#
-#   none    Bring your own collector. Rush deploys nothing here.
-#           Point your collectors at the query-api OTLP/ingest endpoints.
-#
-#   otel    Deploy an OpenTelemetry Collector (contrib). Accepts OTLP on
-#           :4317 (gRPC) and :4318 (HTTP). Handles traces, metrics, logs.
-#           Runs as a Deployment (default, scalable) or DaemonSet.
-#
-#   vector  Deploy Vector as a DaemonSet on every node. Two sub-modes:
-#             - logs      kubernetes_logs source only (cheapest, tails
-#                         container stdout/stderr from the node)
-#             - full-otel kubernetes_logs + OTLP receivers for traces &
-#                         metrics
-#
-#   hybrid  OTel Collector for traces+metrics, Vector DaemonSet for logs.
-#           Best when you want OTLP ingest centrally but don't want the
-#           collector shipping every node's logs through a single pod.
-# ═══════════════════════════════════════════════════════════════════════
-collectors:
-  mode: none                         # none | otel | vector | hybrid
-
-  # Required whenever mode is not "none". Create an ingest-only key in
-  # Settings > API Keys with the signals used below, then store it in this
-  # existing Secret. Query/user keys are intentionally rejected by ingest.
-  ingestApiKeySecret:
-    name: ""
-    key: api-key
-  # Explicit opt-in for a tenant whose "Require ingest key" setting is off.
-  # Secure-key authentication remains the chart default.
-  allowAnonymousIngest: false
-
-  # ── OpenTelemetry Collector ──
-  otel:
-    inheritGlobalScheduling: true
-    scheduling: {}
-    podAnnotations: {}
-    podLabels: {}
-    imagePullSecrets: []
-    priorityClassName: ""
-    runtimeClassName: ""
-    extraEnvFrom: []
-    extraVolumes: []
-    extraVolumeMounts: []
-    serviceAccount:
-      create: false
-      name: ""
-      annotations: {}
-    rollout:
-      strategy: RollingUpdate
-      maxUnavailable: 0
-      maxSurge: 1
-      minReadySeconds: 0
-      progressDeadlineSeconds: 600
-      revisionHistoryLimit: 10
-    podDisruptionBudget:
-      enabled: false
-      type: maxUnavailable
-      value: 1
-    networkPolicy:
-      enabled: true
-      allowSameNamespaceIngress: true
-      extraIngress: []
-      extraEgress: []
-    probes:
-      startup:
-        enabled: true
-        path: /
-        initialDelaySeconds: 0
-        periodSeconds: 5
-        timeoutSeconds: 2
-        failureThreshold: 60
-        successThreshold: 1
-      readiness:
-        enabled: true
-        path: /
-        initialDelaySeconds: 5
-        periodSeconds: 10
-        timeoutSeconds: 2
-        failureThreshold: 3
-        successThreshold: 1
-      liveness:
-        enabled: true
-        path: /
-        initialDelaySeconds: 15
-        periodSeconds: 20
-        timeoutSeconds: 2
-        failureThreshold: 3
-        successThreshold: 1
-    image:
-      repository: otel/opentelemetry-collector-contrib
-      tag: "0.118.0"
-      digest: ""
-      pullPolicy: IfNotPresent
-
-    # deployment  — central, scalable, single service endpoint
-    # daemonset   — one collector per node, receives from local workloads
-    kind: deployment
-    replicas: 2
-
-    # HPA (only honored when kind=deployment)
-    autoscaling:
-      enabled: false
-      minReplicas: 2
-      maxReplicas: 10
-      targetCPUUtilizationPercentage: 70
-
-    # Which signal pipelines to enable. Disabling a signal removes its
-    # receiver pipeline entirely (the OTLP receiver itself still accepts
-    # the wire format — it just isn't routed anywhere).
-    signals:
-      traces: true
-      metrics: true
-      logs: true
-
-    resources:
-      requests:
-        cpu: 200m
-        memory: 256Mi
-      limits:
-        cpu: "2"
-        memory: 1Gi
-
-    service:
-      type: ClusterIP
-      # Per-port override. 4317=OTLP gRPC, 4318=OTLP HTTP, 8888=collector
-      # self-metrics (prometheus scrape).
-      grpcPort: 4317
-      httpPort: 4318
-
-    # Raw collector config override. When set, replaces the generated
-    # config entirely. Leave empty to use the generated config which
-    # forwards signals to the in-cluster Rush query-api.
-    configOverride: ""
-
-  # ── Vector ──
-  vector:
-    # Set inheritGlobalScheduling=false to keep this DaemonSet on every eligible
-    # node rather than restricting it to the shared Rush application node group.
-    inheritGlobalScheduling: true
-    scheduling: {}
-    podAnnotations: {}
-    podLabels: {}
-    imagePullSecrets: []
-    priorityClassName: ""
-    runtimeClassName: ""
-    extraEnvFrom: []
-    extraVolumes: []
-    extraVolumeMounts: []
-    serviceAccount:
-      create: true
-      name: ""
-      annotations: {}
-    rollout:
-      strategy: RollingUpdate
-      maxUnavailable: 1
-      maxSurge: 0
-      minReadySeconds: 0
-      revisionHistoryLimit: 10
-    podDisruptionBudget:
-      enabled: false
-      type: maxUnavailable
-      value: 1
-    networkPolicy:
-      enabled: true
-      allowSameNamespaceIngress: true
-      # Vector needs Kubernetes API access for pod metadata discovery.
-      allowExternalHttpsEgress: true
-      extraIngress: []
-      extraEgress: []
-    image:
-      repository: timberio/vector
-      # 0.51+ adds native OTLP decoding + an opentelemetry sink (encoding.codec: otlp),
-      # which lets full-otel mode forward received OTLP traces/metrics/logs straight to
-      # Rush's OTLP endpoints. 0.56 is the current stable.
-      tag: "0.56.0-distroless-libc"
-      digest: ""
-      pullPolicy: IfNotPresent
-
-    # logs       — kubernetes_logs source only (DaemonSet)
-    # full-otel  — kubernetes_logs + OTLP receivers on 4317/4318 that forward
-    #              received traces/metrics/logs straight to Rush's OTLP endpoints
-    #              (/v1/traces, /v1/metrics, /v1/logs). Acts as a single OTLP gateway.
-    mode: logs
-
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: "1"
-        memory: 512Mi
-
-    # Host paths mounted into the DaemonSet for the kubernetes_logs source.
-    hostPath:
-      varLog: /var/log
-      varLibDockerContainers: /var/lib/docker/containers
-
-    # Raw vector.yaml override. When set, replaces the generated config.
-    configOverride: ""
 
 # Native `helm test` connectivity checks. Jobs are created only as Helm test
 # hooks and use the query-api image, which already contains curl.

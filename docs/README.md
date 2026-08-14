@@ -4,6 +4,7 @@ Use these guides after the [quick install](../README.md#quick-install).
 
 | Goal | Guide |
 |---|---|
+| Install core Rush or the complete observability stack | [Choose a chart](stack.md) |
 | Choose operator-managed, standalone, or external ClickHouse | [ClickHouse](clickhouse.md) |
 | Place workloads on dedicated node groups | [Scheduling](scheduling.md) |
 | Run multiple replicas and configure safe rollouts | [Reliability and high availability](reliability.md) |
@@ -16,6 +17,7 @@ Use these guides after the [quick install](../README.md#quick-install).
 
 - [Example values](../examples/)
 - [Default values](../charts/rushobservability/values.yaml)
+- [Stack default values](../charts/rush-observability-stack/values.yaml)
+- [Metrics-agent default values](../charts/metrics-agent/values.yaml)
 - [Values schema](../charts/rushobservability/values.schema.json)
 - [Chart source](../charts/rushobservability/)
-
