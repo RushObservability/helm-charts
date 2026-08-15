@@ -23,6 +23,16 @@ for core in stack-query-api stack-frontend; do
     exit 1
   }
 done
+for expected in \
+  'name: stack-ingest' \
+  'name: RUSH_BOOTSTRAP_INGEST_API_KEY' \
+  'name: RUSH_API_KEY_SECRET' \
+  'key: api-key-hmac-secret'; do
+  grep -Fq "$expected" <<<"$defaults" || {
+    echo "default stack automatic ingest bootstrap is missing: $expected" >&2
+    exit 1
+  }
+done
 for addon in 'name: stack-otel-collector' 'name: stack-vector' 'name: stack-sre-agent' 'name: stack-postgres-collector' 'name: stack-metrics-agent'; do
   if grep -Fq "$addon" <<<"$defaults"; then
     echo "default stack unexpectedly installed opt-in add-on: $addon" >&2
@@ -30,10 +40,43 @@ for addon in 'name: stack-otel-collector' 'name: stack-vector' 'name: stack-sre-
   fi
 done
 
-if helm template stack "$chart_dir" "${common[@]}" --set collectors.mode=otel >/dev/null 2>&1; then
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set collectors.mode=otel \
+  --set global.rush.ingestApiKeySecret.autoGenerate=false >/dev/null 2>&1; then
   echo 'collector rendered without an ingest-key Secret' >&2
   exit 1
 fi
+
+automatic_ingest="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set collectors.mode=otel \
+  --set metricsAgent.enabled=true)"
+for expected in \
+  'name: stack-ingest' \
+  'name: RUSH_INGEST_API_KEY' \
+  'name: RUSH_BOOTSTRAP_INGEST_API_KEY' \
+  'Authorization: "Bearer ${env:RUSH_INGEST_API_KEY}"'; do
+  grep -Fq "$expected" <<<"$automatic_ingest" || {
+    echo "automatic ingest-key render is missing: $expected" >&2
+    exit 1
+  }
+done
+
+inline_ingest="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set collectors.mode=otel \
+  --set metricsAgent.enabled=true \
+  --set-string global.rush.ingestApiKeySecret.value=rush_ing_test_install_0123456789abcdef0123456789abcdef)"
+inline_ingest_encoded="$(printf %s rush_ing_test_install_0123456789abcdef0123456789abcdef | base64 | tr -d '\n')"
+for expected in \
+  'kind: Secret' \
+  'name: stack-ingest' \
+  "api-key: \"$inline_ingest_encoded\"" \
+  'name: "stack-ingest"' \
+  'name: RUSH_INGEST_API_KEY'; do
+  grep -Fq "$expected" <<<"$inline_ingest" || {
+    echo "install-time ingest Secret render is missing: $expected" >&2
+    exit 1
+  }
+done
 
 otel="$(helm template stack "$chart_dir" "${common[@]}" \
   --set collectors.mode=otel \

@@ -19,8 +19,10 @@ global:
       serviceName: ""
       port: 8080
     ingestApiKeySecret:
+      autoGenerate: false
       name: ""
       key: api-key
+      value: ""
 
 # The controller is intentionally single-replica until leader election is
 # implemented. The deployment template rejects values other than one.

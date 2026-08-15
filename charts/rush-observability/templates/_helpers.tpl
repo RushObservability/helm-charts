@@ -34,6 +34,16 @@ app.kubernetes.io/component: {{ .component }}
 {{- printf "http://%s:%v" (include "rush.queryApiServiceName" .) .Values.queryApi.service.port -}}
 {{- end -}}
 
+{{/* Optional stack-managed ingest key that Query API registers at startup. */}}
+{{- define "rush.bootstrapIngestApiKeySecretName" -}}
+{{- $config := .Values.global.rush.ingestApiKeySecret | default dict -}}
+{{- if ($config.name | default "") -}}
+{{- $config.name -}}
+{{- else if or ($config.autoGenerate | default false) ($config.value | default "") -}}
+{{- printf "%s-ingest" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "rush.sreAgentServiceName" -}}
 {{- include "rush.componentName" (dict "root" . "component" "sre-agent") -}}
 {{- end -}}

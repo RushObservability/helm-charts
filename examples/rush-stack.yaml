@@ -1,5 +1,5 @@
-# Apply this file to rush-observability-stack after creating the rush-ingest
-# Secret. Configure core Rush under rush-observability.
+# Apply this file to rush-observability-stack. The chart generates and
+# registers its shared ingest key automatically.
 rush-observability:
   queryApi:
     replicas: 1
@@ -7,10 +7,6 @@ rush-observability:
     mode: operator
 
 global:
-  rush:
-    ingestApiKeySecret:
-      name: rush-ingest
-      key: api-key
   sreAgent:
     enabled: false
 

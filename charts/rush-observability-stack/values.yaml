@@ -44,11 +44,18 @@ global:
       # Blank resolves to <release>-query-api.
       serviceName: ""
       port: 8080
-    # Existing Secret containing a Rush ingest-only API key. OTel Collector,
-    # Vector, and metrics-agent all use this one setting.
+    # Rush ingest-only API key shared by Query API, OTel Collector, Vector, and
+    # metrics-agent. By default Helm generates and registers it automatically.
     ingestApiKeySecret:
+      # Generate <release>-ingest on first install and preserve it on upgrades.
+      # Set false only for anonymous ingest or when no authenticated add-on is used.
+      autoGenerate: true
+      # Set a name to use an externally managed Secret instead.
       name: ""
       key: api-key
+      # Optional explicit key. This creates the chart-managed Secret and takes
+      # precedence over automatic generation. It is stored in release history.
+      value: ""
 
   scheduling:
     nodeSelector: {}

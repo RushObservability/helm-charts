@@ -17,8 +17,8 @@ collectors with the same release.
 | Vector | Off | Collect Kubernetes container logs; optionally receive OTLP |
 | PostgreSQL collector | Off | Paid PostgreSQL monitoring add-on |
 
-Add-ons are off initially because they need an ingest key, LLM key, database
-credentials, or a paid license.
+Add-ons are off initially because some need an LLM key, database credentials,
+or a paid license. The shared ingest key is generated automatically.
 
 ## Values layout
 
@@ -35,9 +35,8 @@ rush-observability:
 
 global:
   rush:
-    ingestApiKeySecret:
-      name: rush-ingest
-      key: api-key
+    # Optional: defaults to an automatically generated <release>-ingest Secret.
+    ingestApiKeySecret: {}
 
 collectors:
   mode: hybrid # none | otel | vector | hybrid
@@ -69,23 +68,32 @@ so upgrades do not silently ignore old values.
 
 ## Enable telemetry collection
 
-First install the stack, sign in, and create an ingest-only API key under
-**Settings → API Keys**. Store it in the release namespace:
-
-```bash
-kubectl -n observability create secret generic rush-ingest \
-  --from-literal=api-key='rush_ing_...'
-```
-
-Then enable the components you need:
+Enable the components you need. Helm generates `<release>-ingest` on first
+install, preserves it across upgrades, and Query API registers it as an
+ingest-only key for logs, traces, metrics, and RUM:
 
 ```bash
 helm upgrade rush rush/rush-observability-stack -n observability \
-  --set global.rush.ingestApiKeySecret.name=rush-ingest \
   --set collectors.mode=hybrid \
   --set metricsAgent.enabled=true \
   --set-string metricsAgent.extraLabels.env=dev
 ```
+
+To use an externally managed Secret instead:
+
+```bash
+kubectl -n observability create secret generic rush-ingest \
+  --from-literal=api-key='rush_ing_...'
+
+helm upgrade rush rush/rush-observability-stack -n observability \
+  --set collectors.mode=hybrid \
+  --set metricsAgent.enabled=true \
+  --set global.rush.ingestApiKeySecret.name=rush-ingest
+```
+
+Query API also registers an external key if it is not already present. An
+explicit `global.rush.ingestApiKeySecret.value` remains available, but values
+are stored in Helm release history and may remain in shell history.
 
 Use `otel` for a central OTLP gateway, `vector` for node-local logs, or
 `hybrid` for OTel traces/metrics plus Vector logs.

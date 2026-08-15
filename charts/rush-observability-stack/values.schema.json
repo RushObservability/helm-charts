@@ -36,10 +36,12 @@
             },
             "ingestApiKeySecret": {
               "type": "object",
-              "required": ["name", "key"],
+              "required": ["autoGenerate", "name", "key", "value"],
               "properties": {
+                "autoGenerate": { "type": "boolean" },
                 "name": { "type": "string" },
-                "key": { "type": "string", "minLength": 1 }
+                "key": { "type": "string", "minLength": 1 },
+                "value": { "type": "string", "pattern": "^$|^.{32,}$" }
               },
               "additionalProperties": true
             }

@@ -8,12 +8,24 @@ Fresh tenants require authentication. Query and user keys cannot write
 telemetry. Collectors need an ingest-only key scoped to their tenant, signals,
 request rate, and optional source CIDRs.
 
-For a new installation:
+For a new stack installation:
 
 1. Install `rush-observability-stack`; add-ons default to off.
-2. Sign in and create an ingest key under **Settings → API Keys**.
-3. Store the key in the release namespace.
-4. Enable the collector.
+2. Enable a collector when needed.
+3. Helm creates `<release>-ingest`, preserves it across upgrades, and Query API
+   registers its HMAC for the default tenant.
+
+```bash
+helm upgrade rush rush/rush-observability-stack -n observability \
+  --set collectors.mode=otel
+```
+
+Generated OpenTelemetry Collector and Vector configurations send the key as a
+Bearer token. Set `global.rush.ingestApiKeySecret.autoGenerate=false` only when
+authenticated add-ons are disabled or the tenant explicitly allows anonymous
+ingest.
+
+To use an externally managed Secret instead:
 
 ```bash
 kubectl -n observability create secret generic rush-collector-ingest \
@@ -24,9 +36,8 @@ helm upgrade rush rush/rush-observability-stack -n observability \
   --set global.rush.ingestApiKeySecret.name=rush-collector-ingest
 ```
 
-Generated OpenTelemetry Collector and Vector configurations send the key as a
-Bearer token. The chart refuses to render an enabled collector without
-`global.rush.ingestApiKeySecret.name`.
+Query API registers the external key automatically if needed. It stores only
+the HMAC; the plaintext stays in the Kubernetes Secret.
 
 If the target tenant has **Require ingest key** turned off, explicitly allow
 anonymous collector ingestion:
@@ -90,6 +101,7 @@ artifact.
 The chart provisions:
 
 - An initial admin password
+- An API-key HMAC key
 - An audit-log HMAC key
 - A separate session-token HMAC key
 - SSO and configuration encryption keys
@@ -120,6 +132,7 @@ non-whitespace character, and not match a bundled common password. The default
 ```bash
 helm install rush rush/rush-observability \
   --set queryApi.adminPassword="$(openssl rand -base64 18)" \
+  --set queryApi.apiKeyHmacSecret="$(openssl rand -hex 32)" \
   --set queryApi.auditHmacSecret="$(openssl rand -hex 32)" \
   --set queryApi.sessionHmacSecret="$(openssl rand -hex 32)" \
   --set global.sreAgent.internalAuthToken="$(openssl rand -hex 32)"
@@ -132,6 +145,7 @@ Create the Secret before installing the chart:
 ```bash
 kubectl create secret generic rush-bootstrap -n <namespace> \
   --from-literal=initial-admin-password="$(openssl rand -base64 18)" \
+  --from-literal=api-key-hmac-secret="$(openssl rand -hex 32)" \
   --from-literal=audit-hmac-secret="$(openssl rand -hex 32)" \
   --from-literal=session-hmac-secret="$(openssl rand -hex 32)" \
   --from-literal=sso-transaction-secret="$(openssl rand -hex 32)" \

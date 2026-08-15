@@ -152,7 +152,7 @@ spec:
                   key: {{ .Values.enterprise.license.secret.key }}
             {{- end }}
             {{- $bootstrapSecret := .Values.queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
-            # First-boot admin seed + audit-log HMAC key. Auto-generated and
+            # First-boot admin seed plus API-key/audit/session HMAC keys. Auto-generated and
             # preserved across upgrades by query-api-secret.yaml (or supply your
             # own via queryApi.existingSecret). Never hard-code these in values.
             - name: INITIAL_ADMIN_PASSWORD
@@ -160,6 +160,14 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: initial-admin-password
+            - name: RUSH_API_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $bootstrapSecret }}
+                  key: api-key-hmac-secret
+                  # Older externally managed bootstrap Secrets may not have
+                  # this key yet; keeping it optional avoids breaking upgrades.
+                  optional: true
             - name: RUSH_AUDIT_HMAC_SECRET
               valueFrom:
                 secretKeyRef:
@@ -187,6 +195,16 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: config-encryption-key
+            {{- $ingestSecret := include "rush.bootstrapIngestApiKeySecretName" . }}
+            {{- if $ingestSecret }}
+            # The plaintext is used only to idempotently register its HMAC in
+            # Query API's config store. It is never written to logs or storage.
+            - name: RUSH_BOOTSTRAP_INGEST_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $ingestSecret }}
+                  key: {{ .Values.global.rush.ingestApiKeySecret.key }}
+            {{- end }}
             {{- if .Values.global.sreAgent.enabled }}
             - name: SRE_AGENT_INTERNAL_TOKEN
               valueFrom:

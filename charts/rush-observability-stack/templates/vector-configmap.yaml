@@ -120,7 +120,7 @@ data:
           max_events: 1000
           timeout_secs: 5
         request:
-          {{- if .Values.global.rush.ingestApiKeySecret.name }}
+          {{- if (include "rush.stackIngestApiKeySecretName" .) }}
           headers:
             Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
           {{- end }}
@@ -143,7 +143,7 @@ data:
           encoding:
             codec: otlp
         request:
-          {{- if .Values.global.rush.ingestApiKeySecret.name }}
+          {{- if (include "rush.stackIngestApiKeySecretName" .) }}
           headers:
             Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
           {{- end }}
@@ -160,7 +160,7 @@ data:
           encoding:
             codec: otlp
         request:
-          {{- if .Values.global.rush.ingestApiKeySecret.name }}
+          {{- if (include "rush.stackIngestApiKeySecretName" .) }}
           headers:
             Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
           {{- end }}
@@ -177,7 +177,7 @@ data:
           encoding:
             codec: otlp
         request:
-          {{- if .Values.global.rush.ingestApiKeySecret.name }}
+          {{- if (include "rush.stackIngestApiKeySecretName" .) }}
           headers:
             Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
           {{- end }}
