@@ -47,7 +47,7 @@ data:
       # otlphttp posts protobuf to {endpoint}/v1/{traces,logs,metrics}.
       otlphttp:
         endpoint: {{ include "rush.stackQueryApiUrl" . }}
-        {{- if .Values.global.rush.ingestApiKeySecret.name }}
+        {{- if (include "rush.stackIngestApiKeySecretName" .) }}
         headers:
           Authorization: "Bearer ${env:RUSH_INGEST_API_KEY}"
         {{- end }}

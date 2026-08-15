@@ -9,11 +9,12 @@
 {{- end -}}
 {{- $collectorEnabled := ne .Values.collectors.mode "none" -}}
 {{- $metricsNeedsKey := and .Values.metricsAgent.enabled .Values.metricsAgent.rushRemoteWrite.enabled (not .Values.metricsAgent.rushRemoteWrite.allowAnonymous) -}}
+{{- $ingestSecretName := include "rush.stackIngestApiKeySecretName" . -}}
 {{- if and .Values.metricsAgent.enabled (not (semverCompare ">=1.27.0-0" .Capabilities.KubeVersion.Version)) -}}
 {{- fail "metricsAgent.enabled=true requires Kubernetes 1.27 or newer" -}}
 {{- end -}}
-{{- if and (or (and $collectorEnabled (not .Values.collectors.allowAnonymousIngest)) $metricsNeedsKey) (not .Values.global.rush.ingestApiKeySecret.name) -}}
-{{- fail "global.rush.ingestApiKeySecret.name is required by enabled collectors or metrics-agent remote write" -}}
+{{- if and (or (and $collectorEnabled (not .Values.collectors.allowAnonymousIngest)) $metricsNeedsKey) (not $ingestSecretName) -}}
+{{- fail "enable global.rush.ingestApiKeySecret.autoGenerate or set name/value for authenticated collectors or metrics-agent remote write" -}}
 {{- end -}}
 {{- if and .Values.global.sreAgent.enabled (not .Values.global.sreAgent.llmApiKey) (not .Values.global.sreAgent.llmApiKeySecret.name) -}}
 {{- fail "global.sreAgent.llmApiKeySecret.name (or llmApiKey) is required when the SRE agent is enabled" -}}

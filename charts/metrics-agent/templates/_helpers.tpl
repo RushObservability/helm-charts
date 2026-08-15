@@ -67,7 +67,13 @@ app.kubernetes.io/component: metrics-agent
 {{- end -}}
 
 {{- define "metrics-agent.rushRemoteWriteSecretName" -}}
-{{- default .Values.global.rush.ingestApiKeySecret.name .Values.rushRemoteWrite.bearerTokenSecret.name -}}
+{{- if .Values.rushRemoteWrite.bearerTokenSecret.name -}}
+{{- .Values.rushRemoteWrite.bearerTokenSecret.name -}}
+{{- else if .Values.global.rush.ingestApiKeySecret.name -}}
+{{- .Values.global.rush.ingestApiKeySecret.name -}}
+{{- else if or .Values.global.rush.ingestApiKeySecret.autoGenerate .Values.global.rush.ingestApiKeySecret.value -}}
+{{- printf "%s-ingest" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "metrics-agent.rushRemoteWriteSecretKey" -}}

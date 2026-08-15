@@ -10,5 +10,13 @@ Enabled add-ons:
   PostgreSQL add-on:  {{ ternary "yes" "no" .Values.postgresCollector.enabled }}
   Collector topology: {{ .Values.collectors.mode }}
 
-Create an ingest-only API key in Rush, store it in a Secret, then set:
-  global.rush.ingestApiKeySecret.name=<secret-name>
+Ingest API key:
+{{- if and .Values.global.rush.ingestApiKeySecret.autoGenerate (not .Values.global.rush.ingestApiKeySecret.name) (not .Values.global.rush.ingestApiKeySecret.value) }}
+  Helm generated {{ include "rush.stackIngestApiKeySecretName" . }} and Query API registers it automatically.
+{{- else if .Values.global.rush.ingestApiKeySecret.name }}
+  Query API registers the key from {{ .Values.global.rush.ingestApiKeySecret.name }} automatically.
+{{- else if .Values.global.rush.ingestApiKeySecret.value }}
+  Query API registers the install-time key in {{ include "rush.stackIngestApiKeySecretName" . }} automatically.
+{{- else }}
+  Automatic key generation is disabled.
+{{- end }}

@@ -23,7 +23,7 @@ queryApi:
     annotations: {}
   image:
     repository: mzupan/rush-api
-    tag: "0.1.24"
+    tag: "0.1.25"
     digest: "" # sha256:<64 hex chars>; takes precedence over tag
     pullPolicy: Always
   replicas: 1
@@ -118,11 +118,12 @@ queryApi:
   gracefulShutdown:
     enabled: true
   terminationGracePeriodSeconds: 120
-  # ── Bootstrap secrets (admin password + audit HMAC key) ──
+  # ── Bootstrap secrets (admin password + API/audit/session HMAC keys) ──
   # Leave blank to AUTO-GENERATE on first install and preserve across upgrades
   # (stored in the <release>-bootstrap Secret — ArgoCD-style). Set a value to
   # pin/preset it, or point existingSecret at your own Secret to bring your own.
   adminPassword: ""        # INITIAL_ADMIN_PASSWORD — first-boot admin seed
+  apiKeyHmacSecret: ""     # RUSH_API_KEY_SECRET — HMAC key for stored API-key hashes
   auditHmacSecret: ""      # RUSH_AUDIT_HMAC_SECRET — audit hash-chain key; MUST stay stable
   sessionHmacSecret: ""    # RUSH_SESSION_HMAC_SECRET — one-way browser-session token key
   ssoTransactionSecret: "" # RUSH_SSO_TRANSACTION_SECRET — signed OIDC/SAML transaction key; MUST stay stable
@@ -143,7 +144,7 @@ queryApi:
         size: 1Gi
   # Use a pre-created Secret instead of the auto-generated one. When set, the
   # chart creates no bootstrap Secret and reads these keys from yours:
-  #   initial-admin-password, audit-hmac-secret, session-hmac-secret,
+  #   initial-admin-password, api-key-hmac-secret, audit-hmac-secret, session-hmac-secret,
   #   sso-transaction-secret, config-encryption-key, and optionally
   #   audit-hmac-previous-keys
   existingSecret: ""
@@ -446,6 +447,13 @@ global:
     # Component labels allowed to send telemetry to Query API. The umbrella
     # chart fills this with its enabled add-on component identities.
     queryApiIngressComponents: []
+    # The stack chart fills this in so Query API can register the same ingest
+    # credential mounted by its collectors. Core-only installs leave it off.
+    ingestApiKeySecret:
+      autoGenerate: false
+      name: ""
+      key: api-key
+      value: ""
 
   # Optional connection to an SRE agent installed separately or by the
   # rush-observability-stack chart. This core chart does not deploy the agent.

@@ -51,15 +51,15 @@ spec:
             - name: metrics
               containerPort: 8888
               protocol: TCP
-          {{- if .Values.global.rush.ingestApiKeySecret.name }}
+          {{- if (include "rush.stackIngestApiKeySecretName" .) }}
           env:
             - name: RUSH_INGEST_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.global.rush.ingestApiKeySecret.name }}
+                  name: {{ include "rush.stackIngestApiKeySecretName" . }}
                   key: {{ .Values.global.rush.ingestApiKeySecret.key }}
           {{- else if not .Values.collectors.allowAnonymousIngest }}
-          {{- fail "global.rush.ingestApiKeySecret.name is required when an in-cluster collector is enabled" }}
+          {{- fail "global.rush.ingestApiKeySecret.name or value is required when an in-cluster collector is enabled" }}
           {{- end }}
           {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.collectors.otel) | nindent 10 }}
           volumeMounts:

@@ -37,14 +37,14 @@ spec:
           imagePullPolicy: {{ .Values.collectors.vector.image.pullPolicy }}
           args: ["--config", "/etc/vector/vector.yaml"]
           env:
-            {{- if .Values.global.rush.ingestApiKeySecret.name }}
+            {{- if (include "rush.stackIngestApiKeySecretName" .) }}
             - name: RUSH_INGEST_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.global.rush.ingestApiKeySecret.name }}
+                  name: {{ include "rush.stackIngestApiKeySecretName" . }}
                   key: {{ .Values.global.rush.ingestApiKeySecret.key }}
             {{- else if not .Values.collectors.allowAnonymousIngest }}
-            {{- fail "global.rush.ingestApiKeySecret.name is required when an in-cluster collector is enabled" }}
+            {{- fail "global.rush.ingestApiKeySecret.name or value is required when an in-cluster collector is enabled" }}
             {{- end }}
             - name: VECTOR_SELF_NODE_NAME
               valueFrom:

@@ -7,6 +7,15 @@
 {{- printf "http://%s:%v" (include "rush.stackQueryApiServiceName" .) .Values.global.rush.queryApi.port -}}
 {{- end -}}
 
+{{/* Existing ingest Secret, or the release-owned generated/value Secret. */}}
+{{- define "rush.stackIngestApiKeySecretName" -}}
+{{- if .Values.global.rush.ingestApiKeySecret.name -}}
+{{- .Values.global.rush.ingestApiKeySecret.name -}}
+{{- else if or .Values.global.rush.ingestApiKeySecret.autoGenerate .Values.global.rush.ingestApiKeySecret.value -}}
+{{- printf "%s-ingest" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "rush.stackClickhouseService" -}}
 {{- $ch := (index .Values "rush-observability").clickhouse -}}
 {{- if eq $ch.mode "standalone" -}}
