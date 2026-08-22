@@ -213,6 +213,8 @@ spec:
               value: {{ .Values.queryApi.kubernetesAccess.retainRawIp | quote }}
             - name: KUBERNETES_ACCESS_COLLECT_PRIVATE_IP
               value: {{ .Values.queryApi.kubernetesAccess.collectPrivateIp | quote }}
+            - name: KUBERNETES_ACCESS_CREDENTIAL_TTL_SECONDS
+              value: {{ .Values.queryApi.kubernetesAccess.credentialTtlSeconds | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_ID
               value: {{ .Values.kubernetesAccessGateway.gatewayId | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_TENANT_IDS
@@ -225,10 +227,6 @@ spec:
             {{- end }}
             - name: KUBERNETES_ACCESS_TENANT_CLUSTERS
               value: {{ $tenantClusters | toJson | quote }}
-            - name: KUBERNETES_ACCESS_API_KEY_IDS
-              value: {{ join "," .Values.queryApi.kubernetesAccess.authorizedApiKeyIds | quote }}
-            - name: KUBERNETES_ACCESS_API_KEY_ROLES
-              value: {{ .Values.queryApi.kubernetesAccess.authorizedApiKeyRoles | toJson | quote }}
             {{- end }}
             {{- $ingestSecret := include "rush.bootstrapIngestApiKeySecretName" . }}
             {{- if $ingestSecret }}

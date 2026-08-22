@@ -194,12 +194,9 @@ queryApi:
     # Applies only to optional client-enrichment callers. The transparent
     # kubeconfig flow does not report private laptop addresses.
     collectPrivateIp: false
-    # Query keys are denied unless their stable key IDs are explicitly listed.
-    # Browser sessions still require infrastructure read permission.
-    authorizedApiKeyIds: []
-    # Optional role per allowlisted key ID: read, write, or admin. Unmapped keys
-    # receive read. Use write for keys whose Kubernetes RBAC permits exec.
-    authorizedApiKeyRoles: {}
+    # Lifetime of the browser-approved credential returned to kubectl. API keys
+    # are never accepted by the Kubernetes access gateway.
+    credentialTtlSeconds: 3600
   # Browser sessions use a renewable idle deadline plus a hard maximum age.
   # Renewal rotates the HttpOnly bearer and never extends absoluteTimeoutSeconds.
   session:

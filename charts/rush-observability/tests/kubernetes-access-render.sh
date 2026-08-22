@@ -47,8 +47,7 @@ enabled="$(helm template kubernetes-access "$chart_dir" \
   --set queryApi.kubernetesAccess.maxResultBytes=524288 \
   --set queryApi.kubernetesAccess.maxSessionBytes=134217728 \
   --set queryApi.kubernetesAccess.retentionDays=14 \
-  --set queryApi.kubernetesAccess.authorizedApiKeyIds[0]=key-123 \
-  --set queryApi.kubernetesAccess.authorizedApiKeyRoles.key-123=write \
+  --set queryApi.kubernetesAccess.credentialTtlSeconds=7200 \
   --set kubernetesAccessGateway.gatewayId=primary \
   --set kubernetesAccessGateway.clusterId=prod-us-east-1 \
   --set kubernetesAccessGateway.tenantIds[0]=default)"
@@ -70,10 +69,10 @@ assert_contains "$enabled" 'name: KUBERNETES_ACCESS_GATEWAY_TENANT_IDS' 'gateway
 assert_contains "$enabled" 'value: "default"' 'configured gateway tenant'
 assert_contains "$enabled" 'name: KUBERNETES_ACCESS_TENANT_CLUSTERS' 'tenant-to-cluster policy'
 assert_contains "$enabled" 'value: "{\"default\":[\"prod-us-east-1\"]}"' 'derived tenant-to-cluster policy'
-assert_contains "$enabled" 'name: KUBERNETES_ACCESS_API_KEY_IDS' 'explicit API key allowlist'
-assert_contains "$enabled" 'value: "key-123"' 'configured API key ID'
-assert_contains "$enabled" 'name: KUBERNETES_ACCESS_API_KEY_ROLES' 'API key Kubernetes role mapping'
-assert_contains "$enabled" 'value: "{\"key-123\":\"write\"}"' 'configured API key role'
+assert_contains "$enabled" 'name: KUBERNETES_ACCESS_CREDENTIAL_TTL_SECONDS' 'temporary credential lifetime'
+assert_contains "$enabled" 'value: "7200"' 'configured temporary credential lifetime'
+assert_absent "$enabled" 'KUBERNETES_ACCESS_API_KEY_IDS' 'Kubernetes API key allowlist'
+assert_absent "$enabled" 'KUBERNETES_ACCESS_API_KEY_ROLES' 'Kubernetes API key role mapping'
 
 gateway="$(helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \

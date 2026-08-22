@@ -279,7 +279,7 @@
         "networkPolicy": { "$ref": "#/definitions/networkPolicy" },
         "kubernetesAccess": {
           "type": "object",
-          "required": ["enabled", "internalToken", "maxResultBytes", "maxSessionBytes", "retentionDays", "retainRawIp", "collectPrivateIp", "authorizedApiKeyIds", "authorizedApiKeyRoles"],
+          "required": ["enabled", "internalToken", "maxResultBytes", "maxSessionBytes", "retentionDays", "retainRawIp", "collectPrivateIp", "credentialTtlSeconds"],
           "additionalProperties": false,
           "properties": {
             "enabled": { "type": "boolean" },
@@ -289,16 +289,7 @@
             "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 },
             "retainRawIp": { "type": "boolean" },
             "collectPrivateIp": { "type": "boolean" },
-            "authorizedApiKeyIds": {
-              "type": "array",
-              "uniqueItems": true,
-              "items": { "type": "string", "minLength": 1, "maxLength": 256 }
-            },
-            "authorizedApiKeyRoles": {
-              "type": "object",
-              "propertyNames": { "minLength": 1, "maxLength": 256 },
-              "additionalProperties": { "type": "string", "enum": ["read", "write", "admin"] }
-            }
+            "credentialTtlSeconds": { "type": "integer", "minimum": 300, "maximum": 43200 }
           }
         },
         "buffer": {

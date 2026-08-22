@@ -126,9 +126,7 @@ queryApi:
     retentionDays: 30
     retainRawIp: false
     collectPrivateIp: false
-    authorizedApiKeyIds: [key-123]
-    authorizedApiKeyRoles:
-      key-123: write
+    credentialTtlSeconds: 3600
 
 enterprise:
   license:
@@ -161,22 +159,23 @@ in-cluster recorder. GeoIP enrichment is not part of this release.
 Generate a kubeconfig with `rush kubernetes kubeconfig`. Standard `kubectl`
 then connects to the gateway without a wrapper. The generated kubeconfig uses
 the Rush CLI only as a Kubernetes exec credential provider, so it does not
-store the Rush API key in the file.
+store a credential in the file. The first `kubectl` request opens the Rush login
+page. The user signs in with local auth or SSO, reviews the cluster, and approves
+a temporary credential. API keys are not accepted for Kubernetes access.
 
 The gateway service account needs permission to impersonate the approved
 Kubernetes users and groups. The chart does not grant that permission by
 default. Set `rbac.createImpersonationRole: true` only if the broad generated
 ClusterRole has been reviewed for that cluster.
 
-Query API rejects ordinary query keys for Kubernetes access. Add only the
-stable IDs of dedicated, reviewed keys to
-`queryApi.kubernetesAccess.authorizedApiKeyIds`. The generated kubeconfig does
-not embed the key, but its exec credential currently presents that allowlisted
-key to the gateway on each request. Use HTTPS end to end and rotate these keys
-on a shorter schedule than general API keys. An allowlisted key defaults to a
-tenant-bound read group such as `rush:tenant:default:role:read`. Map a key to
-`write` only when it should reach a tenant-bound RBAC binding that permits
-mutations or `pods/exec`.
+`credentialTtlSeconds` controls the login credential lifetime from 5 minutes to
+12 hours. The default is one hour. Approval requests and credentials live in
+ClickHouse, so polling works across query-api replicas. The one-time approval
+claim uses the configured shared replay store when query-api has several pods.
+
+Rush maps the signed-in user's current role to a tenant-bound group such as
+`rush:tenant:default:role:write`. Kubernetes RBAC decides whether that group can
+read, mutate, or open `pods/exec`.
 
 Rush decides who the caller is; Kubernetes RBAC still decides what that caller
 may do. For namespace-scoped exec access, bind the generated write group:
@@ -211,9 +210,8 @@ roleRef:
 ```
 
 Create a separate binding in each approved namespace. Do not bind these groups
-to `cluster-admin`. A shared API key identifies the key, not the person using
-it; use one key per operator until short-lived, user-bound credentials are
-available.
+to `cluster-admin`. Every recorded request carries the Rush user who approved
+the temporary credential.
 
 The gateway NetworkPolicy allows same-namespace ingress and HTTPS egress by
 default. If clients arrive through an ingress controller in another namespace,
