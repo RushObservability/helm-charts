@@ -17,3 +17,7 @@
 {{- if and .Values.queryApi.buffer.drainWorker.enabled .Values.queryApi.buffer.drainWorker.podDisruptionBudget.enabled }}
 {{ include "rush.podDisruptionBudget" (dict "root" . "component" "query-api-drain-worker" "pdb" .Values.queryApi.buffer.drainWorker.podDisruptionBudget) }}
 {{- end }}
+{{- if and .Values.kubernetesAccessGateway.enabled .Values.kubernetesAccessGateway.podDisruptionBudget.enabled }}
+---
+{{ include "rush.podDisruptionBudget" (dict "root" . "component" "kubernetes-access-gateway" "pdb" .Values.kubernetesAccessGateway.podDisruptionBudget) }}
+{{- end }}

@@ -25,5 +25,8 @@ assert_rejected 'an invalid Ingress path type' --set ingress.frontend.pathType=S
 assert_rejected 'a malformed image pull secret' --set-json 'queryApi.imagePullSecrets=[{}]'
 assert_rejected 'a malformed extra volume mount' --set-json 'frontend.extraVolumeMounts=[{"name":"data"}]'
 assert_rejected 'a negative Helm test deadline' --set helmTests.activeDeadlineSeconds=-1
+assert_rejected 'a short Kubernetes access token' --set queryApi.kubernetesAccess.internalToken=short
+assert_rejected 'an undersized Kubernetes result limit' --set queryApi.kubernetesAccess.maxResultBytes=512
+assert_rejected 'an oversized Kubernetes session limit' --set queryApi.kubernetesAccess.maxSessionBytes=2147483648
 
 echo 'values schema validation passed'

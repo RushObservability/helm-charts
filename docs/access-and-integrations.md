@@ -111,3 +111,116 @@ By default, the agent cannot read Secrets, pod logs, nodes, or the namespace
 list. Set `allowClusterScopedForAdmins: true` only for node-level diagnostics.
 This adds read-only nodes and namespaces RBAC, but Query API grants the required
 `kube_cluster` scope only to administrators.
+
+## Kubernetes access recording
+
+The licensed Kubernetes access recorder is off by default. Enable the query
+API endpoints and bounded storage limits with:
+
+```yaml
+queryApi:
+  kubernetesAccess:
+    enabled: true
+    maxResultBytes: 262144
+    maxSessionBytes: 67108864
+    retentionDays: 30
+    retainRawIp: false
+    collectPrivateIp: false
+    authorizedApiKeyIds: [key-123]
+    authorizedApiKeyRoles:
+      key-123: write
+
+enterprise:
+  license:
+    enabled: true
+
+kubernetesAccessGateway:
+  enabled: true
+  gatewayId: primary
+  clusterId: prod-us-east-1
+  tenantIds: [default]
+  # Use a platform-managed service account with a reviewed impersonation role.
+  serviceAccount:
+    create: false
+    name: rush-kube-proxy
+  tls:
+    existingSecret: rush-kube-gateway-tls
+```
+
+The chart creates a random internal recorder token in the bootstrap Secret and
+preserves it across upgrades. If `queryApi.existingSecret` is set, add a
+`kubernetes-access-internal-token` key to that Secret instead.
+
+Keep `retainRawIp` and `collectPrivateIp` disabled unless the tenant has an
+approved retention and privacy policy. The transparent kubeconfig flow does
+not submit argv, hostname, or private laptop addresses; `collectPrivateIp`
+applies only to a separate client that calls the optional enrichment endpoint.
+The internal recorder token belongs only on the gateway or another trusted
+in-cluster recorder. GeoIP enrichment is not part of this release.
+
+Generate a kubeconfig with `rush kubernetes kubeconfig`. Standard `kubectl`
+then connects to the gateway without a wrapper. The generated kubeconfig uses
+the Rush CLI only as a Kubernetes exec credential provider, so it does not
+store the Rush API key in the file.
+
+The gateway service account needs permission to impersonate the approved
+Kubernetes users and groups. The chart does not grant that permission by
+default. Set `rbac.createImpersonationRole: true` only if the broad generated
+ClusterRole has been reviewed for that cluster.
+
+Query API rejects ordinary query keys for Kubernetes access. Add only the
+stable IDs of dedicated, reviewed keys to
+`queryApi.kubernetesAccess.authorizedApiKeyIds`. The generated kubeconfig does
+not embed the key, but its exec credential currently presents that allowlisted
+key to the gateway on each request. Use HTTPS end to end and rotate these keys
+on a shorter schedule than general API keys. An allowlisted key defaults to a
+tenant-bound read group such as `rush:tenant:default:role:read`. Map a key to
+`write` only when it should reach a tenant-bound RBAC binding that permits
+mutations or `pods/exec`.
+
+Rush decides who the caller is; Kubernetes RBAC still decides what that caller
+may do. For namespace-scoped exec access, bind the generated write group:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rush-kubectl-write
+  namespace: payments
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/exec", "pods/attach"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rush-kubectl-write
+  namespace: payments
+subjects:
+  - kind: Group
+    name: rush:tenant:default:role:write
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: rush-kubectl-write
+```
+
+Create a separate binding in each approved namespace. Do not bind these groups
+to `cluster-admin`. A shared API key identifies the key, not the person using
+it; use one key per operator until short-lived, user-bound credentials are
+available.
+
+The gateway NetworkPolicy allows same-namespace ingress and HTTPS egress by
+default. If clients arrive through an ingress controller in another namespace,
+add that namespace and pod selector under `networkPolicy.extraIngress`. Use
+`allowExternalIngress: true` only when the gateway Service is intentionally
+public. Configure `trustedProxyCidrs` for the ingress proxy; forwarded client
+addresses from every other peer are ignored. The default upstream egress CIDR
+is `0.0.0.0/0` because Kubernetes control-plane addresses vary by platform;
+replace `upstream.egressCidrs` with the narrow API endpoint CIDRs available in
+your environment.
