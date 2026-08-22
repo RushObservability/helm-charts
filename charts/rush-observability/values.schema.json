@@ -420,7 +420,7 @@
     },
     "kubernetesAccessGateway": {
       "type": "object",
-      "required": ["enabled", "image", "replicas", "port", "gatewayId", "clusterId", "tenantIds", "failurePolicy", "trustedProxyCidrs", "upstream", "tls", "service", "serviceAccount", "rbac", "networkPolicy", "podDisruptionBudget"],
+      "required": ["enabled", "image", "replicas", "port", "queryApiUrl", "gatewayId", "clusterId", "tenantIds", "failurePolicy", "trustedProxyCidrs", "upstream", "tls", "service", "serviceAccount", "rbac", "networkPolicy", "podDisruptionBudget"],
       "additionalProperties": true,
       "allOf": [{ "$ref": "#/definitions/podOptions" }],
       "properties": {
@@ -428,6 +428,7 @@
         "image": { "$ref": "#/definitions/image" },
         "replicas": { "type": "integer", "minimum": 1 },
         "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "queryApiUrl": { "type": "string", "pattern": "^$|^https?://" },
         "gatewayId": { "type": "string", "maxLength": 253 },
         "clusterId": { "type": "string", "maxLength": 253 },
         "tenantIds": {
@@ -481,7 +482,13 @@
           "additionalProperties": true,
           "properties": {
             "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
-            "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "nodePort": {
+              "oneOf": [
+                { "type": "null" },
+                { "type": "integer", "minimum": 30000, "maximum": 32767 }
+              ]
+            }
           }
         },
         "networkPolicy": {

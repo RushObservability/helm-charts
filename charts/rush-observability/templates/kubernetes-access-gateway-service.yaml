@@ -11,6 +11,9 @@ spec:
     - name: https
       port: {{ .Values.kubernetesAccessGateway.service.port }}
       targetPort: https
+      {{- with .Values.kubernetesAccessGateway.service.nodePort }}
+      nodePort: {{ . }}
+      {{- end }}
   selector:
     {{- include "rush.selectorLabels" (dict "root" . "component" "kubernetes-access-gateway") | nindent 4 }}
 {{- end }}

@@ -280,6 +280,10 @@ kubernetesAccessGateway:
     pullPolicy: Always
   replicas: 2
   port: 8443
+  # Leave blank to use the query-api Service installed by this chart. Set an
+  # absolute URL when query-api runs elsewhere, such as
+  # http://host.docker.internal:8080 for local OrbStack testing.
+  queryApiUrl: ""
   # A stable logical identity shared by every gateway replica.
   gatewayId: ""
   clusterId: ""
@@ -305,6 +309,9 @@ kubernetesAccessGateway:
   service:
     type: ClusterIP
     port: 443
+    # Optional fixed port for NodePort services. Leave blank to let Kubernetes
+    # choose one.
+    nodePort: null
   networkPolicy:
     enabled: true
     allowSameNamespaceIngress: true
