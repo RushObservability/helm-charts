@@ -351,7 +351,7 @@ collectors:
       extraEgress: []
     image:
       repository: timberio/vector
-      tag: "0.56.0-distroless-libc"
+      tag: "0.58.0"
       digest: ""
       pullPolicy: IfNotPresent
     mode: logs # logs | full-otel
