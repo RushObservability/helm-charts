@@ -6,9 +6,10 @@ on:
     paths:
       - "charts/**"
 
+# Least privilege at the workflow level; packages:write is granted only to the
+# job that logs in to ghcr and pushes, not to change detection.
 permissions:
   contents: read
-  packages: write
 
 jobs:
   detect-changes:
@@ -38,6 +39,9 @@ jobs:
 
   package-and-push:
     needs: detect-changes
+    permissions:
+      contents: read
+      packages: write
     if: needs.detect-changes.outputs.charts != '[]' && needs.detect-changes.outputs.charts != ''
     runs-on: ubuntu-latest
     strategy:
