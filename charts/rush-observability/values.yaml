@@ -451,7 +451,7 @@ frontend:
     annotations: {}
   image:
     repository: mzupan/rush-frontend
-    tag: "0.1.12"
+    tag: "0.1.33"
     digest: ""
     pullPolicy: Always
   # Public base URL (scheme + host, no trailing slash) of the Rush API as seen from
