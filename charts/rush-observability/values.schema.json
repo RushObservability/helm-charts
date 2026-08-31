@@ -174,7 +174,7 @@
       }
     }
   },
-  "required": ["queryApi", "frontend", "clickhouse"],
+  "required": ["queryApi", "frontend", "clickhouse", "kubernetesAccessGateway"],
   "properties": {
     "imageSecurity": {
       "type": "object",
@@ -262,7 +262,7 @@
     },
     "queryApi": {
       "type": "object",
-      "required": ["image", "replicas", "port", "environment", "ssoReplayStore", "rollout", "podDisruptionBudget", "probes", "buffer"],
+      "required": ["image", "replicas", "port", "environment", "ssoReplayStore", "rollout", "podDisruptionBudget", "probes", "buffer", "kubernetesAccess"],
       "additionalProperties": true,
       "properties": {
         "image": { "$ref": "#/definitions/image" },
@@ -277,6 +277,21 @@
         "podDisruptionBudget": { "$ref": "#/definitions/pdb" },
         "probes": { "$ref": "#/definitions/probes" },
         "networkPolicy": { "$ref": "#/definitions/networkPolicy" },
+        "kubernetesAccess": {
+          "type": "object",
+          "required": ["enabled", "internalToken", "maxResultBytes", "maxSessionBytes", "retentionDays", "retainRawIp", "collectPrivateIp", "credentialTtlSeconds"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "internalToken": { "type": "string", "pattern": "^$|^.{32,}$" },
+            "maxResultBytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
+            "maxSessionBytes": { "type": "integer", "minimum": 1048576, "maximum": 1073741824 },
+            "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 },
+            "retainRawIp": { "type": "boolean" },
+            "collectPrivateIp": { "type": "boolean" },
+            "credentialTtlSeconds": { "type": "integer", "minimum": 300, "maximum": 43200 }
+          }
+        },
         "buffer": {
           "type": "object",
           "required": ["backend", "maxBytes", "objectStore", "drainWorker"],
@@ -392,6 +407,95 @@
         "rollout": { "$ref": "#/definitions/rollout" },
         "podDisruptionBudget": { "$ref": "#/definitions/pdb" },
         "networkPolicy": { "$ref": "#/definitions/networkPolicy" }
+      }
+    },
+    "kubernetesAccessGateway": {
+      "type": "object",
+      "required": ["enabled", "image", "replicas", "port", "queryApiUrl", "gatewayId", "clusterId", "tenantIds", "failurePolicy", "trustedProxyCidrs", "upstream", "tls", "service", "serviceAccount", "rbac", "networkPolicy", "podDisruptionBudget"],
+      "additionalProperties": true,
+      "allOf": [{ "$ref": "#/definitions/podOptions" }],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": { "$ref": "#/definitions/image" },
+        "replicas": { "type": "integer", "minimum": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "queryApiUrl": { "type": "string", "pattern": "^$|^https?://" },
+        "gatewayId": { "type": "string", "maxLength": 253 },
+        "clusterId": { "type": "string", "maxLength": 253 },
+        "tenantIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 253 }
+        },
+        "failurePolicy": { "type": "string", "enum": ["fail_open", "fail_closed"] },
+        "trustedProxyCidrs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 3, "maxLength": 64 }
+        },
+        "inheritGlobalScheduling": { "type": "boolean" },
+        "scheduling": { "$ref": "#/definitions/scheduling" },
+        "rbac": {
+          "type": "object",
+          "required": ["createImpersonationRole", "manageRoles"],
+          "additionalProperties": false,
+          "properties": {
+            "createImpersonationRole": { "type": "boolean" },
+            "manageRoles": { "type": "boolean" }
+          }
+        },
+        "upstream": {
+          "type": "object",
+          "required": ["url", "caFile", "insecure", "egressCidrs"],
+          "additionalProperties": false,
+          "properties": {
+            "url": { "type": "string", "pattern": "^https?://" },
+            "caFile": { "type": "string" },
+            "insecure": { "type": "boolean" },
+            "egressCidrs": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 3, "maxLength": 64 }
+            }
+          }
+        },
+        "tls": {
+          "type": "object",
+          "required": ["existingSecret"],
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": { "type": "string" }
+          }
+        },
+        "service": {
+          "type": "object",
+          "required": ["type", "port"],
+          "additionalProperties": true,
+          "properties": {
+            "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+            "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+            "nodePort": {
+              "oneOf": [
+                { "type": "null" },
+                { "type": "integer", "minimum": 30000, "maximum": 32767 }
+              ]
+            }
+          }
+        },
+        "networkPolicy": {
+          "type": "object",
+          "required": ["enabled", "allowSameNamespaceIngress", "allowExternalIngress", "extraIngress", "extraEgress"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "allowSameNamespaceIngress": { "type": "boolean" },
+            "allowExternalIngress": { "type": "boolean" },
+            "extraIngress": { "type": "array", "items": { "type": "object" } },
+            "extraEgress": { "type": "array", "items": { "type": "object" } }
+          }
+        },
+        "podDisruptionBudget": { "$ref": "#/definitions/pdb" }
       }
     },
     "clickhouse": {

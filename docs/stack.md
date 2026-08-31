@@ -16,6 +16,7 @@ collectors with the same release.
 | OTel Collector | Off | Receive OTLP traces, metrics, and logs |
 | Vector | Off | Collect Kubernetes container logs; optionally receive OTLP |
 | PostgreSQL collector | Off | Paid PostgreSQL monitoring add-on |
+| MySQL collector | Off | Paid MySQL query and database diagnostics add-on |
 
 Add-ons are off initially because some need an LLM key, database credentials,
 or a paid license. The shared ingest key is generated automatically.
@@ -121,3 +122,19 @@ requires an explicit NetworkPolicy egress rule for the database.
 
 See the defaults under [`postgresCollector`](../charts/rush-observability-stack/values.yaml)
 for the complete configuration.
+
+## Enable MySQL monitoring
+
+Create a Secret with a read-only MySQL DSN and Rush ingest key, then enable the collector. When NetworkPolicy is on, add a narrow TCP 3306 egress rule for the database.
+
+```bash
+kubectl -n observability create secret generic rush-mysql-collector \
+  --from-literal=dsn='mysql://rush_monitor:…@mysql.example:3306/app' \
+  --from-literal=api-key='rush_ing_…'
+
+helm upgrade rush rush/rush-observability-stack -n observability \
+  --set mysqlCollector.enabled=true \
+  --set-json 'mysqlCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.40.0.8/32"}}],"ports":[{"protocol":"TCP","port":3306}]}]'
+```
+
+The license must include the `mysql` entitlement. Error message text remains off unless `mysqlCollector.env.COLLECTOR_INCLUDE_ERROR_TEXT=true` is set explicitly.

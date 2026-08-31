@@ -13,7 +13,7 @@ data:
 
         # nginx-security-headers.conf is baked into the frontend image. Helm
         # deliberately consumes that canonical policy instead of copying CSP.
-        # HSTS belongs at the TLS-terminating ingress; see NOTES.txt.
+        # The image also emits HSTS. The TLS-terminating ingress must preserve it.
         location / {
             root /usr/share/nginx/html;
             index index.html;

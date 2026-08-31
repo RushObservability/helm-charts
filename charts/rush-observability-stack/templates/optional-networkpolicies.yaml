@@ -35,6 +35,44 @@ spec:
     {{- end }}
 {{- end }}
 
+{{- if and .Values.mysqlCollector.enabled .Values.mysqlCollector.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "mysql-collector") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "mysql-collector") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "rush.selectorLabels" (dict "root" . "component" "mysql-collector") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  {{- with .Values.mysqlCollector.networkPolicy.extraIngress }}
+  ingress:
+    {{- toYaml . | nindent 4 }}
+  {{- else }}
+  ingress: []
+  {{- end }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: http }
+    {{- with .Values.mysqlCollector.networkPolicy.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}
+
 {{- if and (include "rush.stackOtelEnabled" .) .Values.collectors.otel.networkPolicy.enabled }}
 ---
 apiVersion: networking.k8s.io/v1

@@ -2,6 +2,10 @@
 {{ include "rush.podDisruptionBudget" (dict "root" . "component" "sre-agent" "pdb" .Values.global.sreAgent.podDisruptionBudget) }}
 ---
 {{- end }}
+{{- if and .Values.mysqlCollector.enabled .Values.mysqlCollector.podDisruptionBudget.enabled }}
+{{ include "rush.podDisruptionBudget" (dict "root" . "component" "mysql-collector" "pdb" .Values.mysqlCollector.podDisruptionBudget) }}
+---
+{{- end }}
 {{- if and .Values.postgresCollector.enabled .Values.postgresCollector.podDisruptionBudget.enabled }}
 {{ include "rush.podDisruptionBudget" (dict "root" . "component" "postgres-collector" "pdb" .Values.postgresCollector.podDisruptionBudget) }}
 ---
