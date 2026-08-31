@@ -299,7 +299,7 @@ collectors:
       liveness: { enabled: true, path: /, initialDelaySeconds: 15, periodSeconds: 20, timeoutSeconds: 2, failureThreshold: 3, successThreshold: 1 }
     image:
       repository: otel/opentelemetry-collector-contrib
-      tag: "0.118.0"
+      tag: "0.159.0"
       digest: ""
       pullPolicy: IfNotPresent
     kind: deployment
