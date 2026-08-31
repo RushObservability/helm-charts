@@ -13,7 +13,7 @@
 {{- if empty .Values.kubernetesAccessGateway.tenantIds }}
 {{- fail "kubernetesAccessGateway.tenantIds must list at least one tenant when Kubernetes access recording is enabled" }}
 {{- end }}
-{{- if and (not .Values.kubernetesAccessGateway.rbac.createImpersonationRole) (not .Values.kubernetesAccessGateway.serviceAccount.name) }}
-{{- fail "set kubernetesAccessGateway.serviceAccount.name or explicitly enable rbac.createImpersonationRole" }}
+{{- if and (not .Values.kubernetesAccessGateway.rbac.createImpersonationRole) (not .Values.kubernetesAccessGateway.rbac.manageRoles) (not .Values.kubernetesAccessGateway.serviceAccount.name) }}
+{{- fail "set kubernetesAccessGateway.serviceAccount.name or explicitly enable rbac.createImpersonationRole or rbac.manageRoles" }}
 {{- end }}
 {{- end }}

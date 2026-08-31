@@ -437,10 +437,11 @@
         "scheduling": { "$ref": "#/definitions/scheduling" },
         "rbac": {
           "type": "object",
-          "required": ["createImpersonationRole"],
+          "required": ["createImpersonationRole", "manageRoles"],
           "additionalProperties": false,
           "properties": {
-            "createImpersonationRole": { "type": "boolean" }
+            "createImpersonationRole": { "type": "boolean" },
+            "manageRoles": { "type": "boolean" }
           }
         },
         "upstream": {

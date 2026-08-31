@@ -6,7 +6,7 @@
 
 The core chart enables NetworkPolicies for Query API, frontend, anomaly engine,
 drain worker, and standalone ClickHouse. The stack adds policies for SRE agent,
-OpenTelemetry Collector, Vector, and PostgreSQL collector.
+OpenTelemetry Collector, Vector, PostgreSQL collector, and MySQL collector.
 
 Default rules allow required component traffic, DNS, and same-namespace
 collector ingestion. Query API does not accept traffic from every pod in the
@@ -33,6 +33,8 @@ global:
 
 The stack's PostgreSQL collector needs an explicit
 `postgresCollector.networkPolicy.extraEgress` rule for the monitored database.
+The MySQL collector has the same requirement under
+`mysqlCollector.networkPolicy.extraEgress`; limit it to TCP 3306 on the target.
 External ClickHouse needs
 `allowExternalClickHouseEgress` or an explicit rule. The chart fails rendering
 when a required external service would be unreachable.

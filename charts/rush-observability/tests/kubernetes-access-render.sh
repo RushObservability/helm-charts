@@ -87,6 +87,7 @@ assert_contains "$gateway" 'app.kubernetes.io/component: kubernetes-access-gatew
 assert_contains "$gateway" 'name: KUBE_UPSTREAM_BEARER_TOKEN_FILE' 'projected service-account token'
 assert_contains "$gateway" 'name: RUSH_GATEWAY_INTERNAL_TOKEN' 'internal recorder credential'
 assert_contains "$gateway" 'name: RUSH_GATEWAY_ID' 'logical gateway identity'
+assert_contains "$gateway" 'name: RUSH_GATEWAY_MANAGE_RBAC' 'RBAC reconciliation flag'
 assert_contains "$gateway" 'value: "primary"' 'logical gateway binding'
 assert_contains "$gateway" 'name: RUSH_GATEWAY_RETAIN_RAW_IP' 'gateway raw IP retention policy'
 assert_count "$gateway" 'name: RUSH_GATEWAY_RETAIN_RAW_IP' 1 'gateway raw IP retention env count'
@@ -136,6 +137,20 @@ generated_rbac="$(helm template kubernetes-access "$chart_dir" \
   --set kubernetesAccessGateway.rbac.createImpersonationRole=true)"
 assert_contains "$generated_rbac" 'resources: ["users", "groups"]' 'explicit impersonation grant'
 assert_contains "$generated_rbac" 'verbs: ["impersonate"]' 'impersonation verb'
+assert_absent "$generated_rbac" '"bind", "escalate"' 'implicit RBAC management grant'
+
+managed_rbac="$(helm template kubernetes-access "$chart_dir" \
+  --set enterprise.license.enabled=true \
+  --set kubernetesAccessGateway.enabled=true \
+  --set kubernetesAccessGateway.gatewayId=primary \
+  --set kubernetesAccessGateway.clusterId=prod \
+  --set kubernetesAccessGateway.tenantIds[0]=default \
+  --set kubernetesAccessGateway.rbac.manageRoles=true)"
+assert_contains "$managed_rbac" 'name: RUSH_GATEWAY_MANAGE_RBAC' 'managed RBAC environment flag'
+assert_contains "$managed_rbac" 'value: "true"' 'enabled RBAC reconciliation'
+assert_contains "$managed_rbac" 'resources: ["clusterroles"]' 'ClusterRole reconciliation grant'
+assert_contains "$managed_rbac" '"bind", "escalate"' 'binding and custom role permissions'
+assert_contains "$managed_rbac" 'resources: ["clusterrolebindings", "rolebindings"]' 'binding reconciliation grant'
 
 if helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \

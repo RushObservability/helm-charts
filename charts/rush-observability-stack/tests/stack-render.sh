@@ -33,7 +33,7 @@ for expected in \
     exit 1
   }
 done
-for addon in 'name: stack-otel-collector' 'name: stack-vector' 'name: stack-sre-agent' 'name: stack-postgres-collector' 'name: stack-metrics-agent'; do
+for addon in 'name: stack-otel-collector' 'name: stack-vector' 'name: stack-sre-agent' 'name: stack-postgres-collector' 'name: stack-mysql-collector' 'name: stack-metrics-agent'; do
   if grep -Fq "$addon" <<<"$defaults"; then
     echo "default stack unexpectedly installed opt-in add-on: $addon" >&2
     exit 1
@@ -137,6 +137,17 @@ postgres="$(helm template stack "$chart_dir" "${common[@]}" \
 for expected in 'name: stack-postgres-collector' 'name: RUSH_LICENSE_KEY' 'value: "http://stack-query-api:8080"'; do
   grep -Fq "$expected" <<<"$postgres" || {
     echo "Postgres stack render is missing: $expected" >&2
+    exit 1
+  }
+done
+
+mysql="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set mysqlCollector.enabled=true \
+  --set rush-observability.enterprise.license.enabled=true \
+  --set-json 'mysqlCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":3306}]}]')"
+for expected in 'name: stack-mysql-collector' 'name: MYSQL_DSN' 'name: RUSH_LICENSE_KEY' 'value: "http://stack-query-api:8080"'; do
+  grep -Fq "$expected" <<<"$mysql" || {
+    echo "MySQL stack render is missing: $expected" >&2
     exit 1
   }
 done

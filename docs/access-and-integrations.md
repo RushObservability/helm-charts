@@ -150,10 +150,13 @@ preserves it across upgrades. If `queryApi.existingSecret` is set, add a
 `kubernetes-access-internal-token` key to that Secret instead.
 
 Keep `retainRawIp` and `collectPrivateIp` disabled unless the tenant has an
-approved retention and privacy policy. The transparent kubeconfig flow does
-not submit argv, hostname, or private laptop addresses; `collectPrivateIp`
-applies only to a separate client that calls the optional enrichment endpoint.
-The internal recorder token belongs only on the gateway or another trusted
+approved retention and privacy policy. The Rush exec-credential helper reports
+its operating system, architecture, CLI version, hostname label, and a
+best-effort copy of the parent `kubectl` command. These unverified fields are
+shown for investigation context and are never used for access decisions.
+Common credential arguments are redacted on the device and again by query-api.
+Private addresses are discarded unless `collectPrivateIp` is enabled. The
+internal recorder token belongs only on the gateway or another trusted
 in-cluster recorder. GeoIP enrichment is not part of this release.
 
 Generate a kubeconfig with `rush kubernetes kubeconfig`. Standard `kubectl`
@@ -168,10 +171,17 @@ Kubernetes users and groups. The chart does not grant that permission by
 default. Set `rbac.createImpersonationRole: true` only if the broad generated
 ClusterRole has been reviewed for that cluster.
 
-`credentialTtlSeconds` controls the login credential lifetime from 5 minutes to
-12 hours. The default is one hour. Approval requests and credentials live in
-ClickHouse, so polling works across query-api replicas. The one-time approval
-claim uses the configured shared replay store when query-api has several pods.
+`credentialTtlSeconds` is the initial credential lifetime, from 5 minutes to 12
+hours. After deployment, an administrator can change it under **Settings →
+Integrations → Kubernetes logging**. The saved setting applies to new approvals
+and takes precedence over the chart value.
+
+That page also lists live kubectl clients. De-auth one client or all clients to
+block new requests immediately; the next normal `kubectl` command opens Rush
+login again. An exec, logs, or port-forward stream that is already open can run
+until it ends. Login requests, credentials, and revocations live in ClickHouse,
+so the same policy works across query-api replicas. The one-time approval claim
+uses the configured shared replay store when query-api has several pods.
 
 Rush maps the signed-in user's current role to a tenant-bound group such as
 `rush:tenant:default:role:write`. Kubernetes RBAC decides whether that group can

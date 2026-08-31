@@ -67,6 +67,8 @@ spec:
               value: {{ .Values.kubernetesAccessGateway.clusterId | quote }}
             - name: RUSH_GATEWAY_ID
               value: {{ .Values.kubernetesAccessGateway.gatewayId | quote }}
+            - name: RUSH_GATEWAY_MANAGE_RBAC
+              value: {{ .Values.kubernetesAccessGateway.rbac.manageRoles | quote }}
             - name: RUSH_GATEWAY_TRUSTED_PROXY_CIDRS
               value: {{ join "," .Values.kubernetesAccessGateway.trustedProxyCidrs | quote }}
             - name: RUSH_GATEWAY_RETAIN_RAW_IP

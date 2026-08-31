@@ -8,6 +8,7 @@ Enabled add-ons:
   SRE agent:          {{ ternary "yes" "no" .Values.global.sreAgent.enabled }}
   Metrics agent:      {{ ternary "yes" "no" .Values.metricsAgent.enabled }}
   PostgreSQL add-on:  {{ ternary "yes" "no" .Values.postgresCollector.enabled }}
+  MySQL add-on:       {{ ternary "yes" "no" .Values.mysqlCollector.enabled }}
   Collector topology: {{ .Values.collectors.mode }}
 
 Ingest API key:

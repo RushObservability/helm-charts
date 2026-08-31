@@ -191,11 +191,12 @@ queryApi:
     maxSessionBytes: 67108864
     retentionDays: 30
     retainRawIp: false
-    # Applies only to optional client-enrichment callers. The transparent
-    # kubeconfig flow does not report private laptop addresses.
+    # Keep private addresses from Rush exec-credential enrichment. Device
+    # metadata is unverified and never used for access decisions.
     collectPrivateIp: false
-    # Lifetime of the browser-approved credential returned to kubectl. API keys
-    # are never accepted by the Kubernetes access gateway.
+    # Initial lifetime of browser-approved kubectl credentials. An administrator
+    # can override it later in Settings > Integrations > Kubernetes logging.
+    # API keys are never accepted by the Kubernetes access gateway.
     credentialTtlSeconds: 3600
   # Browser sessions use a renewable idle deadline plus a hard maximum age.
   # Renewal rotates the HttpOnly bearer and never extends absoluteTimeoutSeconds.
@@ -270,6 +271,11 @@ kubernetesAccessGateway:
   # administrators provide a narrower existing role binding.
   rbac:
     createImpersonationRole: false
+    # Reconcile the group-to-role grants saved in Rush Settings into native
+    # ClusterRoles, ClusterRoleBindings, and RoleBindings. This also includes
+    # the impersonation permission above. The controller needs bind and
+    # escalate privileges, so enable it only for a dedicated gateway account.
+    manageRoles: false
   image:
     repository: ghcr.io/rushobservability/kubernetes-access-gateway
     tag: "0.1.0"

@@ -39,6 +39,7 @@ global:
       - otel-collector
       - vector
       - postgres-collector
+      - mysql-collector
       - metrics-agent
     queryApi:
       # Blank resolves to <release>-query-api.
@@ -202,6 +203,56 @@ postgresCollector:
     apiKeyKey: api-key
   env:
     COLLECTOR_ENVIRONMENT: production
+    RUST_LOG: info
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: "500m", memory: 256Mi }
+
+# Paid MySQL diagnostic add-on. Requires a license with the "mysql"
+# entitlement and a Secret containing the DSN and Rush ingest key.
+mysqlCollector:
+  enabled: false
+  inheritGlobalScheduling: true
+  scheduling: {}
+  podAnnotations: {}
+  podLabels: {}
+  imagePullSecrets: []
+  priorityClassName: ""
+  runtimeClassName: ""
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  serviceAccount:
+    create: false
+    name: ""
+    annotations: {}
+  rollout:
+    strategy: Recreate
+    minReadySeconds: 0
+    progressDeadlineSeconds: 600
+    revisionHistoryLimit: 10
+  podDisruptionBudget:
+    enabled: false
+    type: maxUnavailable
+    value: 1
+  networkPolicy:
+    enabled: true
+    extraIngress: []
+    # Required when NetworkPolicy is enabled. Permit TCP 3306 only to the
+    # monitored database CIDR or namespace/pod selector.
+    extraEgress: []
+  image:
+    repository: mzupan/mysql-collector
+    tag: "0.1.0"
+    digest: ""
+    pullPolicy: Always
+  secret:
+    name: rush-mysql-collector
+    dsnKey: dsn
+    apiKeyKey: api-key
+  env:
+    COLLECTOR_ENVIRONMENT: production
+    COLLECTOR_INCLUDE_ERROR_TEXT: "false"
     RUST_LOG: info
   resources:
     requests: { cpu: 50m, memory: 64Mi }
