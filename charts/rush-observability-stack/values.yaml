@@ -13,6 +13,8 @@ rush:
       runtime:
         environment: development
         baseUrl: http://localhost:8080
+      statsEngine:
+        intervalSecs: 15
       promql:
         lookbackSecs: 300
       secrets:

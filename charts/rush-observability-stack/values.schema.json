@@ -27,7 +27,7 @@
             "kubernetesAccess": { "not": {} },
             "config": {
               "type": "object",
-              "required": ["runtime", "promql", "secrets", "retention"],
+              "required": ["runtime", "statsEngine", "promql", "secrets", "retention"],
               "additionalProperties": true,
               "properties": {
                 "runtime": {
@@ -45,6 +45,14 @@
                   "additionalProperties": false,
                   "properties": {
                     "lookbackSecs": { "type": "integer", "minimum": 1 }
+                  }
+                },
+                "statsEngine": {
+                  "type": "object",
+                  "required": ["intervalSecs"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "intervalSecs": { "type": "integer", "minimum": 1 }
                   }
                 },
                 "secrets": {

@@ -66,6 +66,13 @@ grep -Fq 'value: "120"' <<<"$promql" || {
   exit 1
 }
 
+stats_engine="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.config.statsEngine.intervalSecs=30)"
+grep -Fq 'value: "30"' <<<"$stats_engine" || {
+  echo 'stack Query API stats interval did not reach RUSH_STATS_INTERVAL_SECS' >&2
+  exit 1
+}
+
 mirrored="$(helm template stack "$chart_dir" "${common[@]}" \
   --set global.image.registry=mirror.example.com/cache \
   --set rush.queryApi.integrations.sreAgent.enabled=true)"

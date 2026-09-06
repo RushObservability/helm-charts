@@ -26,12 +26,14 @@ assert_rejected 'the old Query API authentication path' --set queryApi.ssoReplay
 assert_rejected 'the old Query API ingest path' --set queryApi.buffer.backend=disk
 assert_rejected 'the old Query API integration path' --set queryApi.config.integrations.argocd.enabled=true
 assert_rejected 'the old top-level PromQL path' --set promql.lookbackSecs=120
+assert_rejected 'the old top-level stats engine path' --set statsEngine.intervalSecs=30
 assert_rejected 'the old rushConfig root' --set rushConfig.retention.defaults.metrics_days=30
 assert_rejected 'a snake_case retention key' --set queryApi.config.retention.defaults.metrics_days=30
 assert_rejected 'a zero-day retention rule' --set queryApi.config.retention.metrics[0].name=requests --set queryApi.config.retention.metrics[0].retainDays=0
 assert_rejected 'an unknown Query API config group' --set queryApi.config.runtim.environment=development
 assert_rejected 'an unknown Query API integration' --set queryApi.integrations.kuberentes.enabled=true
 assert_rejected 'a zero-second PromQL lookback' --set queryApi.config.promql.lookbackSecs=0
+assert_rejected 'a zero-second stats interval' --set queryApi.config.statsEngine.intervalSecs=0
 assert_rejected 'standalone ClickHouse with the operator dependency enabled' --set clickhouse.mode=standalone
 assert_rejected 'operator ClickHouse with the dependency disabled' --set clickhouse.mode=operator --set clickhouse.enabled=false
 assert_rejected 'production mode without a public URL' --set queryApi.config.runtime.environment=production --set queryApi.config.runtime.baseUrl=
@@ -77,6 +79,14 @@ promql="$(helm template schema "$chart_dir" \
   --set queryApi.config.promql.lookbackSecs=120)"
 grep -Fq 'value: "120"' <<<"$promql" || {
   echo 'Query API PromQL lookback did not render from queryApi.config.promql' >&2
+  exit 1
+}
+
+stats_engine="$(helm template schema "$chart_dir" \
+  --show-only templates/query-api-deployment.yaml \
+  --set queryApi.config.statsEngine.intervalSecs=30)"
+grep -Fq 'value: "30"' <<<"$stats_engine" || {
+  echo 'Query API stats interval did not render from queryApi.config.statsEngine' >&2
   exit 1
 }
 

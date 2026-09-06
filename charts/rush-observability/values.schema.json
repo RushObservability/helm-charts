@@ -181,7 +181,6 @@
       "properties": { "requireDigests": { "type": "boolean" } },
       "additionalProperties": true
     },
-    "statsEngine": { "type": "object", "additionalProperties": true },
     "rushConfig": { "not": {} },
     "global": {
       "type": "object",
@@ -257,7 +256,7 @@
       "properties": {
         "config": {
           "type": "object",
-          "required": ["runtime", "authentication", "promql", "secrets", "audit", "retention", "ingest"],
+          "required": ["runtime", "authentication", "statsEngine", "promql", "secrets", "audit", "retention", "ingest"],
           "additionalProperties": false,
           "properties": {
             "runtime": {
@@ -308,6 +307,14 @@
               "additionalProperties": false,
               "properties": {
                 "lookbackSecs": { "type": "integer", "minimum": 1 }
+              }
+            },
+            "statsEngine": {
+              "type": "object",
+              "required": ["intervalSecs"],
+              "additionalProperties": false,
+              "properties": {
+                "intervalSecs": { "type": "integer", "minimum": 1 }
               }
             },
             "secrets": {

@@ -82,6 +82,7 @@ The Query API settings are split between application config and integrations:
 |---|---|
 | `config.runtime` | Environment, public base URL, trusted proxies, and extra application environment variables |
 | `config.authentication` | Anonymous access, SSO replay storage, login limits, and browser sessions |
+| `config.statsEngine` | Internal Query API statistics sampling cadence |
 | `config.promql` | PromQL staleness and lookback behavior |
 | `config.secrets` | Generated secret presets or an externally managed bootstrap Secret |
 | `config.audit` | Audit-chain key metadata and spool limits |
@@ -143,6 +144,7 @@ Install `rush-observability-stack` with the same release name, then move values:
 | `sreAgent` | `rush.queryApi.integrations.sreAgent` |
 | `infrastructure`, `argocd`, `fluxcd`, `kubernetes`, `cloudwatch` | `rush.queryApi.integrations.*` |
 | `queryApi.kubernetesAccess` | `rush.queryApi.integrations.kubernetesAccess` |
+| `statsEngine` | `rush.queryApi.config.statsEngine` |
 | `promql` | `rush.queryApi.config.promql` |
 | `collectors` | `collectors` |
 | `collectors.ingestApiKeySecret` | `global.rush.ingestApiKeySecret` |

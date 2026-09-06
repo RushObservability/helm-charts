@@ -105,7 +105,7 @@ spec:
               value: {{ not .Values.anomalyEngine.enabled | quote }}
             # Emit cadence for internal rush_stats_* gauges (15s keeps rate() usable).
             - name: RUSH_STATS_INTERVAL_SECS
-              value: {{ .Values.statsEngine.intervalSecs | default 15 | quote }}
+              value: {{ .Values.queryApi.config.statsEngine.intervalSecs | quote }}
             # PromQL staleness/lookback: how long a metric's last value carries forward.
             - name: RUSH_PROM_LOOKBACK_SECS
               value: {{ .Values.queryApi.config.promql.lookbackSecs | quote }}

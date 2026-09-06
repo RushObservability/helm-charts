@@ -35,6 +35,10 @@ queryApi:
         idleTimeoutSeconds: 1800
         absoluteTimeoutSeconds: 86400
         renewalIntervalSeconds: 300
+    statsEngine:
+      # Cadence for the internal rush_stats_* gauges. Increase it to reduce the
+      # sample volume, while keeping it short enough for rate-based queries.
+      intervalSecs: 15
     promql:
       # Staleness/lookback window for carrying the last metric value through a
       # range query. Keep it at least as long as the slowest scrape interval.
@@ -423,11 +427,6 @@ anomalyEngine:
     limits:
       cpu: "1"
       memory: 512Mi
-# ── internal stats engine ──
-# Cadence (seconds) for the rush_stats_* gauges the API emits about itself. 15s keeps
-# rate()/short windows usable; raise it to cut the (tiny) sample volume.
-statsEngine:
-  intervalSecs: 15
 # ── frontend ──
 frontend:
   inheritGlobalScheduling: true
