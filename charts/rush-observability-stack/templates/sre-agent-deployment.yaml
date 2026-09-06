@@ -1,4 +1,6 @@
-{{- if .Values.global.sreAgent.enabled }}
+{{- $integrations := .Values.rush.queryApi.integrations -}}
+{{- $sreAgent := $integrations.sreAgent -}}
+{{- if $sreAgent.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,8 +8,8 @@ metadata:
   labels:
     {{- include "rush.componentLabels" (dict "root" . "component" "sre-agent") | nindent 4 }}
 spec:
-  replicas: {{ .Values.global.sreAgent.replicas }}
-  {{- include "rush.deploymentRollout" (dict "rollout" .Values.global.sreAgent.rollout) | nindent 2 }}
+  replicas: {{ $sreAgent.replicas }}
+  {{- include "rush.deploymentRollout" (dict "rollout" $sreAgent.rollout) | nindent 2 }}
   selector:
     matchLabels:
       {{- include "rush.selectorLabels" (dict "root" . "component" "sre-agent") | nindent 6 }}
@@ -15,31 +17,31 @@ spec:
     metadata:
       labels:
         {{- include "rush.selectorLabels" (dict "root" . "component" "sre-agent") | nindent 8 }}
-        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.global.sreAgent)) }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $sreAgent)) }}
         {{- . | nindent 8 }}
         {{- end }}
-      {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.global.sreAgent)) }}
+      {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $sreAgent)) }}
       annotations:
         {{- . | nindent 8 }}
       {{- end }}
     spec:
-      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.global.sreAgent) | nindent 6 }}
-      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.global.sreAgent) | nindent 6 }}
-      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.global.sreAgent "component" "sre-agent") }}
-      automountServiceAccountToken: {{ or (not (empty .Values.global.sreAgent.kube.tenantNamespaces)) .Values.global.sreAgent.kube.allowClusterScopedForAdmins (index .Values "rush-observability").kubernetes.enabled (index .Values "rush-observability").argocd.enabled (index .Values "rush-observability").fluxcd.enabled }}
+      {{- include "rush.workloadScheduling" (dict "root" . "workload" $sreAgent) | nindent 6 }}
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" $sreAgent) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" $sreAgent "component" "sre-agent") }}
+      automountServiceAccountToken: {{ or (not (empty $sreAgent.kube.tenantNamespaces)) $sreAgent.kube.allowClusterScopedForAdmins $integrations.kubernetes.enabled $integrations.argocd.enabled $integrations.fluxcd.enabled }}
       securityContext:
-        {{- toYaml .Values.global.sreAgent.podSecurityContext | nindent 8 }}
+        {{- toYaml $sreAgent.podSecurityContext | nindent 8 }}
       containers:
         - name: sre-agent
-          image: {{ include "rush.image" (dict "image" .Values.global.sreAgent.image "defaultTag" .Chart.AppVersion) | quote }}
-          imagePullPolicy: {{ .Values.global.sreAgent.image.pullPolicy }}
+          image: {{ include "rush.image" (dict "image" $sreAgent.image "defaultTag" .Chart.AppVersion) | quote }}
+          imagePullPolicy: {{ $sreAgent.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.global.sreAgent.port }}
-          {{- $bootstrapSecret := (index .Values "rush-observability").queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
+              containerPort: {{ $sreAgent.port }}
+          {{- $bootstrapSecret := .Values.rush.queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
           env:
             - name: SRE_AGENT_PORT
-              value: {{ .Values.global.sreAgent.port | quote }}
+              value: {{ $sreAgent.port | quote }}
             - name: SRE_AGENT_INTERNAL_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -49,85 +51,85 @@ spec:
             # It never receives ClickHouse credentials.
             - name: QUERY_API_URL
               value: {{ include "rush.stackQueryApiUrl" . | quote }}
-            {{- if .Values.global.sreAgent.githubApp.enabled }}
+            {{- if $sreAgent.githubApp.enabled }}
             - name: GITHUB_APP_ID
-              value: {{ required "sreAgent.githubApp.appId is required when GitHub App access is enabled" .Values.global.sreAgent.githubApp.appId | quote }}
+              value: {{ required "queryApi.integrations.sreAgent.githubApp.appId is required when GitHub App access is enabled" $sreAgent.githubApp.appId | quote }}
             - name: SRE_AGENT_GITHUB_REPOSITORY_POLICY
-              value: {{ .Values.global.sreAgent.githubApp.tenantRepositories | toJson | quote }}
+              value: {{ $sreAgent.githubApp.tenantRepositories | toJson | quote }}
             - name: GITHUB_API_URL
-              value: {{ .Values.global.sreAgent.githubApp.apiUrl | quote }}
+              value: {{ $sreAgent.githubApp.apiUrl | quote }}
             - name: GITHUB_APP_PRIVATE_KEY_PATH
               value: /var/run/rush-github/private-key.pem
             - name: REPOSITORY_CACHE_DIR
               value: /var/run/rush-repositories
             {{- end }}
-            {{- if (index .Values "rush-observability").argocd.enabled }}
+            {{- if $integrations.argocd.enabled }}
             - name: ARGOCD_NAMESPACE
-              value: {{ (index .Values "rush-observability").argocd.namespace | quote }}
+              value: {{ $integrations.argocd.namespace | quote }}
             {{- end }}
-            {{- if (index .Values "rush-observability").fluxcd.enabled }}
+            {{- if $integrations.fluxcd.enabled }}
             - name: FLUXCD_NAMESPACE
-              value: {{ (index .Values "rush-observability").fluxcd.namespace | quote }}
+              value: {{ $integrations.fluxcd.namespace | quote }}
             {{- end }}
-            {{- if (index .Values "rush-observability").kubernetes.enabled }}
+            {{- if $integrations.kubernetes.enabled }}
             - name: KUBERNETES_ENABLED
               value: "true"
             {{- end }}
             - name: SRE_AGENT_KUBE_TENANT_NAMESPACES
-              value: {{ .Values.global.sreAgent.kube.tenantNamespaces | toJson | quote }}
+              value: {{ $sreAgent.kube.tenantNamespaces | toJson | quote }}
             - name: SRE_AGENT_KUBE_ALLOW_CLUSTER_SCOPED
-              value: {{ .Values.global.sreAgent.kube.allowClusterScopedForAdmins | quote }}
-            {{- range $key, $val := .Values.global.sreAgent.env }}
+              value: {{ $sreAgent.kube.allowClusterScopedForAdmins | quote }}
+            {{- range $key, $val := $sreAgent.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
-          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.global.sreAgent) | nindent 10 }}
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" $sreAgent) | nindent 10 }}
           resources:
-            {{- toYaml .Values.global.sreAgent.resources | nindent 12 }}
+            {{- toYaml $sreAgent.resources | nindent 12 }}
           securityContext:
             {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
-          {{- if .Values.global.sreAgent.githubApp.enabled }}
+          {{- if $sreAgent.githubApp.enabled }}
           volumeMounts:
             - name: github-app-private-key
               mountPath: /var/run/rush-github
               readOnly: true
             - name: repository-cache
               mountPath: /var/run/rush-repositories
-            {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.global.sreAgent)) }}
+            {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $sreAgent)) }}
             {{- . | nindent 12 }}
             {{- end }}
           {{- end }}
-          {{- if and (not .Values.global.sreAgent.githubApp.enabled) (include "rush.extraVolumeMounts" (dict "root" . "workload" .Values.global.sreAgent)) }}
+          {{- if and (not $sreAgent.githubApp.enabled) (include "rush.extraVolumeMounts" (dict "root" . "workload" $sreAgent)) }}
           volumeMounts:
-            {{- include "rush.extraVolumeMounts" (dict "root" . "workload" .Values.global.sreAgent) | nindent 12 }}
+            {{- include "rush.extraVolumeMounts" (dict "root" . "workload" $sreAgent) | nindent 12 }}
           {{- end }}
-          {{- if .Values.global.sreAgent.probes.startup.enabled }}
+          {{- if $sreAgent.probes.startup.enabled }}
           startupProbe:
-            {{- include "rush.httpProbe" (dict "probe" .Values.global.sreAgent.probes.startup "port" "http") | nindent 12 }}
+            {{- include "rush.httpProbe" (dict "probe" $sreAgent.probes.startup "port" "http") | nindent 12 }}
           {{- end }}
-          {{- if .Values.global.sreAgent.probes.readiness.enabled }}
+          {{- if $sreAgent.probes.readiness.enabled }}
           readinessProbe:
-            {{- include "rush.httpProbe" (dict "probe" .Values.global.sreAgent.probes.readiness "port" "http") | nindent 12 }}
+            {{- include "rush.httpProbe" (dict "probe" $sreAgent.probes.readiness "port" "http") | nindent 12 }}
           {{- end }}
-          {{- if .Values.global.sreAgent.probes.liveness.enabled }}
+          {{- if $sreAgent.probes.liveness.enabled }}
           livenessProbe:
-            {{- include "rush.httpProbe" (dict "probe" .Values.global.sreAgent.probes.liveness "port" "http") | nindent 12 }}
+            {{- include "rush.httpProbe" (dict "probe" $sreAgent.probes.liveness "port" "http") | nindent 12 }}
           {{- end }}
-      {{- if .Values.global.sreAgent.githubApp.enabled }}
+      {{- if $sreAgent.githubApp.enabled }}
       volumes:
         - name: github-app-private-key
           secret:
-            secretName: {{ required "sreAgent.githubApp.privateKeySecret.name is required when GitHub App access is enabled" .Values.global.sreAgent.githubApp.privateKeySecret.name }}
+            secretName: {{ required "queryApi.integrations.sreAgent.githubApp.privateKeySecret.name is required when GitHub App access is enabled" $sreAgent.githubApp.privateKeySecret.name }}
             items:
-              - key: {{ .Values.global.sreAgent.githubApp.privateKeySecret.key }}
+              - key: {{ $sreAgent.githubApp.privateKeySecret.key }}
                 path: private-key.pem
                 mode: 0440
         - name: repository-cache
           emptyDir:
-            sizeLimit: {{ .Values.global.sreAgent.githubApp.cacheSizeLimit }}
+            sizeLimit: {{ $sreAgent.githubApp.cacheSizeLimit }}
       {{- end }}
-      {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.global.sreAgent)) }}
-        {{- if not $.Values.global.sreAgent.githubApp.enabled }}
+      {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $sreAgent)) }}
+        {{- if not $sreAgent.githubApp.enabled }}
       volumes:
         {{- end }}
         {{- . | nindent 8 }}

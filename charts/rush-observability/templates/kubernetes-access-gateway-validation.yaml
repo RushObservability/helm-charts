@@ -1,4 +1,4 @@
-{{- if or .Values.queryApi.kubernetesAccess.enabled .Values.kubernetesAccessGateway.enabled }}
+{{- if or .Values.queryApi.integrations.kubernetesAccess.enabled .Values.kubernetesAccessGateway.enabled }}
 {{- if not .Values.enterprise.license.enabled }}
 {{- fail "Kubernetes access recording requires enterprise.license.enabled=true" }}
 {{- end }}

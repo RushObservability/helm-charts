@@ -15,7 +15,7 @@ assert_render() {
 
 defaults="$(helm template secure-ingest "$chart_dir")"
 assert_render "$defaults" 'name: RUSH_ENVIRONMENT' 'environment posture variable'
-assert_render "$defaults" 'value: "production"' 'fail-closed production default'
+assert_render "$defaults" 'value: "development"' 'local development default'
 assert_render "$defaults" 'name: RUSH_ALLOW_ANONYMOUS_DEFAULT' 'anonymous compatibility variable'
 assert_render "$defaults" 'value: "false"' 'anonymous compatibility disabled by default'
 

@@ -49,7 +49,7 @@ app.kubernetes.io/component: {{ .component }}
 {{- end -}}
 
 {{- define "rush.sreAgentUrl" -}}
-{{- printf "http://%s:%v" (include "rush.sreAgentServiceName" .) .Values.global.sreAgent.service.port -}}
+{{- printf "http://%s:%v" (include "rush.sreAgentServiceName" .) .Values.queryApi.integrations.sreAgent.service.port -}}
 {{- end -}}
 
 {{/* ClickHouse writer connection environment for Rush application workloads. */}}

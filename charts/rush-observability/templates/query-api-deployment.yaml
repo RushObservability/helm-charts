@@ -1,3 +1,4 @@
+{{- $integrations := .Values.queryApi.integrations -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,7 +28,7 @@ spec:
       {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.queryApi) | nindent 6 }}
       serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.queryApi "component" "query-api") }}
       terminationGracePeriodSeconds: {{ .Values.queryApi.terminationGracePeriodSeconds | default 120 }}
-      automountServiceAccountToken: {{ or .Values.kubernetes.enabled .Values.argocd.enabled .Values.fluxcd.enabled }}
+      automountServiceAccountToken: {{ or $integrations.kubernetes.enabled $integrations.argocd.enabled $integrations.fluxcd.enabled }}
       securityContext:
         runAsNonRoot: true
         # Matches the appgroup created by query-api/Dockerfile and grants it
@@ -111,36 +112,36 @@ spec:
             # Operator-owned group -> tenant -> Kubernetes namespace boundary.
             # Empty/missing tenant entries deny infrastructure reads.
             - name: RUSH_INFRASTRUCTURE_TENANT_NAMESPACES
-              value: {{ .Values.infrastructure.tenantNamespaces | toJson | quote }}
-            {{- if .Values.argocd.enabled }}
+              value: {{ $integrations.infrastructure.tenantNamespaces | toJson | quote }}
+            {{- if $integrations.argocd.enabled }}
             - name: ARGOCD_NAMESPACE
-              value: {{ .Values.argocd.namespace | quote }}
+              value: {{ $integrations.argocd.namespace | quote }}
             {{- end }}
-            {{- if .Values.fluxcd.enabled }}
+            {{- if $integrations.fluxcd.enabled }}
             - name: FLUXCD_NAMESPACE
-              value: {{ .Values.fluxcd.namespace | quote }}
+              value: {{ $integrations.fluxcd.namespace | quote }}
             {{- end }}
-            {{- if .Values.kubernetes.enabled }}
+            {{- if $integrations.kubernetes.enabled }}
             - name: KUBERNETES_ENABLED
               value: "true"
             - name: KUBERNETES_CLUSTER_WIDE
-              value: {{ .Values.kubernetes.clusterWide | quote }}
+              value: {{ $integrations.kubernetes.clusterWide | quote }}
             {{- end }}
-            {{- if .Values.cloudwatch.enabled }}
+            {{- if $integrations.cloudwatch.enabled }}
             - name: CLOUDWATCH_ENABLED
               value: "true"
             {{- end }}
-            {{- if .Values.global.sreAgent.enabled }}
+            {{- if $integrations.sreAgent.enabled }}
             # query-api fronts the SRE agent: it authenticates + injects the
             # caller's tenant, then forwards /investigate, /sessions, and
             # /investigation-templates to the agent at this URL.
             - name: SRE_AGENT_URL
               value: {{ include "rush.sreAgentUrl" . | quote }}
-            {{- if .Values.global.sreAgent.githubApp.enabled }}
+            {{- if $integrations.sreAgent.githubApp.enabled }}
             # The API uses the same operator-owned policy as the agent so
             # browser callers can never choose installation/repository IDs.
             - name: SRE_AGENT_GITHUB_REPOSITORY_POLICY
-              value: {{ .Values.global.sreAgent.githubApp.tenantRepositories | toJson | quote }}
+              value: {{ $integrations.sreAgent.githubApp.tenantRepositories | toJson | quote }}
             {{- end }}
             {{- end }}
             {{- if .Values.enterprise.license.enabled }}
@@ -195,7 +196,7 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: config-encryption-key
-            {{- if or .Values.queryApi.kubernetesAccess.enabled .Values.kubernetesAccessGateway.enabled }}
+            {{- if or $integrations.kubernetesAccess.enabled .Values.kubernetesAccessGateway.enabled }}
             - name: KUBERNETES_ACCESS_ENABLED
               value: "true"
             - name: KUBERNETES_ACCESS_INTERNAL_TOKEN
@@ -204,17 +205,17 @@ spec:
                   name: {{ $bootstrapSecret }}
                   key: kubernetes-access-internal-token
             - name: KUBERNETES_ACCESS_MAX_RESULT_BYTES
-              value: {{ .Values.queryApi.kubernetesAccess.maxResultBytes | quote }}
+              value: {{ $integrations.kubernetesAccess.maxResultBytes | quote }}
             - name: KUBERNETES_ACCESS_MAX_SESSION_BYTES
-              value: {{ .Values.queryApi.kubernetesAccess.maxSessionBytes | quote }}
+              value: {{ $integrations.kubernetesAccess.maxSessionBytes | quote }}
             - name: KUBERNETES_ACCESS_RETENTION_DAYS
-              value: {{ .Values.queryApi.kubernetesAccess.retentionDays | quote }}
+              value: {{ $integrations.kubernetesAccess.retentionDays | quote }}
             - name: KUBERNETES_ACCESS_RETAIN_RAW_IP
-              value: {{ .Values.queryApi.kubernetesAccess.retainRawIp | quote }}
+              value: {{ $integrations.kubernetesAccess.retainRawIp | quote }}
             - name: KUBERNETES_ACCESS_COLLECT_PRIVATE_IP
-              value: {{ .Values.queryApi.kubernetesAccess.collectPrivateIp | quote }}
+              value: {{ $integrations.kubernetesAccess.collectPrivateIp | quote }}
             - name: KUBERNETES_ACCESS_CREDENTIAL_TTL_SECONDS
-              value: {{ .Values.queryApi.kubernetesAccess.credentialTtlSeconds | quote }}
+              value: {{ $integrations.kubernetesAccess.credentialTtlSeconds | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_ID
               value: {{ .Values.kubernetesAccessGateway.gatewayId | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_TENANT_IDS
@@ -238,7 +239,7 @@ spec:
                   name: {{ $ingestSecret }}
                   key: {{ .Values.global.rush.ingestApiKeySecret.key }}
             {{- end }}
-            {{- if .Values.global.sreAgent.enabled }}
+            {{- if $integrations.sreAgent.enabled }}
             - name: SRE_AGENT_INTERNAL_TOKEN
               valueFrom:
                 secretKeyRef:

@@ -8,27 +8,26 @@ Kubernetes, Argo CD, and Flux pages require the separate
 `infrastructure:read` group permission. Telemetry viewers do not receive it.
 
 The active Rush tenant comes from group tenant bindings.
-`infrastructure.tenantNamespaces` maps that tenant to the Kubernetes namespaces
-it may inspect:
+`queryApi.integrations.infrastructure.tenantNamespaces` maps that tenant to the
+Kubernetes namespaces it may inspect:
 
 ```yaml
-infrastructure:
-  tenantNamespaces:
-    acme: [acme-prod, acme-staging]
-    "*": [shared-observability]
-
-kubernetes:
-  enabled: true
-  namespaces: [acme-prod, acme-staging, shared-observability]
-  clusterWide: false
-
-argocd:
-  enabled: true
-  namespace: argocd
-
-fluxcd:
-  enabled: true
-  namespace: flux-system
+queryApi:
+  integrations:
+    infrastructure:
+      tenantNamespaces:
+        acme: [acme-prod, acme-staging]
+        "*": [shared-observability]
+    kubernetes:
+      enabled: true
+      namespaces: [acme-prod, acme-staging, shared-observability]
+      clusterWide: false
+    argocd:
+      enabled: true
+      namespace: argocd
+    fluxcd:
+      enabled: true
+      namespace: flux-system
 ```
 
 Add `argocd` or `flux-system` only to tenants that should see those
@@ -39,11 +38,11 @@ The chart creates namespace Roles for each enabled integration. Argo CD and
 Flux roles contain only their CRD API groups. Query API roles never grant
 Secret access.
 
-Cluster-wide Kubernetes browsing requires both `kubernetes.clusterWide: true`
-and a `"*"` namespace grant. This adds nodes and namespaces but never Secrets.
-Kubernetes API access also needs
-`queryApi.networkPolicy.allowExternalHttpsEgress: true` or a narrower egress
-rule.
+Cluster-wide Kubernetes browsing requires both
+`queryApi.integrations.kubernetes.clusterWide: true` and a `"*"` namespace
+grant. This adds nodes and namespaces but never Secrets. Kubernetes API access
+also needs `queryApi.networkPolicy.allowExternalHttpsEgress: true` or a narrower
+egress rule.
 
 ## Read-only GitHub App access
 
@@ -63,22 +62,24 @@ end of the installed-app settings URL.
 The SRE agent is installed by `rush-observability-stack`:
 
 ```yaml
-global:
-  sreAgent:
-    enabled: true
-    networkPolicy:
-      allowExternalHttpsEgress: true
-    githubApp:
-      enabled: true
-      appId: "123456"
-      tenantRepositories:
-        acme:
-          - repository: acme/api
-            installationId: 654321
-            repositoryId: 123456789
-      privateKeySecret:
-        name: rush-github-app
-        key: private-key.pem
+rush:
+  queryApi:
+    integrations:
+      sreAgent:
+        enabled: true
+        networkPolicy:
+          allowExternalHttpsEgress: true
+        githubApp:
+          enabled: true
+          appId: "123456"
+          tenantRepositories:
+            acme:
+              - repository: acme/api
+                installationId: 654321
+                repositoryId: 123456789
+          privateKeySecret:
+            name: rush-github-app
+            key: private-key.pem
 ```
 
 Query API and SRE agent receive the same deny-by-default policy. Only tenant
@@ -97,14 +98,16 @@ chart creates a dedicated service account with read-only RoleBindings in only
 those namespaces:
 
 ```yaml
-global:
-  sreAgent:
-    enabled: true
-    kube:
-      tenantNamespaces:
-        acme: [acme-prod, acme-staging]
-        "*": [shared-observability]
-      allowClusterScopedForAdmins: false
+rush:
+  queryApi:
+    integrations:
+      sreAgent:
+        enabled: true
+        kube:
+          tenantNamespaces:
+            acme: [acme-prod, acme-staging]
+            "*": [shared-observability]
+          allowClusterScopedForAdmins: false
 ```
 
 By default, the agent cannot read Secrets, pod logs, nodes, or the namespace
@@ -119,14 +122,15 @@ API endpoints and bounded storage limits with:
 
 ```yaml
 queryApi:
-  kubernetesAccess:
-    enabled: true
-    maxResultBytes: 262144
-    maxSessionBytes: 67108864
-    retentionDays: 30
-    retainRawIp: false
-    collectPrivateIp: false
-    credentialTtlSeconds: 3600
+  integrations:
+    kubernetesAccess:
+      enabled: true
+      maxResultBytes: 262144
+      maxSessionBytes: 67108864
+      retentionDays: 30
+      retainRawIp: false
+      collectPrivateIp: false
+      credentialTtlSeconds: 3600
 
 enterprise:
   license:

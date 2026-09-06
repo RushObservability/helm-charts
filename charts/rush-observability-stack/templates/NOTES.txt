@@ -1,11 +1,23 @@
-Rush Observability stack is installed.
+Rush Observability is installed.
 
-Core Rush:
-  Query API: {{ include "rush.stackQueryApiUrl" . }}
-  Frontend:  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ .Release.Name }}-frontend 3000:3000
+1. Watch the application start:
 
-Enabled add-ons:
-  SRE agent:          {{ ternary "yes" "no" .Values.global.sreAgent.enabled }}
+   kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }} --watch
+
+2. Read the generated admin password:
+
+   kubectl -n {{ .Release.Namespace }} get secret {{ .Values.rush.queryApi.existingSecret | default (printf "%s-bootstrap" .Release.Name) }} -o jsonpath='{.data.initial-admin-password}' | base64 -d; echo
+
+3. Open the UI:
+
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ .Release.Name }}-frontend 8080:80
+
+   Visit http://localhost:8080 and sign in as admin.
+
+Query API inside the cluster: {{ include "rush.stackQueryApiUrl" . }}
+
+Installed components:
+  SRE agent:          {{ ternary "yes" "no" .Values.rush.queryApi.integrations.sreAgent.enabled }}
   Metrics agent:      {{ ternary "yes" "no" .Values.metricsAgent.enabled }}
   PostgreSQL add-on:  {{ ternary "yes" "no" .Values.postgresCollector.enabled }}
   MySQL add-on:       {{ ternary "yes" "no" .Values.mysqlCollector.enabled }}

@@ -16,7 +16,14 @@ assert_rejected() {
 
 assert_rejected 'zero API replicas' --set queryApi.replicas=0
 assert_rejected 'the removed collectors block' --set collectors.mode=otel
-assert_rejected 'the removed top-level SRE agent block' --set sreAgent.enabled=true
+assert_rejected 'the old global SRE agent block' --set global.sreAgent.enabled=true
+assert_rejected 'the old top-level SRE agent block' --set sreAgent.enabled=true
+assert_rejected 'the old top-level Kubernetes integration block' --set kubernetes.enabled=true
+assert_rejected 'the old Query API Kubernetes access block' --set queryApi.kubernetesAccess.enabled=true
+assert_rejected 'an unknown Query API integration' --set queryApi.integrations.kuberentes.enabled=true
+assert_rejected 'standalone ClickHouse with the operator dependency enabled' --set clickhouse.mode=standalone
+assert_rejected 'operator ClickHouse with the dependency disabled' --set clickhouse.mode=operator --set clickhouse.enabled=false
+assert_rejected 'production mode without a public URL' --set queryApi.environment=production --set queryApi.baseUrl=
 assert_rejected 'an invalid image digest' --set queryApi.image.digest=sha256:nope
 assert_rejected 'a zero probe timeout' --set queryApi.probes.readiness.timeoutSeconds=0
 assert_rejected 'an unknown rollout strategy' --set frontend.rollout.strategy=BlueGreen
@@ -25,8 +32,8 @@ assert_rejected 'an invalid Ingress path type' --set ingress.frontend.pathType=S
 assert_rejected 'a malformed image pull secret' --set-json 'queryApi.imagePullSecrets=[{}]'
 assert_rejected 'a malformed extra volume mount' --set-json 'frontend.extraVolumeMounts=[{"name":"data"}]'
 assert_rejected 'a negative Helm test deadline' --set helmTests.activeDeadlineSeconds=-1
-assert_rejected 'a short Kubernetes access token' --set queryApi.kubernetesAccess.internalToken=short
-assert_rejected 'an undersized Kubernetes result limit' --set queryApi.kubernetesAccess.maxResultBytes=512
-assert_rejected 'an oversized Kubernetes session limit' --set queryApi.kubernetesAccess.maxSessionBytes=2147483648
+assert_rejected 'a short Kubernetes access token' --set queryApi.integrations.kubernetesAccess.internalToken=short
+assert_rejected 'an undersized Kubernetes result limit' --set queryApi.integrations.kubernetesAccess.maxResultBytes=512
+assert_rejected 'an oversized Kubernetes session limit' --set queryApi.integrations.kubernetesAccess.maxSessionBytes=2147483648
 
 echo 'values schema validation passed'

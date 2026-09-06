@@ -1,8 +1,23 @@
 {{- if not (has .Values.clickhouse.mode (list "operator" "standalone" "external")) -}}
 {{- fail "clickhouse.mode must be one of: operator, standalone, external" -}}
 {{- end -}}
+{{- if hasKey .Values.global "sreAgent" -}}
+{{- fail "global.sreAgent moved to queryApi.integrations.sreAgent" -}}
+{{- end -}}
+{{- if hasKey .Values.queryApi "kubernetesAccess" -}}
+{{- fail "queryApi.kubernetesAccess moved to queryApi.integrations.kubernetesAccess" -}}
+{{- end -}}
 {{- if and (eq .Values.clickhouse.mode "external") .Values.clickhouse.enabled -}}
 {{- fail "clickhouse.enabled must be false when clickhouse.mode=external; the external mode does not deploy the bundled ClickHouse chart" -}}
+{{- end -}}
+{{- if and (eq .Values.clickhouse.mode "standalone") .Values.clickhouse.enabled -}}
+{{- fail "clickhouse.enabled must be false when clickhouse.mode=standalone; standalone mode uses the built-in StatefulSet" -}}
+{{- end -}}
+{{- if and (eq .Values.clickhouse.mode "operator") (not .Values.clickhouse.enabled) -}}
+{{- fail "clickhouse.enabled must be true when clickhouse.mode=operator; operator mode deploys the ClickHouse dependency" -}}
+{{- end -}}
+{{- if and (eq .Values.queryApi.environment "production") (not .Values.queryApi.baseUrl) (not (and .Values.ingress.enabled .Values.ingress.frontend.enabled .Values.ingress.frontend.host .Values.ingress.frontend.tls.enabled)) -}}
+{{- fail "production mode requires queryApi.baseUrl or an enabled HTTPS frontend ingress with a host" -}}
 {{- end -}}
 {{- if not (has .Values.queryApi.ssoReplayStore (list "auto" "local" "keeper")) -}}
 {{- fail "queryApi.ssoReplayStore must be one of: auto, local, keeper" -}}

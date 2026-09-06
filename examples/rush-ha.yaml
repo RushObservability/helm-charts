@@ -18,8 +18,9 @@
 #         --from-literal=secret-key='<secret-key>'
 #
 # Deploy:
-#   helm install rushobs oci://... \
-#     -f examples/clickhouse-ha.yaml \
+#   helm install rushobs \
+#     oci://ghcr.io/rushobservability/helm-charts/rush-observability \
+#     -f examples/rush-ha.yaml \
 #     --set clickhouse.clickhouse.defaultUser.password_secret_name=my-ch-secret
 # ──────────────────────────────────────────────────────────────────────────────
 

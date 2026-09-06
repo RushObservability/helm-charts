@@ -7,7 +7,8 @@
 # Resources: ~2 CPU / 4 Gi RAM at peak ingest
 #
 # Deploy:
-#   helm install rushobs oci://... \
+#   helm install rushobs \
+#     oci://ghcr.io/rushobservability/helm-charts/rush-observability \
 #     -f examples/rush-single.yaml \
 #     --set clickhouse.clickhouse.defaultUser.password_secret_name=my-ch-secret
 # ──────────────────────────────────────────────────────────────────────────────

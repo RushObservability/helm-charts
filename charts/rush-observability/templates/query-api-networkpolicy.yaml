@@ -60,7 +60,7 @@ spec:
           port: 8123
         - protocol: TCP
           port: 9000
-    {{- if .Values.global.sreAgent.enabled }}
+    {{- if .Values.queryApi.integrations.sreAgent.enabled }}
     - to:
         - podSelector:
             matchLabels:

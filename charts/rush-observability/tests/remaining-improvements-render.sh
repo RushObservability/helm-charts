@@ -57,6 +57,7 @@ for expected in \
 done
 
 if helm template remaining "$chart_dir" \
+  --set queryApi.environment=production \
   --set ingress.enabled=true \
   --set ingress.frontend.host=rush.example.test \
   --set ingress.api.enabled=true \
@@ -66,6 +67,7 @@ if helm template remaining "$chart_dir" \
 fi
 
 if helm template remaining "$chart_dir" \
+  --set queryApi.environment=production \
   --set ingress.enabled=true \
   --set ingress.frontend.host=rush.example.test \
   --set ingress.frontend.tls.enabled=false >/dev/null 2>&1; then

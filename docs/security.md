@@ -10,13 +10,15 @@ request rate, and optional source CIDRs.
 
 For a new stack installation:
 
-1. Install `rush-observability-stack`; add-ons default to off.
-2. Enable a collector when needed.
+1. Install `rush-observability-stack`; hybrid collection is enabled by default.
+2. Change `collectors.mode` if you use external collectors.
 3. Helm creates `<release>-ingest`, preserves it across upgrades, and Query API
    registers its HMAC for the default tenant.
 
 ```bash
-helm upgrade rush rush/rush-observability-stack -n observability \
+helm upgrade rush \
+  oci://ghcr.io/rushobservability/helm-charts/rush-observability-stack \
+  -n observability \
   --set collectors.mode=otel
 ```
 
@@ -31,7 +33,9 @@ To use an externally managed Secret instead:
 kubectl -n observability create secret generic rush-collector-ingest \
   --from-literal=api-key='rush_ing_...'
 
-helm upgrade rush rush/rush-observability-stack -n observability \
+helm upgrade rush \
+  oci://ghcr.io/rushobservability/helm-charts/rush-observability-stack \
+  -n observability \
   --set collectors.mode=otel \
   --set global.rush.ingestApiKeySecret.name=rush-collector-ingest
 ```
@@ -43,7 +47,9 @@ If the target tenant has **Require ingest key** turned off, explicitly allow
 anonymous collector ingestion:
 
 ```bash
-helm upgrade rush rush/rush-observability-stack -n observability \
+helm upgrade rush \
+  oci://ghcr.io/rushobservability/helm-charts/rush-observability-stack \
+  -n observability \
   --set collectors.mode=otel \
   --set collectors.allowAnonymousIngest=true
 ```
@@ -58,10 +64,10 @@ ingestion remains the default.
   ingestion.
 - Existing API keys become `legacy` query-only keys. Create ingest keys before
   enabling or upgrading in-chart collectors.
-- `queryApi.environment` defaults to `production`, and
+- `queryApi.environment` defaults to `development`, and
   `queryApi.allowAnonymousDefault` defaults to `false`.
-- For a default-tenant development override, set `environment: development`
-  and `allowAnonymousDefault: true`. `/healthz` marks the deployment insecure.
+- To allow anonymous default-tenant reads during local development, set
+  `allowAnonymousDefault: true`. `/healthz` marks the deployment insecure.
 
 Source restrictions use the direct peer address seen by Query API. If a proxy
 terminates the collector connection, allowlist the proxy CIDR instead of an
@@ -83,12 +89,12 @@ queryApi:
 
 frontend:
   image:
-    repository: ghcr.io/rushobservability/web-ui
+    repository: ghcr.io/rushobservability/frontend
     digest: sha256:<release-digest>
 ```
 
 `imageSecurity.requireDigests=true` rejects tag-only core Rush images. In the
-stack, set `rush-observability.imageSecurity.requireDigests=true`; the same
+stack, set `rush.imageSecurity.requireDigests=true`; the same
 policy also covers enabled SRE agent and collector images. Empty and `latest`
 tags are always rejected.
 
@@ -130,12 +136,13 @@ non-whitespace character, and not match a bundled common password. The default
 ### Option 2: Set values
 
 ```bash
-helm install rush rush/rush-observability \
+helm install rush \
+  oci://ghcr.io/rushobservability/helm-charts/rush-observability \
   --set queryApi.adminPassword="$(openssl rand -base64 18)" \
   --set queryApi.apiKeyHmacSecret="$(openssl rand -hex 32)" \
   --set queryApi.auditHmacSecret="$(openssl rand -hex 32)" \
   --set queryApi.sessionHmacSecret="$(openssl rand -hex 32)" \
-  --set global.sreAgent.internalAuthToken="$(openssl rand -hex 32)"
+  --set queryApi.integrations.sreAgent.internalAuthToken="$(openssl rand -hex 32)"
 ```
 
 ### Option 3: Bring your own Secret
@@ -152,7 +159,9 @@ kubectl create secret generic rush-bootstrap -n <namespace> \
   --from-literal=config-encryption-key="$(openssl rand -hex 32)" \
   --from-literal=sre-agent-internal-token="$(openssl rand -hex 32)"
 
-helm install rush rush/rush-observability -n <namespace> \
+helm install rush \
+  oci://ghcr.io/rushobservability/helm-charts/rush-observability \
+  -n <namespace> \
   --set queryApi.existingSecret=rush-bootstrap
 ```
 
