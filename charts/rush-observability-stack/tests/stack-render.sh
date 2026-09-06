@@ -210,7 +210,12 @@ if helm template stack "$chart_dir" "${common[@]}" \
 fi
 if helm template stack "$chart_dir" "${common[@]}" \
   --set rush.kubernetesAccessGateway.enabled=true >/dev/null 2>&1; then
-  echo 'the removed rush.kubernetesAccessGateway block was accepted; use rush.enterprise.kubernetesAccessGateway' >&2
+  echo 'the removed rush.kubernetesAccessGateway block was accepted; use rush.enterprise.kubernetesAccess' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.enterprise.kubernetesAccessGateway.enabled=true >/dev/null 2>&1; then
+  echo 'the separate gateway block was accepted; use rush.enterprise.kubernetesAccess' >&2
   exit 1
 fi
 if helm template stack "$chart_dir" "${common[@]}" \

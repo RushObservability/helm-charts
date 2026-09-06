@@ -132,8 +132,6 @@ enterprise:
     retainRawIp: false
     collectPrivateIp: false
     credentialTtlSeconds: 3600
-  kubernetesAccessGateway:
-    enabled: true
     gatewayId: primary
     clusterId: prod-us-east-1
     tenantIds: [default]

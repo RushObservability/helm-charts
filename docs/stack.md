@@ -145,7 +145,7 @@ Install `rush-observability-stack` with the same release name, then move values:
 | `sreAgent` | `rush.queryApi.integrations.sreAgent` |
 | `infrastructure`, `argocd`, `fluxcd`, `kubernetes`, `cloudwatch` | `rush.queryApi.integrations.*` |
 | `queryApi.kubernetesAccess`, `queryApi.integrations.kubernetesAccess` | `rush.enterprise.kubernetesAccess` |
-| `kubernetesAccessGateway` | `rush.enterprise.kubernetesAccessGateway` |
+| `kubernetesAccessGateway`, `enterprise.kubernetesAccessGateway` | `rush.enterprise.kubernetesAccess` |
 | `ingress` | `rush.queryApi.ingress` |
 | `statsEngine` | `rush.queryApi.config.statsEngine` |
 | `promql` | `rush.queryApi.config.promql` |

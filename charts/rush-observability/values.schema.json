@@ -189,7 +189,14 @@
   },
   "required": ["queryApi", "frontend", "clickhouse", "enterprise"],
   "allOf": [
-    { "not": { "required": ["kubernetesAccessGateway"] } }
+    {
+      "not": {
+        "anyOf": [
+          { "required": ["kubernetesAccess"] },
+          { "required": ["kubernetesAccessGateway"] }
+        ]
+      }
+    }
   ],
   "properties": {
     "imageSecurity": {
@@ -722,13 +729,20 @@
         "networkPolicy": { "$ref": "#/definitions/networkPolicy" }
       }
     },
-    "kubernetesAccessGateway": {
+    "kubernetesAccess": {
       "type": "object",
-      "required": ["enabled", "image", "replicas", "port", "queryApiUrl", "gatewayId", "clusterId", "tenantIds", "failurePolicy", "trustedProxyCidrs", "upstream", "tls", "service", "serviceAccount", "rbac", "networkPolicy", "podDisruptionBudget"],
+      "required": ["enabled", "internalToken", "maxResultBytes", "maxSessionBytes", "retentionDays", "retainRawIp", "collectPrivateIp", "credentialTtlSeconds", "image", "replicas", "port", "queryApiUrl", "gatewayId", "clusterId", "tenantIds", "failurePolicy", "trustedProxyCidrs", "upstream", "tls", "service", "serviceAccount", "rbac", "networkPolicy", "podDisruptionBudget"],
       "additionalProperties": true,
       "allOf": [{ "$ref": "#/definitions/podOptions" }],
       "properties": {
         "enabled": { "type": "boolean" },
+        "internalToken": { "type": "string", "pattern": "^$|^.{32,}$" },
+        "maxResultBytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
+        "maxSessionBytes": { "type": "integer", "minimum": 1048576, "maximum": 1073741824 },
+        "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 },
+        "retainRawIp": { "type": "boolean" },
+        "collectPrivateIp": { "type": "boolean" },
+        "credentialTtlSeconds": { "type": "integer", "minimum": 300, "maximum": 43200 },
         "image": { "$ref": "#/definitions/image" },
         "replicas": { "type": "integer", "minimum": 1 },
         "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
@@ -847,7 +861,7 @@
 
     "enterprise": {
       "type": "object",
-      "required": ["license", "kubernetesAccess", "kubernetesAccessGateway"],
+      "required": ["license", "kubernetesAccess"],
       "additionalProperties": false,
       "properties": {
         "license": {
@@ -867,22 +881,7 @@
             }
           }
         },
-        "kubernetesAccess": {
-          "type": "object",
-          "required": ["enabled", "internalToken", "maxResultBytes", "maxSessionBytes", "retentionDays", "retainRawIp", "collectPrivateIp", "credentialTtlSeconds"],
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "internalToken": { "type": "string", "pattern": "^$|^.{32,}$" },
-            "maxResultBytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
-            "maxSessionBytes": { "type": "integer", "minimum": 1048576, "maximum": 1073741824 },
-            "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 },
-            "retainRawIp": { "type": "boolean" },
-            "collectPrivateIp": { "type": "boolean" },
-            "credentialTtlSeconds": { "type": "integer", "minimum": 300, "maximum": 43200 }
-          }
-        },
-        "kubernetesAccessGateway": { "$ref": "#/properties/kubernetesAccessGateway" }
+        "kubernetesAccess": { "$ref": "#/properties/kubernetesAccess" }
       }
     },
     "helmTests": {

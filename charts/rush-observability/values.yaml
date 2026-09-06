@@ -305,7 +305,8 @@ enterprise:
     secret:
       name: rush-license
       key: license-key
-  # Licensed Kubernetes access recording limits used by Query API.
+  # Licensed Kubernetes access recording. One switch enables the Query API
+  # endpoints and deploys the gateway used by kubectl clients.
   kubernetesAccess:
     enabled: false
     internalToken: ""
@@ -315,11 +316,8 @@ enterprise:
     retainRawIp: false
     collectPrivateIp: false
     credentialTtlSeconds: 3600
-  # Standard kubectl clients connect to this gateway through a generated
-  # kubeconfig. It proxies Kubernetes API requests and sends bounded records to
-  # Query API. Enable it only with a commercial license and cluster identity.
-  kubernetesAccessGateway:
-    enabled: false
+    # The gateway proxies Kubernetes API requests and sends bounded records to
+    # Query API. Configure a commercial license and cluster identity first.
     inheritGlobalScheduling: true
     scheduling: {}
     podAnnotations: {}

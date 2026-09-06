@@ -1,4 +1,4 @@
-{{- if .Values.enterprise.kubernetesAccessGateway.enabled }}
+{{- if .Values.enterprise.kubernetesAccess.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -6,12 +6,12 @@ metadata:
   labels:
     {{- include "rush.componentLabels" (dict "root" . "component" "kubernetes-access-gateway") | nindent 4 }}
 spec:
-  type: {{ .Values.enterprise.kubernetesAccessGateway.service.type }}
+  type: {{ .Values.enterprise.kubernetesAccess.service.type }}
   ports:
     - name: https
-      port: {{ .Values.enterprise.kubernetesAccessGateway.service.port }}
+      port: {{ .Values.enterprise.kubernetesAccess.service.port }}
       targetPort: https
-      {{- with .Values.enterprise.kubernetesAccessGateway.service.nodePort }}
+      {{- with .Values.enterprise.kubernetesAccess.service.nodePort }}
       nodePort: {{ . }}
       {{- end }}
   selector:

@@ -25,7 +25,7 @@ spec:
             matchLabels:
               {{- include "rush.selectorLabels" (dict "root" $ "component" .) | nindent 14 }}
         {{- end }}
-        {{- if .Values.enterprise.kubernetesAccessGateway.enabled }}
+        {{- if .Values.enterprise.kubernetesAccess.enabled }}
         - podSelector:
             matchLabels:
               {{- include "rush.selectorLabels" (dict "root" . "component" "kubernetes-access-gateway") | nindent 14 }}

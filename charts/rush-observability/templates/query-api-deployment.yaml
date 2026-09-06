@@ -197,7 +197,7 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: config-encryption-key
-            {{- if or .Values.enterprise.kubernetesAccess.enabled .Values.enterprise.kubernetesAccessGateway.enabled }}
+            {{- if .Values.enterprise.kubernetesAccess.enabled }}
             - name: KUBERNETES_ACCESS_ENABLED
               value: "true"
             - name: KUBERNETES_ACCESS_INTERNAL_TOKEN
@@ -218,14 +218,14 @@ spec:
             - name: KUBERNETES_ACCESS_CREDENTIAL_TTL_SECONDS
               value: {{ .Values.enterprise.kubernetesAccess.credentialTtlSeconds | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_ID
-              value: {{ .Values.enterprise.kubernetesAccessGateway.gatewayId | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.gatewayId | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_TENANT_IDS
-              value: {{ join "," .Values.enterprise.kubernetesAccessGateway.tenantIds | quote }}
+              value: {{ join "," .Values.enterprise.kubernetesAccess.tenantIds | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_CLUSTER_ID
-              value: {{ .Values.enterprise.kubernetesAccessGateway.clusterId | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.clusterId | quote }}
             {{- $tenantClusters := dict }}
-            {{- range .Values.enterprise.kubernetesAccessGateway.tenantIds }}
-            {{- $_ := set $tenantClusters . (list $.Values.enterprise.kubernetesAccessGateway.clusterId) }}
+            {{- range .Values.enterprise.kubernetesAccess.tenantIds }}
+            {{- $_ := set $tenantClusters . (list $.Values.enterprise.kubernetesAccess.clusterId) }}
             {{- end }}
             - name: KUBERNETES_ACCESS_TENANT_CLUSTERS
               value: {{ $tenantClusters | toJson | quote }}
