@@ -13,114 +13,127 @@ rush:
       runtime:
         environment: development
         baseUrl: http://localhost:8080
+      promql:
+        lookbackSecs: 300
       secrets:
         existingSecret: ""
-      integrations:
-        sreAgent:
-          # Optional investigation service. Provider credentials remain in Query API;
-          # the agent receives only short-lived requests and its internal token.
+      retention:
+        defaults:
+          metricsDays: 30
+          tracesDays: 30
+          logsDays: 30
+        metrics: []
+        traces: []
+        enforcer:
+          enabled: true
+          intervalSeconds: 3600
+          dryRun: false
+    integrations:
+      sreAgent:
+        # Optional investigation service. Provider credentials remain in Query API;
+        # the agent receives only short-lived requests and its internal token.
+        enabled: false
+        inheritGlobalScheduling: true
+        scheduling: {}
+        podAnnotations: {}
+        podLabels: {}
+        imagePullSecrets: []
+        priorityClassName: ""
+        runtimeClassName: ""
+        extraEnvFrom: []
+        extraVolumes: []
+        extraVolumeMounts: []
+        serviceAccount:
+          create: true
+          name: ""
+          annotations: {}
+        image:
+          repository: ghcr.io/rushobservability/sre-agent
+          tag: "0.1.2"
+          digest: ""
+          pullPolicy: IfNotPresent
+        replicas: 1
+        port: 8081
+        rollout:
+          strategy: RollingUpdate
+          maxUnavailable: 0
+          maxSurge: 1
+          minReadySeconds: 0
+          progressDeadlineSeconds: 600
+          revisionHistoryLimit: 10
+        podDisruptionBudget:
           enabled: false
-          inheritGlobalScheduling: true
-          scheduling: {}
-          podAnnotations: {}
-          podLabels: {}
-          imagePullSecrets: []
-          priorityClassName: ""
-          runtimeClassName: ""
-          extraEnvFrom: []
-          extraVolumes: []
-          extraVolumeMounts: []
-          serviceAccount:
-            create: true
-            name: ""
-            annotations: {}
-          image:
-            repository: ghcr.io/rushobservability/sre-agent
-            tag: "0.1.2"
-            digest: ""
-            pullPolicy: IfNotPresent
-          replicas: 1
-          port: 8081
-          rollout:
-            strategy: RollingUpdate
-            maxUnavailable: 0
-            maxSurge: 1
-            minReadySeconds: 0
-            progressDeadlineSeconds: 600
-            revisionHistoryLimit: 10
-          podDisruptionBudget:
-            enabled: false
-            type: maxUnavailable
-            value: 1
-          probes:
-            startup:
-              enabled: true
-              path: /healthz
-              initialDelaySeconds: 0
-              periodSeconds: 5
-              timeoutSeconds: 2
-              failureThreshold: 60
-              successThreshold: 1
-            readiness:
-              enabled: true
-              path: /healthz
-              initialDelaySeconds: 3
-              periodSeconds: 5
-              timeoutSeconds: 2
-              failureThreshold: 3
-              successThreshold: 1
-            liveness:
-              enabled: true
-              path: /healthz
-              initialDelaySeconds: 10
-              periodSeconds: 10
-              timeoutSeconds: 2
-              failureThreshold: 3
-              successThreshold: 1
-          internalAuthToken: ""
-          env:
-            RUST_LOG: sre_agent=info,tower_http=info
-          kube:
-            tenantNamespaces: {}
-            allowClusterScopedForAdmins: false
-          githubApp:
-            enabled: false
-            appId: ""
-            apiUrl: https://api.github.com
-            tenantRepositories: {}
-            privateKeySecret:
-              name: ""
-              key: private-key.pem
-            cacheSizeLimit: 1Gi
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: "1"
-              memory: 512Mi
-          podSecurityContext:
-            runAsNonRoot: true
-            fsGroup: 65532
-            fsGroupChangePolicy: OnRootMismatch
-            seccompProfile:
-              type: RuntimeDefault
-          service:
-            type: ClusterIP
-            port: 8081
-          networkPolicy:
+          type: maxUnavailable
+          value: 1
+        probes:
+          startup:
             enabled: true
-            allowExternalHttpsEgress: false
-            extraIngress: []
-            extraEgress: []
-        kubernetes:
+            path: /healthz
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 60
+            successThreshold: 1
+          readiness:
+            enabled: true
+            path: /healthz
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+            successThreshold: 1
+          liveness:
+            enabled: true
+            path: /healthz
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+            successThreshold: 1
+        internalAuthToken: ""
+        env:
+          RUST_LOG: sre_agent=info,tower_http=info
+        kube:
+          tenantNamespaces: {}
+          allowClusterScopedForAdmins: false
+        githubApp:
           enabled: false
-        argocd:
-          enabled: false
-          namespace: argocd
-        fluxcd:
-          enabled: false
-          namespace: flux-system
+          appId: ""
+          apiUrl: https://api.github.com
+          tenantRepositories: {}
+          privateKeySecret:
+            name: ""
+            key: private-key.pem
+          cacheSizeLimit: 1Gi
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: "1"
+            memory: 512Mi
+        podSecurityContext:
+          runAsNonRoot: true
+          fsGroup: 65532
+          fsGroupChangePolicy: OnRootMismatch
+          seccompProfile:
+            type: RuntimeDefault
+        service:
+          type: ClusterIP
+          port: 8081
+        networkPolicy:
+          enabled: true
+          allowExternalHttpsEgress: false
+          extraIngress: []
+          extraEgress: []
+      kubernetes:
+        enabled: false
+      argocd:
+        enabled: false
+        namespace: argocd
+      fluxcd:
+        enabled: false
+        namespace: flux-system
     resources:
       requests: {cpu: 100m, memory: 128Mi}
       limits: {cpu: "1", memory: 512Mi}
@@ -173,6 +186,10 @@ rush:
     requireDigests: false
 # Shared Kubernetes defaults inherited by application and collector workloads.
 global:
+  image:
+    # Optional registry mirror for images rendered by the Rush charts.
+    # Example: mirror.example.com or mirror.example.com/dockerhub
+    registry: ""
   scheduling:
     nodeSelector: {}
     tolerations: []

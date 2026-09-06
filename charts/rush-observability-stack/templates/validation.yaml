@@ -29,7 +29,7 @@
 {{- fail "mysqlCollector NetworkPolicy requires an explicit extraEgress rule for the MySQL server" -}}
 {{- end -}}
 {{- if .Values.rush.imageSecurity.requireDigests -}}
-{{- if and .Values.rush.queryApi.config.integrations.sreAgent.enabled (not .Values.rush.queryApi.config.integrations.sreAgent.image.digest) -}}{{- fail "rush.imageSecurity.requireDigests=true requires rush.queryApi.config.integrations.sreAgent.image.digest" -}}{{- end -}}
+{{- if and .Values.rush.queryApi.integrations.sreAgent.enabled (not .Values.rush.queryApi.integrations.sreAgent.image.digest) -}}{{- fail "rush.imageSecurity.requireDigests=true requires rush.queryApi.integrations.sreAgent.image.digest" -}}{{- end -}}
 {{- if and .Values.postgresCollector.enabled (not .Values.postgresCollector.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires postgresCollector.image.digest" -}}{{- end -}}
 {{- if and .Values.mysqlCollector.enabled (not .Values.mysqlCollector.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires mysqlCollector.image.digest" -}}{{- end -}}
 {{- if and (include "rush.stackOtelEnabled" .) (not .Values.collectors.otel.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires collectors.otel.image.digest" -}}{{- end -}}

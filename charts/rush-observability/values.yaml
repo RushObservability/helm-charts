@@ -35,6 +35,10 @@ queryApi:
         idleTimeoutSeconds: 1800
         absoluteTimeoutSeconds: 86400
         renewalIntervalSeconds: 300
+    promql:
+      # Staleness/lookback window for carrying the last metric value through a
+      # range query. Keep it at least as long as the slowest scrape interval.
+      lookbackSecs: 300
     # Leave generated secrets blank to create them on first install and preserve
     # them across upgrades. Use existingSecret to bring your own Secret.
     secrets:
@@ -51,6 +55,26 @@ queryApi:
       keyId: primary
       previousKeysJson: ""
       spoolMaxBytes: 268435456
+    retention:
+      # Signal-wide defaults apply when no more specific rule matches.
+      defaults:
+        metricsDays: 30
+        tracesDays: 30
+        logsDays: 30
+      # Metric rules are evaluated in order and may match an exact name, a name
+      # regex, labels, or a combination of them.
+      metrics: []
+      # - nameRegex: "^(node_|kube_)"
+      #   labels: {environment: production}
+      #   retainDays: 365
+      # Trace rules may match a service name or one span attribute.
+      traces: []
+      # - serviceName: gateway
+      #   retainDays: 60
+      enforcer:
+        enabled: true
+        intervalSeconds: 3600
+        dryRun: false
     ingest:
       # Shared request/decompression/entity budgets for every telemetry protocol.
       limits:
@@ -78,46 +102,46 @@ queryApi:
             name: "" # existing Secret; required for object_store
             accessKeyKey: access-key
             secretKeyKey: secret-key
-    # Query API integrations and their access boundaries.
-    integrations:
-      # Operator-owned tenant-to-namespace grants shared by the Kubernetes,
-      # Argo CD, and Flux integrations. Missing tenant entries deny access.
-      infrastructure:
-        tenantNamespaces: {}
-      argocd:
-        enabled: false # enable Argo CD CRD reading
-        namespace: argocd # namespace where Argo CD apps live
-      fluxcd:
-        enabled: false # enable Flux v2 CRD reading
-        namespace: flux-system # namespace containing Flux resources
-      kubernetes:
-        enabled: false # enable the read-only Kubernetes resource browser
-        namespaces: []
-        clusterWide: false # explicit opt-in; still never grants Secrets
-      cloudwatch:
-        enabled: false # enable CloudWatch Logs ingest endpoints
-      # Licensed Kubernetes access recording. The query API accepts bounded
-      # event and session uploads when enabled.
-      kubernetesAccess:
-        enabled: false
-        internalToken: ""
-        maxResultBytes: 262144
-        maxSessionBytes: 67108864
-        retentionDays: 30
-        retainRawIp: false
-        collectPrivateIp: false
-        credentialTtlSeconds: 3600
-      # The core chart does not deploy the agent; the stack chart extends this
-      # block with SRE agent workload settings.
-      sreAgent:
-        enabled: false
+  # Query API integrations and their access boundaries.
+  integrations:
+    # Operator-owned tenant-to-namespace grants shared by the Kubernetes,
+    # Argo CD, and Flux integrations. Missing tenant entries deny access.
+    infrastructure:
+      tenantNamespaces: {}
+    argocd:
+      enabled: false # enable Argo CD CRD reading
+      namespace: argocd # namespace where Argo CD apps live
+    fluxcd:
+      enabled: false # enable Flux v2 CRD reading
+      namespace: flux-system # namespace containing Flux resources
+    kubernetes:
+      enabled: false # enable the read-only Kubernetes resource browser
+      namespaces: []
+      clusterWide: false # explicit opt-in; still never grants Secrets
+    cloudwatch:
+      enabled: false # enable CloudWatch Logs ingest endpoints
+    # Licensed Kubernetes access recording. The query API accepts bounded
+    # event and session uploads when enabled.
+    kubernetesAccess:
+      enabled: false
+      internalToken: ""
+      maxResultBytes: 262144
+      maxSessionBytes: 67108864
+      retentionDays: 30
+      retainRawIp: false
+      collectPrivateIp: false
+      credentialTtlSeconds: 3600
+    # The core chart does not deploy the agent; the stack chart extends this
+    # block with SRE agent workload settings.
+    sreAgent:
+      enabled: false
+      port: 8081
+      internalAuthToken: ""
+      service:
         port: 8081
-        internalAuthToken: ""
-        service:
-          port: 8081
-        githubApp:
-          enabled: false
-          tenantRepositories: {}
+      githubApp:
+        enabled: false
+        tenantRepositories: {}
 
   # Kubernetes workload settings.
   # Inherit global.scheduling by default. Values under scheduling override the
@@ -404,12 +428,6 @@ anomalyEngine:
 # rate()/short windows usable; raise it to cut the (tiny) sample volume.
 statsEngine:
   intervalSecs: 15
-# ── PromQL query behavior ──
-# Staleness/lookback (seconds): how long a metric's last value is carried forward in
-# range queries. Default 300 (Prometheus 5m). Lower it so a stopped series' flat tail
-# ends sooner; keep it >= your slowest scrape interval or live series will show gaps.
-promql:
-  lookbackSecs: 300
 # ── frontend ──
 frontend:
   inheritGlobalScheduling: true
@@ -522,10 +540,15 @@ ingress:
 # ── Storage / S3 tiering — SINGLE source of truth ──
 # Lives under `global` so ONE block drives both the query-api rush.toml AND the
 # ClickHouse subchart's storage config. (Helm only shares values with subcharts
-# via `global`; the clickhouse dependency cannot see `rushConfig`.) Enable S3
+# via `global`; the ClickHouse dependency cannot see `queryApi.config`.) Enable S3
 # tiering with just this block — the chart auto-generates the ClickHouse S3 disk
 # + cold volume (see clickhouse.clickhouse.extraConfig). No hand-written XML.
 global:
+  image:
+    # Optional registry mirror. This replaces an image repository's registry
+    # while preserving its path, tag, digest, and pull policy.
+    # Example: mirror.example.com or mirror.example.com/dockerhub
+    registry: ""
   rush:
     # Component labels allowed to send telemetry to Query API. The umbrella
     # chart fills this with its enabled add-on component identities.
@@ -572,26 +595,6 @@ global:
       metrics_move_after_days: 3 # 0 = disabled, keep on local disk only
       traces_move_after_days: 3
       logs_move_after_days: 7
-# ── rush.toml config ──
-# Rendered into a ConfigMap and mounted into query-api at /etc/rush/rush.toml
-rushConfig:
-  retention:
-    defaults:
-      metrics_days: 30
-      traces_days: 30
-      logs_days: 30
-    metrics: []
-    # - labels: { env: "dev" }
-    #   retain_days: 90
-    # - labels: { env: "prod" }
-    #   retain_days: 400
-    traces: []
-    # - service_name: "gateway"
-    #   retain_days: 60
-    enforcer:
-      enabled: true
-      interval_secs: 3600
-      dry_run: false
 # ── ClickHouse (Altinity subchart) ──
 # Full options: https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse
 clickhouse:

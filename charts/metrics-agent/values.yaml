@@ -12,6 +12,9 @@ fullnameOverride: ""
 # Populated by rush-observability-stack. Standalone installs leave this disabled
 # and must continue to set rushRemoteWrite.url and bearerTokenSecret explicitly.
 global:
+  image:
+    # Optional registry mirror supplied directly or by the stack chart.
+    registry: ""
   rush:
     stack:
       enabled: false

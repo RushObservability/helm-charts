@@ -39,7 +39,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: gateway
-          image: {{ include "rush.image" (dict "image" .Values.kubernetesAccessGateway.image "defaultTag" .Chart.AppVersion) | quote }}
+          image: {{ include "rush.image" (dict "root" . "image" .Values.kubernetesAccessGateway.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.kubernetesAccessGateway.image.pullPolicy }}
           ports:
             - name: https
@@ -72,13 +72,13 @@ spec:
             - name: RUSH_GATEWAY_TRUSTED_PROXY_CIDRS
               value: {{ join "," .Values.kubernetesAccessGateway.trustedProxyCidrs | quote }}
             - name: RUSH_GATEWAY_RETAIN_RAW_IP
-              value: {{ .Values.queryApi.config.integrations.kubernetesAccess.retainRawIp | quote }}
+              value: {{ .Values.queryApi.integrations.kubernetesAccess.retainRawIp | quote }}
             - name: RUSH_GATEWAY_FAILURE_POLICY
               value: {{ .Values.kubernetesAccessGateway.failurePolicy | quote }}
             - name: RUSH_GATEWAY_MAX_RESULT_BYTES
-              value: {{ .Values.queryApi.config.integrations.kubernetesAccess.maxResultBytes | quote }}
+              value: {{ .Values.queryApi.integrations.kubernetesAccess.maxResultBytes | quote }}
             - name: RUSH_GATEWAY_MAX_SESSION_BYTES
-              value: {{ .Values.queryApi.config.integrations.kubernetesAccess.maxSessionBytes | quote }}
+              value: {{ .Values.queryApi.integrations.kubernetesAccess.maxSessionBytes | quote }}
             {{- if .Values.kubernetesAccessGateway.tls.existingSecret }}
             - name: TLS_CERT_FILE
               value: /etc/rush-gateway/tls/tls.crt

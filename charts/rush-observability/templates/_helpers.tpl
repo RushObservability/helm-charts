@@ -49,7 +49,7 @@ app.kubernetes.io/component: {{ .component }}
 {{- end -}}
 
 {{- define "rush.sreAgentUrl" -}}
-{{- printf "http://%s:%v" (include "rush.sreAgentServiceName" .) .Values.queryApi.config.integrations.sreAgent.service.port -}}
+{{- printf "http://%s:%v" (include "rush.sreAgentServiceName" .) .Values.queryApi.integrations.sreAgent.service.port -}}
 {{- end -}}
 
 {{/* ClickHouse writer connection environment for Rush application workloads. */}}
@@ -371,9 +371,29 @@ Render an immutable OCI digest when supplied, otherwise an explicit tag. The
 digest is deliberately separate from repository so values remain readable and
 policy validation can distinguish immutable production configuration.
 */}}
+{{- define "rush.imageRepository" -}}
+{{- $source := required "image.repository is required" .image.repository -}}
+{{- $registry := default "" .root.Values.global.image.registry -}}
+{{- if and $registry (not (regexMatch "^[A-Za-z0-9][A-Za-z0-9._-]*(:[0-9]+)?(/[A-Za-z0-9][A-Za-z0-9._-]*)*/?$" $registry)) -}}
+{{- fail "global.image.registry must be a registry host with an optional port or path, without a URL scheme" -}}
+{{- end -}}
+{{- $registry = trimSuffix "/" $registry -}}
+{{- if $registry -}}
+{{- $parts := splitList "/" $source -}}
+{{- $first := first $parts -}}
+{{- $repository := $source -}}
+{{- if and (gt (len $parts) 1) (or (contains "." $first) (contains ":" $first) (eq $first "localhost")) -}}
+{{- $repository = join "/" (rest $parts) -}}
+{{- end -}}
+{{- printf "%s/%s" $registry $repository -}}
+{{- else -}}
+{{- $source -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "rush.image" -}}
 {{- $image := .image -}}
-{{- $repository := required "image.repository is required" $image.repository -}}
+{{- $repository := include "rush.imageRepository" (dict "root" .root "image" $image) -}}
 {{- $digest := default "" $image.digest -}}
 {{- if $digest -}}
 {{- if not (regexMatch "^sha256:[0-9a-f]{64}$" $digest) -}}
@@ -468,10 +488,10 @@ Build the ClickHouse S3 disk endpoint from the single `global.storage.s3` config
 
 {{/*
 Generate the entire ClickHouse extra server config (config.d/extra_config.xml) from
-the single source of truth `global.storage.s3`. This is what lets users enable S3
-tiering with ONLY the rushConfig/global.storage.s3 block — the chart wires the
-ClickHouse storage_configuration (S3 disk + cache + cold volume) automatically; no
-hand-written XML. When s3.enabled is false, only the local-disk `tiered` policy is
+the single source of truth `global.storage.s3`. Users enable S3 tiering with only
+that block. The chart wires the ClickHouse storage_configuration (S3 disk, cache,
+and cold volume) automatically, with no hand-written XML. When s3.enabled is false,
+only the local-disk `tiered` policy is
 emitted (required so tables created with storage_policy='tiered' don't fail).
 
 Invoked from clickhouse.clickhouse.extraConfig, which the Altinity subchart renders

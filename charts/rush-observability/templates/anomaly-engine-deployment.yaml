@@ -35,7 +35,7 @@ spec:
       containers:
         {{- $image := mergeOverwrite (deepCopy .Values.queryApi.image) (deepCopy (.Values.anomalyEngine.image | default dict)) }}
         - name: anomaly-engine
-          image: {{ include "rush.image" (dict "image" $image "defaultTag" .Chart.AppVersion) | quote }}
+          image: {{ include "rush.image" (dict "root" . "image" $image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ $image.pullPolicy }}
           command: ["anomaly_engine"]
           env:

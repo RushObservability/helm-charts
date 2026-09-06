@@ -31,7 +31,7 @@ shared ingest key work without extra configuration.
 Core settings live under `rush`. Collectors and database add-ons remain at the
 top level. `global` is reserved for settings shared across components, such as
 scheduling, pod labels, image pull Secrets, and the generated ingest key.
-Query API integrations live together under `rush.queryApi.config.integrations`.
+Query API integrations live together under `rush.queryApi.integrations`.
 Application behavior is grouped under `rush.queryApi.config`; Kubernetes
 workload settings such as replicas, images, probes, resources, and scheduling
 stay directly under `rush.queryApi`.
@@ -45,11 +45,21 @@ rush:
         baseUrl: https://rush.example.com
       authentication:
         allowAnonymousDefault: false
+      retention:
+        defaults:
+          metricsDays: 30
+          tracesDays: 30
+          logsDays: 30
+    integrations:
+      kubernetes:
+        enabled: false
   clickhouseStandalone:
     persistence:
       size: 100Gi
 
 global:
+  image:
+    registry: "" # Set an internal registry mirror for Rush chart images.
   rush:
     # Optional: defaults to an automatically generated <release>-ingest Secret.
     ingestApiKeySecret: {}
@@ -66,16 +76,18 @@ metricsAgent:
 The stack derives the in-cluster Query API URL and reuses the ingest Secret for
 OTel Collector, Vector, and metrics-agent.
 
-The Query API application groups are:
+The Query API settings are split between application config and integrations:
 
 | Group | Settings |
 |---|---|
 | `config.runtime` | Environment, public base URL, trusted proxies, and extra application environment variables |
 | `config.authentication` | Anonymous access, SSO replay storage, login limits, and browser sessions |
+| `config.promql` | PromQL staleness and lookback behavior |
 | `config.secrets` | Generated secret presets or an externally managed bootstrap Secret |
 | `config.audit` | Audit-chain key metadata and spool limits |
+| `config.retention` | Default retention windows, signal-specific rules, and the retention enforcer |
 | `config.ingest` | Protocol limits and durable ingest-buffer behavior |
-| `config.integrations` | Kubernetes, Argo CD, Flux, CloudWatch, access recording, and the SRE agent |
+| `integrations` | Kubernetes, Argo CD, Flux, CloudWatch, access recording, and the SRE agent |
 
 For the core chart, remove only the leading `rush.` from these paths.
 
@@ -95,7 +107,8 @@ Move existing Query API application values as follows. Prefix both sides with
 | `queryApi.buffer` | `queryApi.config.ingest.buffer` |
 | `queryApi.buffer.drainWorker` | `queryApi.drainWorker` |
 | `queryApi.audit.spool.persistence` | `queryApi.auditSpoolPersistence` |
-| `queryApi.integrations` | `queryApi.config.integrations` |
+| `queryApi.config.integrations` | `queryApi.integrations` |
+| `rushConfig.retention` | `queryApi.config.retention` with camelCase field names |
 
 The schemas reject the previous paths so an upgrade cannot appear successful
 while ignoring an old override.
@@ -113,7 +126,7 @@ defaults. Before upgrading:
 | Version 0.1 | Version 0.2 |
 |---|---|
 | `rush-observability.*` | `rush.*` |
-| `global.sreAgent.*` | `rush.queryApi.config.integrations.sreAgent.*` |
+| `global.sreAgent.*` | `rush.queryApi.integrations.sreAgent.*` |
 
 The default stack now uses standalone ClickHouse, enables hybrid collection,
 and enables metrics-agent. Existing production installations should set their
@@ -127,9 +140,10 @@ Install `rush-observability-stack` with the same release name, then move values:
 | Old core value | Stack value |
 |---|---|
 | Core settings such as `queryApi` and `clickhouse` | `rush.queryApi`, `rush.clickhouse` |
-| `sreAgent` | `rush.queryApi.config.integrations.sreAgent` |
-| `infrastructure`, `argocd`, `fluxcd`, `kubernetes`, `cloudwatch` | `rush.queryApi.config.integrations.*` |
-| `queryApi.kubernetesAccess` | `rush.queryApi.config.integrations.kubernetesAccess` |
+| `sreAgent` | `rush.queryApi.integrations.sreAgent` |
+| `infrastructure`, `argocd`, `fluxcd`, `kubernetes`, `cloudwatch` | `rush.queryApi.integrations.*` |
+| `queryApi.kubernetesAccess` | `rush.queryApi.integrations.kubernetesAccess` |
+| `promql` | `rush.queryApi.config.promql` |
 | `collectors` | `collectors` |
 | `collectors.ingestApiKeySecret` | `global.rush.ingestApiKeySecret` |
 | `enterprise.license.integrations.postgresCollector` | `postgresCollector` |
@@ -180,7 +194,7 @@ Use `otel` for a central OTLP gateway, `vector` for node-local logs, or
 helm upgrade rush \
   oci://ghcr.io/rushobservability/helm-charts/rush-observability-stack \
   -n observability \
-  --set rush.queryApi.config.integrations.sreAgent.enabled=true \
+  --set rush.queryApi.integrations.sreAgent.enabled=true \
   --set rush.queryApi.networkPolicy.allowExternalHttpsEgress=true
 ```
 

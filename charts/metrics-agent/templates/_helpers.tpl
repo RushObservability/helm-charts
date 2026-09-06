@@ -40,12 +40,33 @@ app.kubernetes.io/component: metrics-agent
 {{- end }}
 {{- end }}
 
+{{- define "metrics-agent.imageRepository" -}}
+{{- $source := required "image.repository is required" .Values.image.repository -}}
+{{- $registry := default "" .Values.global.image.registry -}}
+{{- if and $registry (not (regexMatch "^[A-Za-z0-9][A-Za-z0-9._-]*(:[0-9]+)?(/[A-Za-z0-9][A-Za-z0-9._-]*)*/?$" $registry)) -}}
+{{- fail "global.image.registry must be a registry host with an optional port or path, without a URL scheme" -}}
+{{- end -}}
+{{- $registry = trimSuffix "/" $registry -}}
+{{- if $registry -}}
+{{- $parts := splitList "/" $source -}}
+{{- $first := first $parts -}}
+{{- $repository := $source -}}
+{{- if and (gt (len $parts) 1) (or (contains "." $first) (contains ":" $first) (eq $first "localhost")) -}}
+{{- $repository = join "/" (rest $parts) -}}
+{{- end -}}
+{{- printf "%s/%s" $registry $repository -}}
+{{- else -}}
+{{- $source -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "metrics-agent.image" -}}
+{{- $repository := include "metrics-agent.imageRepository" . -}}
 {{- if .Values.image.digest -}}
-{{- printf "%s@%s" .Values.image.repository .Values.image.digest }}
+{{- printf "%s@%s" $repository .Values.image.digest }}
 {{- else -}}
 {{- $tag := default .Chart.AppVersion .Values.image.tag -}}
-{{- printf "%s:%s" .Values.image.repository $tag }}
+{{- printf "%s:%s" $repository $tag }}
 {{- end }}
 {{- end }}
 

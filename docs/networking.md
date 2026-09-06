@@ -24,12 +24,11 @@ rush:
       allowSmtpEgress: false
       extraIngress: []                 # ingress controller or external collector
       extraEgress: []
-    config:
-      integrations:
-        sreAgent:
-          enabled: true
-          networkPolicy:
-            allowExternalHttpsEgress: true # GitHub or an external Kubernetes API
+    integrations:
+      sreAgent:
+        enabled: true
+        networkPolicy:
+          allowExternalHttpsEgress: true # GitHub or an external Kubernetes API
 ```
 
 LLM provider traffic leaves from query-api, not the SRE agent. Allow query-api

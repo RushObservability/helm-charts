@@ -3,13 +3,16 @@
 rush:
   queryApi:
     replicas: 1
-    config:
-      integrations:
-        sreAgent:
-          enabled: false
+    integrations:
+      sreAgent:
+        enabled: false
   clickhouse:
     enabled: true
     mode: operator
+
+global:
+  image:
+    registry: "" # Example: registry.example.com/rush-mirror
 
 # OTel handles traces and metrics; Vector tails Kubernetes container logs.
 collectors:
