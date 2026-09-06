@@ -1,4 +1,4 @@
-{{- if and .Values.kubernetesAccessGateway.enabled .Values.kubernetesAccessGateway.networkPolicy.enabled }}
+{{- if and .Values.enterprise.kubernetesAccessGateway.enabled .Values.enterprise.kubernetesAccessGateway.networkPolicy.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -11,14 +11,14 @@ spec:
       {{- include "rush.selectorLabels" (dict "root" . "component" "kubernetes-access-gateway") | nindent 6 }}
   policyTypes: [Ingress, Egress]
   ingress:
-    {{- if .Values.kubernetesAccessGateway.networkPolicy.allowSameNamespaceIngress }}
+    {{- if .Values.enterprise.kubernetesAccessGateway.networkPolicy.allowSameNamespaceIngress }}
     - from:
         - podSelector: {}
       ports:
         - protocol: TCP
           port: https
     {{- end }}
-    {{- if .Values.kubernetesAccessGateway.networkPolicy.allowExternalIngress }}
+    {{- if .Values.enterprise.kubernetesAccessGateway.networkPolicy.allowExternalIngress }}
     - from:
         - ipBlock:
             cidr: 0.0.0.0/0
@@ -26,7 +26,7 @@ spec:
         - protocol: TCP
           port: https
     {{- end }}
-    {{- with .Values.kubernetesAccessGateway.networkPolicy.extraIngress }}
+    {{- with .Values.enterprise.kubernetesAccessGateway.networkPolicy.extraIngress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   egress:
@@ -47,14 +47,14 @@ spec:
     # The Kubernetes API may be a virtual IP or an external managed endpoint,
     # so it cannot be selected reliably by pod labels.
     - to:
-        {{- range .Values.kubernetesAccessGateway.upstream.egressCidrs }}
+        {{- range .Values.enterprise.kubernetesAccessGateway.upstream.egressCidrs }}
         - ipBlock:
             cidr: {{ . | quote }}
         {{- end }}
       ports:
         - protocol: TCP
           port: 443
-    {{- with .Values.kubernetesAccessGateway.networkPolicy.extraEgress }}
+    {{- with .Values.enterprise.kubernetesAccessGateway.networkPolicy.extraEgress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}

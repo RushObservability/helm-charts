@@ -124,17 +124,6 @@ queryApi:
       clusterWide: false # explicit opt-in; still never grants Secrets
     cloudwatch:
       enabled: false # enable CloudWatch Logs ingest endpoints
-    # Licensed Kubernetes access recording. The query API accepts bounded
-    # event and session uploads when enabled.
-    kubernetesAccess:
-      enabled: false
-      internalToken: ""
-      maxResultBytes: 262144
-      maxSessionBytes: 67108864
-      retentionDays: 30
-      retainRawIp: false
-      collectPrivateIp: false
-      credentialTtlSeconds: 3600
     # The core chart does not deploy the agent; the stack chart extends this
     # block with SRE agent workload settings.
     sreAgent:
@@ -316,93 +305,90 @@ enterprise:
     secret:
       name: rush-license
       key: license-key
-# ── Kubernetes access gateway add-on ──
-# Standard kubectl clients connect to this gateway through a generated
-# kubeconfig. It proxies Kubernetes API requests and sends bounded records to
-# query-api. The gateway is disabled until a commercial license and upstream
-# cluster identity are configured.
-kubernetesAccessGateway:
-  enabled: false
-  inheritGlobalScheduling: true
-  scheduling: {}
-  podAnnotations: {}
-  podLabels: {}
-  imagePullSecrets: []
-  priorityClassName: ""
-  runtimeClassName: ""
-  extraEnvFrom: []
-  extraVolumes: []
-  extraVolumeMounts: []
-  serviceAccount:
-    create: true
-    name: ""
-    annotations: {}
-  # Creating the ClusterRole grants this service account permission to
-  # impersonate Kubernetes users and groups. Leave it false when platform
-  # administrators provide a narrower existing role binding.
-  rbac:
-    createImpersonationRole: false
-    # Reconcile the group-to-role grants saved in Rush Settings into native
-    # ClusterRoles, ClusterRoleBindings, and RoleBindings. This also includes
-    # the impersonation permission above. The controller needs bind and
-    # escalate privileges, so enable it only for a dedicated gateway account.
-    manageRoles: false
-  image:
-    repository: ghcr.io/rushobservability/kubernetes-access-gateway
-    tag: "0.1.0"
-    digest: ""
-    pullPolicy: Always
-  replicas: 2
-  port: 8443
-  # Leave blank to use the query-api Service installed by this chart. Set an
-  # absolute URL when query-api runs elsewhere, such as
-  # http://host.docker.internal:8080 for local OrbStack testing.
-  queryApiUrl: ""
-  # A stable logical identity shared by every gateway replica.
-  gatewayId: ""
-  clusterId: ""
-  # Tenants permitted to exchange their Rush credentials for this cluster.
-  # The chart derives the tenant-to-cluster policy from this explicit list.
-  tenantIds: []
-  failurePolicy: fail_open
-  # Forwarded client addresses are ignored unless the direct peer belongs to
-  # one of these proxy networks. Never use 0.0.0.0/0.
-  trustedProxyCidrs: []
-  upstream:
-    url: https://kubernetes.default.svc
-    caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-    insecure: false
-    # Narrow this to the Kubernetes API endpoint CIDR whenever the platform
-    # exposes a stable address. Managed control planes may require multiple
-    # provider CIDRs.
-    egressCidrs: [0.0.0.0/0]
-  tls:
-    # The Secret must contain tls.crt and tls.key. Leave blank only when a
-    # trusted ingress terminates TLS before the gateway.
-    existingSecret: ""
-  service:
-    type: ClusterIP
-    port: 443
-    # Optional fixed port for NodePort services. Leave blank to let Kubernetes
-    # choose one.
-    nodePort: null
-  networkPolicy:
-    enabled: true
-    allowSameNamespaceIngress: true
-    allowExternalIngress: false
-    extraIngress: []
-    extraEgress: []
-  podDisruptionBudget:
-    enabled: true
-    type: maxUnavailable
-    value: 1
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: "1"
-      memory: 512Mi
+  # Licensed Kubernetes access recording limits used by Query API.
+  kubernetesAccess:
+    enabled: false
+    internalToken: ""
+    maxResultBytes: 262144
+    maxSessionBytes: 67108864
+    retentionDays: 30
+    retainRawIp: false
+    collectPrivateIp: false
+    credentialTtlSeconds: 3600
+  # Standard kubectl clients connect to this gateway through a generated
+  # kubeconfig. It proxies Kubernetes API requests and sends bounded records to
+  # Query API. Enable it only with a commercial license and cluster identity.
+  kubernetesAccessGateway:
+    enabled: false
+    inheritGlobalScheduling: true
+    scheduling: {}
+    podAnnotations: {}
+    podLabels: {}
+    imagePullSecrets: []
+    priorityClassName: ""
+    runtimeClassName: ""
+    extraEnvFrom: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    serviceAccount:
+      create: true
+      name: ""
+      annotations: {}
+    # Creating the ClusterRole grants this service account permission to
+    # impersonate Kubernetes users and groups. Leave it false when platform
+    # administrators provide a narrower existing role binding.
+    rbac:
+      createImpersonationRole: false
+      # Reconcile saved group-to-role grants into native Kubernetes RBAC. The
+      # controller needs bind and escalate privileges, so use a dedicated account.
+      manageRoles: false
+    image:
+      repository: ghcr.io/rushobservability/kubernetes-access-gateway
+      tag: "0.1.0"
+      digest: ""
+      pullPolicy: Always
+    replicas: 2
+    port: 8443
+    # Leave blank to use the Query API Service installed by this chart.
+    queryApiUrl: ""
+    gatewayId: ""
+    clusterId: ""
+    # Tenants permitted to exchange their Rush credentials for this cluster.
+    tenantIds: []
+    failurePolicy: fail_open
+    # Trust only known proxy networks. Never use 0.0.0.0/0.
+    trustedProxyCidrs: []
+    upstream:
+      url: https://kubernetes.default.svc
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      insecure: false
+      # Narrow this to the Kubernetes API endpoint CIDR when possible.
+      egressCidrs: [0.0.0.0/0]
+    tls:
+      # The Secret must contain tls.crt and tls.key.
+      existingSecret: ""
+    service:
+      type: ClusterIP
+      port: 443
+      # Leave blank to let Kubernetes choose a NodePort.
+      nodePort: null
+    networkPolicy:
+      enabled: true
+      allowSameNamespaceIngress: true
+      allowExternalIngress: false
+      extraIngress: []
+      extraEgress: []
+    podDisruptionBudget:
+      enabled: true
+      type: maxUnavailable
+      value: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
 # ── anomaly engine ──
 # The anomaly engine evaluates rules and sends notifications. By default the
 # query-api runs it in-process (fine for a single query-api replica). If you

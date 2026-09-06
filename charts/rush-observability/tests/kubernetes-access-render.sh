@@ -43,14 +43,14 @@ assert_contains "$defaults" 'kubernetes-access-internal-token:' 'preserved recor
 
 enabled="$(helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
-  --set queryApi.integrations.kubernetesAccess.enabled=true \
-  --set queryApi.integrations.kubernetesAccess.maxResultBytes=524288 \
-  --set queryApi.integrations.kubernetesAccess.maxSessionBytes=134217728 \
-  --set queryApi.integrations.kubernetesAccess.retentionDays=14 \
-  --set queryApi.integrations.kubernetesAccess.credentialTtlSeconds=7200 \
-  --set kubernetesAccessGateway.gatewayId=primary \
-  --set kubernetesAccessGateway.clusterId=prod-us-east-1 \
-  --set kubernetesAccessGateway.tenantIds[0]=default)"
+  --set enterprise.kubernetesAccess.enabled=true \
+  --set enterprise.kubernetesAccess.maxResultBytes=524288 \
+  --set enterprise.kubernetesAccess.maxSessionBytes=134217728 \
+  --set enterprise.kubernetesAccess.retentionDays=14 \
+  --set enterprise.kubernetesAccess.credentialTtlSeconds=7200 \
+  --set enterprise.kubernetesAccessGateway.gatewayId=primary \
+  --set enterprise.kubernetesAccessGateway.clusterId=prod-us-east-1 \
+  --set enterprise.kubernetesAccessGateway.tenantIds[0]=default)"
 
 assert_contains "$enabled" 'name: KUBERNETES_ACCESS_ENABLED' 'feature flag'
 assert_contains "$enabled" 'name: KUBERNETES_ACCESS_INTERNAL_TOKEN' 'recorder token reference'
@@ -76,12 +76,12 @@ assert_absent "$enabled" 'KUBERNETES_ACCESS_API_KEY_ROLES' 'Kubernetes API key r
 
 gateway="$(helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
-  --set kubernetesAccessGateway.enabled=true \
-  --set kubernetesAccessGateway.gatewayId=primary \
-  --set kubernetesAccessGateway.clusterId=prod-us-east-1 \
-  --set kubernetesAccessGateway.tenantIds[0]=default \
-  --set kubernetesAccessGateway.serviceAccount.create=false \
-  --set kubernetesAccessGateway.serviceAccount.name=rush-kube-proxy)"
+  --set enterprise.kubernetesAccessGateway.enabled=true \
+  --set enterprise.kubernetesAccessGateway.gatewayId=primary \
+  --set enterprise.kubernetesAccessGateway.clusterId=prod-us-east-1 \
+  --set enterprise.kubernetesAccessGateway.tenantIds[0]=default \
+  --set enterprise.kubernetesAccessGateway.serviceAccount.create=false \
+  --set enterprise.kubernetesAccessGateway.serviceAccount.name=rush-kube-proxy)"
 
 assert_contains "$gateway" 'app.kubernetes.io/component: kubernetes-access-gateway' 'gateway workload'
 assert_contains "$gateway" 'name: KUBE_UPSTREAM_BEARER_TOKEN_FILE' 'projected service-account token'
@@ -100,52 +100,52 @@ assert_absent "$gateway" 'resources: ["users", "groups"]' 'implicit impersonatio
 external_secret="$(helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
   --set queryApi.config.secrets.existingSecret=operator-bootstrap \
-  --set kubernetesAccessGateway.enabled=true \
-  --set kubernetesAccessGateway.gatewayId=primary \
-  --set kubernetesAccessGateway.clusterId=prod-us-east-1 \
-  --set kubernetesAccessGateway.tenantIds[0]=default \
-  --set kubernetesAccessGateway.serviceAccount.create=false \
-  --set kubernetesAccessGateway.serviceAccount.name=rush-kube-proxy)"
+  --set enterprise.kubernetesAccessGateway.enabled=true \
+  --set enterprise.kubernetesAccessGateway.gatewayId=primary \
+  --set enterprise.kubernetesAccessGateway.clusterId=prod-us-east-1 \
+  --set enterprise.kubernetesAccessGateway.tenantIds[0]=default \
+  --set enterprise.kubernetesAccessGateway.serviceAccount.create=false \
+  --set enterprise.kubernetesAccessGateway.serviceAccount.name=rush-kube-proxy)"
 assert_contains "$external_secret" 'name: operator-bootstrap' 'existing bootstrap Secret reference'
 assert_contains "$external_secret" 'key: kubernetes-access-internal-token' 'existing Secret recorder key'
 
 if helm template kubernetes-access "$chart_dir" \
-  --set kubernetesAccessGateway.enabled=true \
-  --set kubernetesAccessGateway.gatewayId=primary \
-  --set kubernetesAccessGateway.clusterId=prod \
-  --set kubernetesAccessGateway.tenantIds[0]=default >/dev/null 2>&1; then
+  --set enterprise.kubernetesAccessGateway.enabled=true \
+  --set enterprise.kubernetesAccessGateway.gatewayId=primary \
+  --set enterprise.kubernetesAccessGateway.clusterId=prod \
+  --set enterprise.kubernetesAccessGateway.tenantIds[0]=default >/dev/null 2>&1; then
   echo 'gateway rendered without an enterprise license' >&2
   exit 1
 fi
 
 if helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
-  --set kubernetesAccessGateway.enabled=true \
-  --set kubernetesAccessGateway.gatewayId=primary \
-  --set kubernetesAccessGateway.clusterId=prod \
-  --set kubernetesAccessGateway.tenantIds[0]=default >/dev/null 2>&1; then
+  --set enterprise.kubernetesAccessGateway.enabled=true \
+  --set enterprise.kubernetesAccessGateway.gatewayId=primary \
+  --set enterprise.kubernetesAccessGateway.clusterId=prod \
+  --set enterprise.kubernetesAccessGateway.tenantIds[0]=default >/dev/null 2>&1; then
   echo 'gateway rendered without an existing service account or explicit impersonation role' >&2
   exit 1
 fi
 
 generated_rbac="$(helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
-  --set kubernetesAccessGateway.enabled=true \
-  --set kubernetesAccessGateway.gatewayId=primary \
-  --set kubernetesAccessGateway.clusterId=prod \
-  --set kubernetesAccessGateway.tenantIds[0]=default \
-  --set kubernetesAccessGateway.rbac.createImpersonationRole=true)"
+  --set enterprise.kubernetesAccessGateway.enabled=true \
+  --set enterprise.kubernetesAccessGateway.gatewayId=primary \
+  --set enterprise.kubernetesAccessGateway.clusterId=prod \
+  --set enterprise.kubernetesAccessGateway.tenantIds[0]=default \
+  --set enterprise.kubernetesAccessGateway.rbac.createImpersonationRole=true)"
 assert_contains "$generated_rbac" 'resources: ["users", "groups"]' 'explicit impersonation grant'
 assert_contains "$generated_rbac" 'verbs: ["impersonate"]' 'impersonation verb'
 assert_absent "$generated_rbac" '"bind", "escalate"' 'implicit RBAC management grant'
 
 managed_rbac="$(helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
-  --set kubernetesAccessGateway.enabled=true \
-  --set kubernetesAccessGateway.gatewayId=primary \
-  --set kubernetesAccessGateway.clusterId=prod \
-  --set kubernetesAccessGateway.tenantIds[0]=default \
-  --set kubernetesAccessGateway.rbac.manageRoles=true)"
+  --set enterprise.kubernetesAccessGateway.enabled=true \
+  --set enterprise.kubernetesAccessGateway.gatewayId=primary \
+  --set enterprise.kubernetesAccessGateway.clusterId=prod \
+  --set enterprise.kubernetesAccessGateway.tenantIds[0]=default \
+  --set enterprise.kubernetesAccessGateway.rbac.manageRoles=true)"
 assert_contains "$managed_rbac" 'name: RUSH_GATEWAY_MANAGE_RBAC' 'managed RBAC environment flag'
 assert_contains "$managed_rbac" 'value: "true"' 'enabled RBAC reconciliation'
 assert_contains "$managed_rbac" 'resources: ["clusterroles"]' 'ClusterRole reconciliation grant'
@@ -154,36 +154,36 @@ assert_contains "$managed_rbac" 'resources: ["clusterrolebindings", "rolebinding
 
 if helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
-  --set kubernetesAccessGateway.enabled=true \
-  --set kubernetesAccessGateway.gatewayId=primary \
-  --set kubernetesAccessGateway.tenantIds[0]=default \
-  --set kubernetesAccessGateway.rbac.createImpersonationRole=true >/dev/null 2>&1; then
+  --set enterprise.kubernetesAccessGateway.enabled=true \
+  --set enterprise.kubernetesAccessGateway.gatewayId=primary \
+  --set enterprise.kubernetesAccessGateway.tenantIds[0]=default \
+  --set enterprise.kubernetesAccessGateway.rbac.createImpersonationRole=true >/dev/null 2>&1; then
   echo 'gateway rendered without a cluster ID' >&2
   exit 1
 fi
 
 if helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
-  --set kubernetesAccessGateway.enabled=true \
-  --set kubernetesAccessGateway.gatewayId=primary \
-  --set kubernetesAccessGateway.clusterId=prod \
-  --set kubernetesAccessGateway.rbac.createImpersonationRole=true >/dev/null 2>&1; then
+  --set enterprise.kubernetesAccessGateway.enabled=true \
+  --set enterprise.kubernetesAccessGateway.gatewayId=primary \
+  --set enterprise.kubernetesAccessGateway.clusterId=prod \
+  --set enterprise.kubernetesAccessGateway.rbac.createImpersonationRole=true >/dev/null 2>&1; then
   echo 'gateway rendered without an explicit tenant binding' >&2
   exit 1
 fi
 
 if helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
-  --set kubernetesAccessGateway.enabled=true \
-  --set kubernetesAccessGateway.clusterId=prod \
-  --set kubernetesAccessGateway.tenantIds[0]=default \
-  --set kubernetesAccessGateway.rbac.createImpersonationRole=true >/dev/null 2>&1; then
+  --set enterprise.kubernetesAccessGateway.enabled=true \
+  --set enterprise.kubernetesAccessGateway.clusterId=prod \
+  --set enterprise.kubernetesAccessGateway.tenantIds[0]=default \
+  --set enterprise.kubernetesAccessGateway.rbac.createImpersonationRole=true >/dev/null 2>&1; then
   echo 'gateway rendered without a stable gateway ID' >&2
   exit 1
 fi
 
 if helm template kubernetes-access "$chart_dir" \
-  --set queryApi.integrations.kubernetesAccess.retentionDays=0 >/dev/null 2>&1; then
+  --set enterprise.kubernetesAccess.retentionDays=0 >/dev/null 2>&1; then
   echo 'chart accepted zero-day Kubernetes access retention' >&2
   exit 1
 fi

@@ -1,4 +1,4 @@
-{{- if .Values.kubernetesAccessGateway.enabled }}
+{{- if .Values.enterprise.kubernetesAccessGateway.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "rush.componentLabels" (dict "root" . "component" "kubernetes-access-gateway") | nindent 4 }}
 spec:
-  replicas: {{ .Values.kubernetesAccessGateway.replicas }}
+  replicas: {{ .Values.enterprise.kubernetesAccessGateway.replicas }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -19,17 +19,17 @@ spec:
     metadata:
       labels:
         {{- include "rush.selectorLabels" (dict "root" . "component" "kubernetes-access-gateway") | nindent 8 }}
-        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.kubernetesAccessGateway)) }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.enterprise.kubernetesAccessGateway)) }}
         {{- . | nindent 8 }}
         {{- end }}
       annotations:
-        {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.kubernetesAccessGateway)) }}
+        {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.enterprise.kubernetesAccessGateway)) }}
         {{- . | nindent 8 }}
         {{- end }}
     spec:
-      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.kubernetesAccessGateway) | nindent 6 }}
-      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.kubernetesAccessGateway) | nindent 6 }}
-      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.kubernetesAccessGateway "component" "kubernetes-access-gateway") }}
+      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.enterprise.kubernetesAccessGateway) | nindent 6 }}
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.enterprise.kubernetesAccessGateway) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.enterprise.kubernetesAccessGateway "component" "kubernetes-access-gateway") }}
       automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
@@ -39,58 +39,58 @@ spec:
           type: RuntimeDefault
       containers:
         - name: gateway
-          image: {{ include "rush.image" (dict "root" . "image" .Values.kubernetesAccessGateway.image "defaultTag" .Chart.AppVersion) | quote }}
-          imagePullPolicy: {{ .Values.kubernetesAccessGateway.image.pullPolicy }}
+          image: {{ include "rush.image" (dict "root" . "image" .Values.enterprise.kubernetesAccessGateway.image "defaultTag" .Chart.AppVersion) | quote }}
+          imagePullPolicy: {{ .Values.enterprise.kubernetesAccessGateway.image.pullPolicy }}
           ports:
             - name: https
-              containerPort: {{ .Values.kubernetesAccessGateway.port }}
+              containerPort: {{ .Values.enterprise.kubernetesAccessGateway.port }}
               protocol: TCP
           env:
             - name: LISTEN_ADDRESS
-              value: {{ printf ":%v" .Values.kubernetesAccessGateway.port | quote }}
+              value: {{ printf ":%v" .Values.enterprise.kubernetesAccessGateway.port | quote }}
             - name: KUBE_UPSTREAM_URL
-              value: {{ .Values.kubernetesAccessGateway.upstream.url | quote }}
+              value: {{ .Values.enterprise.kubernetesAccessGateway.upstream.url | quote }}
             - name: KUBE_UPSTREAM_BEARER_TOKEN_FILE
               value: /var/run/secrets/kubernetes.io/serviceaccount/token
             - name: KUBE_UPSTREAM_CA_FILE
-              value: {{ .Values.kubernetesAccessGateway.upstream.caFile | quote }}
+              value: {{ .Values.enterprise.kubernetesAccessGateway.upstream.caFile | quote }}
             - name: KUBE_UPSTREAM_INSECURE
-              value: {{ .Values.kubernetesAccessGateway.upstream.insecure | quote }}
+              value: {{ .Values.enterprise.kubernetesAccessGateway.upstream.insecure | quote }}
             - name: RUSH_QUERY_API_URL
-              value: {{ .Values.kubernetesAccessGateway.queryApiUrl | default (printf "http://%s:%v" (include "rush.queryApiServiceName" .) .Values.queryApi.service.port) | quote }}
+              value: {{ .Values.enterprise.kubernetesAccessGateway.queryApiUrl | default (printf "http://%s:%v" (include "rush.queryApiServiceName" .) .Values.queryApi.service.port) | quote }}
             - name: RUSH_GATEWAY_INTERNAL_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.queryApi.config.secrets.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
                   key: kubernetes-access-internal-token
             - name: RUSH_CLUSTER_ID
-              value: {{ .Values.kubernetesAccessGateway.clusterId | quote }}
+              value: {{ .Values.enterprise.kubernetesAccessGateway.clusterId | quote }}
             - name: RUSH_GATEWAY_ID
-              value: {{ .Values.kubernetesAccessGateway.gatewayId | quote }}
+              value: {{ .Values.enterprise.kubernetesAccessGateway.gatewayId | quote }}
             - name: RUSH_GATEWAY_MANAGE_RBAC
-              value: {{ .Values.kubernetesAccessGateway.rbac.manageRoles | quote }}
+              value: {{ .Values.enterprise.kubernetesAccessGateway.rbac.manageRoles | quote }}
             - name: RUSH_GATEWAY_TRUSTED_PROXY_CIDRS
-              value: {{ join "," .Values.kubernetesAccessGateway.trustedProxyCidrs | quote }}
+              value: {{ join "," .Values.enterprise.kubernetesAccessGateway.trustedProxyCidrs | quote }}
             - name: RUSH_GATEWAY_RETAIN_RAW_IP
-              value: {{ .Values.queryApi.integrations.kubernetesAccess.retainRawIp | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.retainRawIp | quote }}
             - name: RUSH_GATEWAY_FAILURE_POLICY
-              value: {{ .Values.kubernetesAccessGateway.failurePolicy | quote }}
+              value: {{ .Values.enterprise.kubernetesAccessGateway.failurePolicy | quote }}
             - name: RUSH_GATEWAY_MAX_RESULT_BYTES
-              value: {{ .Values.queryApi.integrations.kubernetesAccess.maxResultBytes | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.maxResultBytes | quote }}
             - name: RUSH_GATEWAY_MAX_SESSION_BYTES
-              value: {{ .Values.queryApi.integrations.kubernetesAccess.maxSessionBytes | quote }}
-            {{- if .Values.kubernetesAccessGateway.tls.existingSecret }}
+              value: {{ .Values.enterprise.kubernetesAccess.maxSessionBytes | quote }}
+            {{- if .Values.enterprise.kubernetesAccessGateway.tls.existingSecret }}
             - name: TLS_CERT_FILE
               value: /etc/rush-gateway/tls/tls.crt
             - name: TLS_KEY_FILE
               value: /etc/rush-gateway/tls/tls.key
             {{- end }}
-          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.kubernetesAccessGateway) | nindent 10 }}
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.enterprise.kubernetesAccessGateway) | nindent 10 }}
           readinessProbe:
             httpGet:
               path: /readyz
               port: https
-              scheme: {{ ternary "HTTPS" "HTTP" (not (empty .Values.kubernetesAccessGateway.tls.existingSecret)) }}
+              scheme: {{ ternary "HTTPS" "HTTP" (not (empty .Values.enterprise.kubernetesAccessGateway.tls.existingSecret)) }}
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 3
@@ -98,33 +98,33 @@ spec:
             httpGet:
               path: /healthz
               port: https
-              scheme: {{ ternary "HTTPS" "HTTP" (not (empty .Values.kubernetesAccessGateway.tls.existingSecret)) }}
+              scheme: {{ ternary "HTTPS" "HTTP" (not (empty .Values.enterprise.kubernetesAccessGateway.tls.existingSecret)) }}
             periodSeconds: 10
             timeoutSeconds: 2
             failureThreshold: 3
-          {{- if or .Values.kubernetesAccessGateway.tls.existingSecret .Values.kubernetesAccessGateway.extraVolumeMounts .Values.global.extraVolumeMounts }}
+          {{- if or .Values.enterprise.kubernetesAccessGateway.tls.existingSecret .Values.enterprise.kubernetesAccessGateway.extraVolumeMounts .Values.global.extraVolumeMounts }}
           volumeMounts:
-            {{- if .Values.kubernetesAccessGateway.tls.existingSecret }}
+            {{- if .Values.enterprise.kubernetesAccessGateway.tls.existingSecret }}
             - name: gateway-tls
               mountPath: /etc/rush-gateway/tls
               readOnly: true
             {{- end }}
-            {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.kubernetesAccessGateway)) }}
+            {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.enterprise.kubernetesAccessGateway)) }}
             {{- . | nindent 12 }}
             {{- end }}
           {{- end }}
           resources:
-            {{- toYaml .Values.kubernetesAccessGateway.resources | nindent 12 }}
+            {{- toYaml .Values.enterprise.kubernetesAccessGateway.resources | nindent 12 }}
           securityContext:
             {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
-      {{- if or .Values.kubernetesAccessGateway.tls.existingSecret .Values.kubernetesAccessGateway.extraVolumes .Values.global.extraVolumes }}
+      {{- if or .Values.enterprise.kubernetesAccessGateway.tls.existingSecret .Values.enterprise.kubernetesAccessGateway.extraVolumes .Values.global.extraVolumes }}
       volumes:
-        {{- if .Values.kubernetesAccessGateway.tls.existingSecret }}
+        {{- if .Values.enterprise.kubernetesAccessGateway.tls.existingSecret }}
         - name: gateway-tls
           secret:
-            secretName: {{ .Values.kubernetesAccessGateway.tls.existingSecret }}
+            secretName: {{ .Values.enterprise.kubernetesAccessGateway.tls.existingSecret }}
         {{- end }}
-        {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.kubernetesAccessGateway)) }}
+        {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.enterprise.kubernetesAccessGateway)) }}
         {{- . | nindent 8 }}
         {{- end }}
       {{- end }}

@@ -1,4 +1,4 @@
-{{- if .Values.mysqlCollector.enabled }}
+{{- if .Values.enterprise.mysqlCollector.enabled }}
 # Paid MySQL diagnostics. One replica prevents duplicate interval deltas.
 apiVersion: apps/v1
 kind: Deployment
@@ -8,7 +8,7 @@ metadata:
     {{- include "rush.componentLabels" (dict "root" . "component" "mysql-collector") | nindent 4 }}
 spec:
   replicas: 1
-  {{- include "rush.deploymentRollout" (dict "rollout" .Values.mysqlCollector.rollout) | nindent 2 }}
+  {{- include "rush.deploymentRollout" (dict "rollout" .Values.enterprise.mysqlCollector.rollout) | nindent 2 }}
   selector:
     matchLabels:
       {{- include "rush.selectorLabels" (dict "root" . "component" "mysql-collector") | nindent 6 }}
@@ -16,33 +16,33 @@ spec:
     metadata:
       labels:
         {{- include "rush.selectorLabels" (dict "root" . "component" "mysql-collector") | nindent 8 }}
-        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.mysqlCollector)) }}
+        {{- with (include "rush.podLabels" (dict "root" $ "workload" $.Values.enterprise.mysqlCollector)) }}
         {{- . | nindent 8 }}
         {{- end }}
-      {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.mysqlCollector)) }}
+      {{- with (include "rush.podAnnotations" (dict "root" $ "workload" $.Values.enterprise.mysqlCollector)) }}
       annotations:
         {{- . | nindent 8 }}
       {{- end }}
     spec:
-      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.mysqlCollector) | nindent 6 }}
-      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.mysqlCollector) | nindent 6 }}
-      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.mysqlCollector "component" "mysql-collector") }}
+      {{- include "rush.workloadScheduling" (dict "root" . "workload" .Values.enterprise.mysqlCollector) | nindent 6 }}
+      {{- include "rush.podSpecOptions" (dict "root" . "workload" .Values.enterprise.mysqlCollector) | nindent 6 }}
+      serviceAccountName: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.enterprise.mysqlCollector "component" "mysql-collector") }}
       automountServiceAccountToken: false
       containers:
         - name: mysql-collector
-          image: {{ include "rush.image" (dict "root" . "image" .Values.mysqlCollector.image "defaultTag" .Chart.AppVersion) | quote }}
-          imagePullPolicy: {{ .Values.mysqlCollector.image.pullPolicy }}
+          image: {{ include "rush.image" (dict "root" . "image" .Values.enterprise.mysqlCollector.image "defaultTag" .Chart.AppVersion) | quote }}
+          imagePullPolicy: {{ .Values.enterprise.mysqlCollector.image.pullPolicy }}
           env:
             - name: MYSQL_DSN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.mysqlCollector.secret.name }}
-                  key: {{ .Values.mysqlCollector.secret.dsnKey }}
+                  name: {{ .Values.enterprise.mysqlCollector.secret.name }}
+                  key: {{ .Values.enterprise.mysqlCollector.secret.dsnKey }}
             - name: RUSH_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.mysqlCollector.secret.name }}
-                  key: {{ .Values.mysqlCollector.secret.apiKeyKey }}
+                  name: {{ .Values.enterprise.mysqlCollector.secret.name }}
+                  key: {{ .Values.enterprise.mysqlCollector.secret.apiKeyKey }}
             - name: RUSH_LICENSE_KEY
               valueFrom:
                 secretKeyRef:
@@ -50,18 +50,18 @@ spec:
                   key: {{ .Values.rush.enterprise.license.secret.key }}
             - name: RUSH_OTLP_ENDPOINT
               value: {{ include "rush.stackQueryApiUrl" . | quote }}
-            {{- range $key, $value := .Values.mysqlCollector.env }}
+            {{- range $key, $value := .Values.enterprise.mysqlCollector.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
-          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.mysqlCollector) | nindent 10 }}
-          {{- with (include "rush.extraVolumeMounts" (dict "root" . "workload" .Values.mysqlCollector)) }}
+          {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.enterprise.mysqlCollector) | nindent 10 }}
+          {{- with (include "rush.extraVolumeMounts" (dict "root" . "workload" .Values.enterprise.mysqlCollector)) }}
           volumeMounts:
             {{- . | nindent 12 }}
           {{- end }}
           resources:
-            {{- toYaml .Values.mysqlCollector.resources | nindent 12 }}
-      {{- with (include "rush.extraVolumes" (dict "root" . "workload" .Values.mysqlCollector)) }}
+            {{- toYaml .Values.enterprise.mysqlCollector.resources | nindent 12 }}
+      {{- with (include "rush.extraVolumes" (dict "root" . "workload" .Values.enterprise.mysqlCollector)) }}
       volumes:
         {{- toYaml . | nindent 8 }}
       {{- end }}

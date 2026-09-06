@@ -197,7 +197,7 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: config-encryption-key
-            {{- if or $integrations.kubernetesAccess.enabled .Values.kubernetesAccessGateway.enabled }}
+            {{- if or .Values.enterprise.kubernetesAccess.enabled .Values.enterprise.kubernetesAccessGateway.enabled }}
             - name: KUBERNETES_ACCESS_ENABLED
               value: "true"
             - name: KUBERNETES_ACCESS_INTERNAL_TOKEN
@@ -206,26 +206,26 @@ spec:
                   name: {{ $bootstrapSecret }}
                   key: kubernetes-access-internal-token
             - name: KUBERNETES_ACCESS_MAX_RESULT_BYTES
-              value: {{ $integrations.kubernetesAccess.maxResultBytes | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.maxResultBytes | quote }}
             - name: KUBERNETES_ACCESS_MAX_SESSION_BYTES
-              value: {{ $integrations.kubernetesAccess.maxSessionBytes | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.maxSessionBytes | quote }}
             - name: KUBERNETES_ACCESS_RETENTION_DAYS
-              value: {{ $integrations.kubernetesAccess.retentionDays | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.retentionDays | quote }}
             - name: KUBERNETES_ACCESS_RETAIN_RAW_IP
-              value: {{ $integrations.kubernetesAccess.retainRawIp | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.retainRawIp | quote }}
             - name: KUBERNETES_ACCESS_COLLECT_PRIVATE_IP
-              value: {{ $integrations.kubernetesAccess.collectPrivateIp | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.collectPrivateIp | quote }}
             - name: KUBERNETES_ACCESS_CREDENTIAL_TTL_SECONDS
-              value: {{ $integrations.kubernetesAccess.credentialTtlSeconds | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.credentialTtlSeconds | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_ID
-              value: {{ .Values.kubernetesAccessGateway.gatewayId | quote }}
+              value: {{ .Values.enterprise.kubernetesAccessGateway.gatewayId | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_TENANT_IDS
-              value: {{ join "," .Values.kubernetesAccessGateway.tenantIds | quote }}
+              value: {{ join "," .Values.enterprise.kubernetesAccessGateway.tenantIds | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_CLUSTER_ID
-              value: {{ .Values.kubernetesAccessGateway.clusterId | quote }}
+              value: {{ .Values.enterprise.kubernetesAccessGateway.clusterId | quote }}
             {{- $tenantClusters := dict }}
-            {{- range .Values.kubernetesAccessGateway.tenantIds }}
-            {{- $_ := set $tenantClusters . (list $.Values.kubernetesAccessGateway.clusterId) }}
+            {{- range .Values.enterprise.kubernetesAccessGateway.tenantIds }}
+            {{- $_ := set $tenantClusters . (list $.Values.enterprise.kubernetesAccessGateway.clusterId) }}
             {{- end }}
             - name: KUBERNETES_ACCESS_TENANT_CLUSTERS
               value: {{ $tenantClusters | toJson | quote }}

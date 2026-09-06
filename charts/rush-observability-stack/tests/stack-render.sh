@@ -200,7 +200,27 @@ if helm template stack "$chart_dir" "${common[@]}" \
 fi
 if helm template stack "$chart_dir" "${common[@]}" \
   --set rush.queryApi.kubernetesAccess.enabled=true >/dev/null 2>&1; then
-  echo 'the removed rush.queryApi.kubernetesAccess block was accepted; use rush.queryApi.integrations.kubernetesAccess' >&2
+  echo 'the removed rush.queryApi.kubernetesAccess block was accepted; use rush.enterprise.kubernetesAccess' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.integrations.kubernetesAccess.enabled=true >/dev/null 2>&1; then
+  echo 'the paid Kubernetes access settings were accepted under regular integrations; use rush.enterprise.kubernetesAccess' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.kubernetesAccessGateway.enabled=true >/dev/null 2>&1; then
+  echo 'the removed rush.kubernetesAccessGateway block was accepted; use rush.enterprise.kubernetesAccessGateway' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set postgresCollector.enabled=true >/dev/null 2>&1; then
+  echo 'the removed postgresCollector block was accepted; use enterprise.postgresCollector' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set mysqlCollector.enabled=true >/dev/null 2>&1; then
+  echo 'the removed mysqlCollector block was accepted; use enterprise.mysqlCollector' >&2
   exit 1
 fi
 if helm template stack "$chart_dir" "${common[@]}" \
@@ -257,9 +277,9 @@ done
 
 postgres="$(helm template stack "$chart_dir" "${common[@]}" \
   --set global.image.registry=mirror.example.com/cache \
-  --set postgresCollector.enabled=true \
+  --set enterprise.postgresCollector.enabled=true \
   --set rush.enterprise.license.enabled=true \
-  --set-json 'postgresCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":5432}]}]')"
+  --set-json 'enterprise.postgresCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":5432}]}]')"
 for expected in 'name: stack-postgres-collector' 'name: RUSH_LICENSE_KEY' 'value: "http://stack-query-api:8080"' 'image: "mirror.example.com/cache/mzupan/postgres-collector:0.1.0"'; do
   grep -Fq "$expected" <<<"$postgres" || {
     echo "Postgres stack render is missing: $expected" >&2
@@ -269,9 +289,9 @@ done
 
 mysql="$(helm template stack "$chart_dir" "${common[@]}" \
   --set global.image.registry=mirror.example.com/cache \
-  --set mysqlCollector.enabled=true \
+  --set enterprise.mysqlCollector.enabled=true \
   --set rush.enterprise.license.enabled=true \
-  --set-json 'mysqlCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":3306}]}]')"
+  --set-json 'enterprise.mysqlCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":3306}]}]')"
 for expected in 'name: stack-mysql-collector' 'name: MYSQL_DSN' 'name: RUSH_LICENSE_KEY' 'value: "http://stack-query-api:8080"' 'image: "mirror.example.com/cache/mzupan/mysql-collector:0.1.0"'; do
   grep -Fq "$expected" <<<"$mysql" || {
     echo "MySQL stack render is missing: $expected" >&2

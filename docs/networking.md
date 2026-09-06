@@ -35,9 +35,9 @@ LLM provider traffic leaves from query-api, not the SRE agent. Allow query-api
 HTTPS egress when a configured provider is outside the cluster.
 
 The stack's PostgreSQL collector needs an explicit
-`postgresCollector.networkPolicy.extraEgress` rule for the monitored database.
+`enterprise.postgresCollector.networkPolicy.extraEgress` rule for the monitored database.
 The MySQL collector has the same requirement under
-`mysqlCollector.networkPolicy.extraEgress`; limit it to TCP 3306 on the target.
+`enterprise.mysqlCollector.networkPolicy.extraEgress`; limit it to TCP 3306 on the target.
 External ClickHouse needs
 `allowExternalClickHouseEgress` or an explicit rule. The chart fails rendering
 when a required external service would be unreachable.

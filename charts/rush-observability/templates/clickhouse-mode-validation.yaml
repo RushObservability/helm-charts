@@ -5,7 +5,7 @@
 {{- fail "global.sreAgent moved to queryApi.integrations.sreAgent" -}}
 {{- end -}}
 {{- if hasKey .Values.queryApi "kubernetesAccess" -}}
-{{- fail "queryApi.kubernetesAccess moved to queryApi.integrations.kubernetesAccess" -}}
+{{- fail "queryApi.kubernetesAccess moved to enterprise.kubernetesAccess" -}}
 {{- end -}}
 {{- if and (eq .Values.clickhouse.mode "external") .Values.clickhouse.enabled -}}
 {{- fail "clickhouse.enabled must be false when clickhouse.mode=external; the external mode does not deploy the bundled ClickHouse chart" -}}

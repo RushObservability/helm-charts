@@ -76,7 +76,7 @@ metricsAgent:
 The stack derives the in-cluster Query API URL and reuses the ingest Secret for
 OTel Collector, Vector, and metrics-agent.
 
-The Query API settings are split between application config and integrations:
+The chart groups Query API behavior, free integrations, and paid features separately:
 
 | Group | Settings |
 |---|---|
@@ -88,7 +88,8 @@ The Query API settings are split between application config and integrations:
 | `config.audit` | Audit-chain key metadata and spool limits |
 | `config.retention` | Default retention windows, signal-specific rules, and the retention enforcer |
 | `config.ingest` | Protocol limits and durable ingest-buffer behavior |
-| `integrations` | Kubernetes, Argo CD, Flux, CloudWatch, access recording, and the SRE agent |
+| `integrations` | Kubernetes browsing, Argo CD, Flux, CloudWatch, and the SRE agent |
+| `enterprise` | License settings and licensed Kubernetes access recording |
 
 For the core chart, remove only the leading `rush.` from these paths.
 
@@ -143,13 +144,15 @@ Install `rush-observability-stack` with the same release name, then move values:
 | Core settings such as `queryApi` and `clickhouse` | `rush.queryApi`, `rush.clickhouse` |
 | `sreAgent` | `rush.queryApi.integrations.sreAgent` |
 | `infrastructure`, `argocd`, `fluxcd`, `kubernetes`, `cloudwatch` | `rush.queryApi.integrations.*` |
-| `queryApi.kubernetesAccess` | `rush.queryApi.integrations.kubernetesAccess` |
+| `queryApi.kubernetesAccess`, `queryApi.integrations.kubernetesAccess` | `rush.enterprise.kubernetesAccess` |
+| `kubernetesAccessGateway` | `rush.enterprise.kubernetesAccessGateway` |
 | `ingress` | `rush.queryApi.ingress` |
 | `statsEngine` | `rush.queryApi.config.statsEngine` |
 | `promql` | `rush.queryApi.config.promql` |
 | `collectors` | `collectors` |
 | `collectors.ingestApiKeySecret` | `global.rush.ingestApiKeySecret` |
-| `enterprise.license.integrations.postgresCollector` | `postgresCollector` |
+| `enterprise.license.integrations.postgresCollector` | `enterprise.postgresCollector` |
+| `postgresCollector`, `mysqlCollector` | `enterprise.postgresCollector`, `enterprise.mysqlCollector` |
 | `enterprise.license` | `rush.enterprise.license` |
 
 The core chart now rejects the removed top-level collector and SRE-agent keys
@@ -214,7 +217,7 @@ The PostgreSQL collector requires a license with the PostgreSQL entitlement,
 the Rush license Secret, and a Secret containing `dsn` and `api-key`. It also
 requires an explicit NetworkPolicy egress rule for the database.
 
-See the defaults under [`postgresCollector`](../charts/rush-observability-stack/values.yaml)
+See the defaults under [`enterprise.postgresCollector`](../charts/rush-observability-stack/values.yaml)
 for the complete configuration.
 
 ## Enable MySQL monitoring
@@ -229,8 +232,8 @@ kubectl -n observability create secret generic rush-mysql-collector \
 helm upgrade rush \
   oci://ghcr.io/rushobservability/helm-charts/rush-observability-stack \
   -n observability \
-  --set mysqlCollector.enabled=true \
-  --set-json 'mysqlCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.40.0.8/32"}}],"ports":[{"protocol":"TCP","port":3306}]}]'
+  --set enterprise.mysqlCollector.enabled=true \
+  --set-json 'enterprise.mysqlCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.40.0.8/32"}}],"ports":[{"protocol":"TCP","port":3306}]}]'
 ```
 
-The license must include the `mysql` entitlement. Error message text remains off unless `mysqlCollector.env.COLLECTOR_INCLUDE_ERROR_TEXT=true` is set explicitly.
+The license must include the `mysql` entitlement. Error message text remains off unless `enterprise.mysqlCollector.env.COLLECTOR_INCLUDE_ERROR_TEXT=true` is set explicitly.

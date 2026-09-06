@@ -121,32 +121,28 @@ The licensed Kubernetes access recorder is off by default. Enable the query
 API endpoints and bounded storage limits with:
 
 ```yaml
-queryApi:
-  integrations:
-    kubernetesAccess:
-      enabled: true
-      maxResultBytes: 262144
-      maxSessionBytes: 67108864
-      retentionDays: 30
-      retainRawIp: false
-      collectPrivateIp: false
-      credentialTtlSeconds: 3600
-
 enterprise:
   license:
     enabled: true
-
-kubernetesAccessGateway:
-  enabled: true
-  gatewayId: primary
-  clusterId: prod-us-east-1
-  tenantIds: [default]
-  # Use a platform-managed service account with a reviewed impersonation role.
-  serviceAccount:
-    create: false
-    name: rush-kube-proxy
-  tls:
-    existingSecret: rush-kube-gateway-tls
+  kubernetesAccess:
+    enabled: true
+    maxResultBytes: 262144
+    maxSessionBytes: 67108864
+    retentionDays: 30
+    retainRawIp: false
+    collectPrivateIp: false
+    credentialTtlSeconds: 3600
+  kubernetesAccessGateway:
+    enabled: true
+    gatewayId: primary
+    clusterId: prod-us-east-1
+    tenantIds: [default]
+    # Use a platform-managed service account with a reviewed impersonation role.
+    serviceAccount:
+      create: false
+      name: rush-kube-proxy
+    tls:
+      existingSecret: rush-kube-gateway-tls
 ```
 
 The chart creates a random internal recorder token in the bootstrap Secret and
