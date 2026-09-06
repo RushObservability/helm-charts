@@ -1,13 +1,72 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["rush-observability", "global", "collectors", "metricsAgent", "postgresCollector", "mysqlCollector"],
-  "additionalProperties": true,
+  "required": ["rush", "global", "collectors", "metricsAgent", "postgresCollector", "mysqlCollector"],
+  "additionalProperties": false,
   "properties": {
-    "rush-observability": { "type": "object", "additionalProperties": true },
+    "rush": {
+      "type": "object",
+      "required": ["queryApi"],
+      "additionalProperties": true,
+      "properties": {
+        "sreAgent": { "not": {} },
+        "infrastructure": { "not": {} },
+        "argocd": { "not": {} },
+        "fluxcd": { "not": {} },
+        "kubernetes": { "not": {} },
+        "cloudwatch": { "not": {} },
+        "queryApi": {
+          "type": "object",
+          "required": ["config"],
+          "additionalProperties": true,
+          "properties": {
+            "environment": { "not": {} },
+            "baseUrl": { "not": {} },
+            "existingSecret": { "not": {} },
+            "kubernetesAccess": { "not": {} },
+            "integrations": { "not": {} },
+            "config": {
+              "type": "object",
+              "required": ["runtime", "secrets", "integrations"],
+              "additionalProperties": true,
+              "properties": {
+                "runtime": {
+                  "type": "object",
+                  "required": ["environment", "baseUrl"],
+                  "additionalProperties": true,
+                  "properties": {
+                    "environment": { "type": "string", "enum": ["production", "development", "local", "test"] },
+                    "baseUrl": { "type": "string" }
+                  }
+                },
+                "secrets": {
+                  "type": "object",
+                  "required": ["existingSecret"],
+                  "additionalProperties": true,
+                  "properties": {
+                    "existingSecret": { "type": "string" }
+                  }
+                },
+                "integrations": {
+                  "type": "object",
+                  "required": ["sreAgent", "kubernetes", "argocd", "fluxcd"],
+                  "additionalProperties": true,
+                  "properties": {
+                    "sreAgent": { "type": "object", "required": ["enabled"], "additionalProperties": true },
+                    "kubernetes": { "type": "object", "required": ["enabled"], "additionalProperties": true },
+                    "argocd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true },
+                    "fluxcd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "global": {
       "type": "object",
-      "required": ["rush", "sreAgent"],
+      "required": ["rush"],
       "additionalProperties": true,
       "properties": {
         "rush": {
@@ -46,12 +105,6 @@
               "additionalProperties": true
             }
           }
-        },
-        "sreAgent": {
-          "type": "object",
-          "required": ["enabled"],
-          "properties": { "enabled": { "type": "boolean" } },
-          "additionalProperties": true
         }
       }
     },

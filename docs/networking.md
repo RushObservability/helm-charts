@@ -16,19 +16,20 @@ Enable broad destinations only when required. Prefer CIDR-specific
 `extraEgress` rules when possible:
 
 ```yaml
-queryApi:
-  networkPolicy:
-    allowExternalHttpsEgress: true     # OIDC/SAML, webhooks, S3 buffer
-    allowExternalClickHouseEgress: false
-    allowSmtpEgress: false
-    extraIngress: []                   # ingress controller or external collector
-    extraEgress: []
-
-global:
-  sreAgent:
-    enabled: true
+rush:
+  queryApi:
     networkPolicy:
-      allowExternalHttpsEgress: true   # GitHub or an external Kubernetes API
+      allowExternalHttpsEgress: true   # OIDC/SAML, webhooks, S3 buffer
+      allowExternalClickHouseEgress: false
+      allowSmtpEgress: false
+      extraIngress: []                 # ingress controller or external collector
+      extraEgress: []
+    config:
+      integrations:
+        sreAgent:
+          enabled: true
+          networkPolicy:
+            allowExternalHttpsEgress: true # GitHub or an external Kubernetes API
 ```
 
 LLM provider traffic leaves from query-api, not the SRE agent. Allow query-api
@@ -49,27 +50,29 @@ The optional Ingress exposes the frontend, which proxies `/api`, `/auth`,
 that should not use the frontend proxy.
 
 ```yaml
-ingress:
-  enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt
-  trustedProxyCidrs: [10.42.0.0/16]
-  frontend:
-    host: rush.example.com
-    tls:
-      enabled: true
-      secretName: rush-tls
-  api:
+rush:
+  ingress:
     enabled: true
-    host: api.rush.example.com
-    tls:
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt
+    trustedProxyCidrs: [10.42.0.0/16]
+    frontend:
+      host: rush.example.com
+      tls:
+        enabled: true
+        secretName: rush-tls
+    api:
       enabled: true
-      secretName: rush-api-tls
+      host: api.rush.example.com
+      tls:
+        enabled: true
+        secretName: rush-api-tls
 ```
 
-When `queryApi.baseUrl` is empty, the chart derives it from the frontend TLS
-host. `ingress.trustedProxyCidrs` is merged into Query API's trusted proxy list.
+When `queryApi.config.runtime.baseUrl` is empty, the chart derives it from the
+frontend TLS host. `ingress.trustedProxyCidrs` is merged into Query API's
+trusted proxy list.
 
 If the ingress controller runs outside the release namespace, add an
 `extraIngress` rule matching its namespace and pod labels.

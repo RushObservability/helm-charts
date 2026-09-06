@@ -11,14 +11,14 @@ if helm template ha-buffer "$chart_dir" \
 fi
 
 if helm template ha-buffer "$chart_dir" \
-  --set queryApi.buffer.backend=object_store \
-  --set queryApi.buffer.objectStore.bucket=rush-buffer >/dev/null 2>&1; then
+  --set queryApi.config.ingest.buffer.backend=object_store \
+  --set queryApi.config.ingest.buffer.objectStore.bucket=rush-buffer >/dev/null 2>&1; then
   echo 'object-store buffering accepted a missing credentials Secret' >&2
   exit 1
 fi
 
 if helm template ha-buffer "$chart_dir" \
-  --set queryApi.buffer.drainWorker.enabled=true >/dev/null 2>&1; then
+  --set queryApi.drainWorker.enabled=true >/dev/null 2>&1; then
   echo 'the dedicated drain worker accepted a disk buffer' >&2
   exit 1
 fi
@@ -26,12 +26,12 @@ fi
 rendered="$(helm template ha-buffer "$chart_dir" \
   --set queryApi.replicas=3 \
   --set clickhouse.keeper.enabled=true \
-  --set queryApi.buffer.backend=object_store \
+  --set queryApi.config.ingest.buffer.backend=object_store \
   --set queryApi.networkPolicy.allowExternalHttpsEgress=true \
-  --set queryApi.buffer.objectStore.endpoint=https://s3.example.test \
-  --set queryApi.buffer.objectStore.bucket=rush-buffer \
-  --set queryApi.buffer.objectStore.credentialsSecret.name=rush-buffer \
-  --set queryApi.buffer.drainWorker.enabled=true)"
+  --set queryApi.config.ingest.buffer.objectStore.endpoint=https://s3.example.test \
+  --set queryApi.config.ingest.buffer.objectStore.bucket=rush-buffer \
+  --set queryApi.config.ingest.buffer.objectStore.credentialsSecret.name=rush-buffer \
+  --set queryApi.drainWorker.enabled=true)"
 
 for expected in \
   'name: ha-buffer-query-api-drain-worker' \
@@ -49,11 +49,11 @@ worker="$(helm template ha-buffer "$chart_dir" \
   --show-only templates/query-api-drain-worker-deployment.yaml \
   --set queryApi.replicas=3 \
   --set clickhouse.keeper.enabled=true \
-  --set queryApi.buffer.backend=object_store \
+  --set queryApi.config.ingest.buffer.backend=object_store \
   --set queryApi.networkPolicy.allowExternalHttpsEgress=true \
-  --set queryApi.buffer.objectStore.bucket=rush-buffer \
-  --set queryApi.buffer.objectStore.credentialsSecret.name=rush-buffer \
-  --set queryApi.buffer.drainWorker.enabled=true)"
+  --set queryApi.config.ingest.buffer.objectStore.bucket=rush-buffer \
+  --set queryApi.config.ingest.buffer.objectStore.credentialsSecret.name=rush-buffer \
+  --set queryApi.drainWorker.enabled=true)"
 for expected in 'replicas: 1' 'type: Recreate' 'value: "true"'; do
   grep -Fq "$expected" <<<"$worker" || {
     echo "drain worker contract missing: $expected" >&2
@@ -65,11 +65,11 @@ api="$(helm template ha-buffer "$chart_dir" \
   --show-only templates/query-api-deployment.yaml \
   --set queryApi.replicas=3 \
   --set clickhouse.keeper.enabled=true \
-  --set queryApi.buffer.backend=object_store \
+  --set queryApi.config.ingest.buffer.backend=object_store \
   --set queryApi.networkPolicy.allowExternalHttpsEgress=true \
-  --set queryApi.buffer.objectStore.bucket=rush-buffer \
-  --set queryApi.buffer.objectStore.credentialsSecret.name=rush-buffer \
-  --set queryApi.buffer.drainWorker.enabled=true)"
+  --set queryApi.config.ingest.buffer.objectStore.bucket=rush-buffer \
+  --set queryApi.config.ingest.buffer.objectStore.credentialsSecret.name=rush-buffer \
+  --set queryApi.drainWorker.enabled=true)"
 grep -Fq 'name: RUSH_RUN_REPLAYER' <<<"$api"
 grep -Fq 'value: "false"' <<<"$api"
 if grep -Fq 'name: RUSH_DRAIN_WORKER_ONLY' <<<"$api"; then

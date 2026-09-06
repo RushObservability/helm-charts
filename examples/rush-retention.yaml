@@ -19,7 +19,8 @@
 #   C. Compliance / audit  — long retention for specific services + dry-run
 #
 # Deploy:
-#   helm install rushobs oci://... \
+#   helm install rushobs \
+#     oci://ghcr.io/rushobservability/helm-charts/rush-observability \
 #     -f examples/rush-retention.yaml \
 #     --set clickhouse.clickhouse.defaultUser.password_secret_name=my-ch-secret
 # ──────────────────────────────────────────────────────────────────────────────

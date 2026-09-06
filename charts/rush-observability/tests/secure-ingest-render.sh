@@ -15,13 +15,13 @@ assert_render() {
 
 defaults="$(helm template secure-ingest "$chart_dir")"
 assert_render "$defaults" 'name: RUSH_ENVIRONMENT' 'environment posture variable'
-assert_render "$defaults" 'value: "production"' 'fail-closed production default'
+assert_render "$defaults" 'value: "development"' 'local development default'
 assert_render "$defaults" 'name: RUSH_ALLOW_ANONYMOUS_DEFAULT' 'anonymous compatibility variable'
 assert_render "$defaults" 'value: "false"' 'anonymous compatibility disabled by default'
 
 development="$(helm template secure-ingest "$chart_dir" \
-  --set queryApi.environment=development \
-  --set queryApi.allowAnonymousDefault=true)"
+  --set queryApi.config.runtime.environment=development \
+  --set queryApi.config.authentication.allowAnonymousDefault=true)"
 assert_render "$development" 'value: "development"' 'explicit development environment'
 assert_render "$development" 'value: "true"' 'explicit anonymous compatibility override'
 

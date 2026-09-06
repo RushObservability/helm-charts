@@ -3,8 +3,123 @@ imageSecurity:
   # Recommended for every production values file. When enabled, the chart
   # refuses tag-only first-party Rush workloads.
   requireDigests: false
-
 queryApi:
+  # Query API application behavior. Kubernetes workload controls remain at the
+  # queryApi level below this block.
+  config:
+    runtime:
+      environment: development
+      # Required when environment is production. Use the externally reachable
+      # HTTPS origin without a trailing path, query, or fragment.
+      baseUrl: ""
+      # Forwarded client addresses are ignored unless the direct peer belongs
+      # to one of these proxy networks. Use pod/ingress CIDRs, never 0.0.0.0/0.
+      trustedProxyCidrs: []
+      # Additional environment variables passed to Query API and its optional
+      # drain worker.
+      extraEnv:
+        CLICKHOUSE_DATABASE: observability
+        RUST_LOG: rush_api=info,tower_http=info
+    authentication:
+      # Authentication is fail-closed by default. Anonymous-default is only for
+      # local development and leaves /readyz unhealthy in production.
+      allowAnonymousDefault: false
+      # One-time OIDC/SAML/setup claims. "auto" uses an in-process store for one
+      # replica and ClickHouse KeeperMap for two or more replicas.
+      ssoReplayStore: auto
+      loginRateLimit:
+        accountPerMinute: 10
+        ipPerMinute: 50
+      # Browser sessions use a renewable idle deadline plus a hard maximum age.
+      session:
+        idleTimeoutSeconds: 1800
+        absoluteTimeoutSeconds: 86400
+        renewalIntervalSeconds: 300
+    # Leave generated secrets blank to create them on first install and preserve
+    # them across upgrades. Use existingSecret to bring your own Secret.
+    secrets:
+      existingSecret: ""
+      adminPassword: "" # INITIAL_ADMIN_PASSWORD — first-boot admin seed
+      apiKeyHmacSecret: "" # RUSH_API_KEY_SECRET — HMAC key for stored API-key hashes
+      auditHmacSecret: "" # RUSH_AUDIT_HMAC_SECRET — audit hash-chain key; MUST stay stable
+      sessionHmacSecret: "" # RUSH_SESSION_HMAC_SECRET — browser-session token key
+      ssoTransactionSecret: "" # RUSH_SSO_TRANSACTION_SECRET — signed OIDC/SAML transaction key
+      configEncryptionKey: "" # RUSH_CONFIG_ENCRYPTION_KEY — encrypts provider secrets
+    audit:
+      # Change keyId whenever auditHmacSecret is deliberately rotated. Supply old
+      # keys as a JSON object so historical segments remain verifiable.
+      keyId: primary
+      previousKeysJson: ""
+      spoolMaxBytes: 268435456
+    ingest:
+      # Shared request/decompression/entity budgets for every telemetry protocol.
+      limits:
+        maxCompressedBytes: 8388608
+        maxDecompressedBytes: 33554432
+        maxEntities: 200000
+        maxSeries: 20000
+        maxSamples: 200000
+        maxMetadata: 10000
+        maxLabelsPerSeries: 128
+        maxLabelNameBytes: 256
+        maxLabelValueBytes: 4096
+        decodeConcurrency: 4
+      # The local disk queue is safe for one API pod. HA API replicas must share
+      # an object-store queue and use exactly one dedicated drain worker.
+      buffer:
+        backend: disk # disk | object_store
+        maxBytes: 2147483648
+        objectStore:
+          endpoint: "" # blank uses the S3 provider default
+          bucket: ""
+          prefix: ingest/
+          region: us-east-1
+          credentialsSecret:
+            name: "" # existing Secret; required for object_store
+            accessKeyKey: access-key
+            secretKeyKey: secret-key
+    # Query API integrations and their access boundaries.
+    integrations:
+      # Operator-owned tenant-to-namespace grants shared by the Kubernetes,
+      # Argo CD, and Flux integrations. Missing tenant entries deny access.
+      infrastructure:
+        tenantNamespaces: {}
+      argocd:
+        enabled: false # enable Argo CD CRD reading
+        namespace: argocd # namespace where Argo CD apps live
+      fluxcd:
+        enabled: false # enable Flux v2 CRD reading
+        namespace: flux-system # namespace containing Flux resources
+      kubernetes:
+        enabled: false # enable the read-only Kubernetes resource browser
+        namespaces: []
+        clusterWide: false # explicit opt-in; still never grants Secrets
+      cloudwatch:
+        enabled: false # enable CloudWatch Logs ingest endpoints
+      # Licensed Kubernetes access recording. The query API accepts bounded
+      # event and session uploads when enabled.
+      kubernetesAccess:
+        enabled: false
+        internalToken: ""
+        maxResultBytes: 262144
+        maxSessionBytes: 67108864
+        retentionDays: 30
+        retainRawIp: false
+        collectPrivateIp: false
+        credentialTtlSeconds: 3600
+      # The core chart does not deploy the agent; the stack chart extends this
+      # block with SRE agent workload settings.
+      sreAgent:
+        enabled: false
+        port: 8081
+        internalAuthToken: ""
+        service:
+          port: 8081
+        githubApp:
+          enabled: false
+          tenantRepositories: {}
+
+  # Kubernetes workload settings.
   # Inherit global.scheduling by default. Values under scheduling override the
   # global maps/lists; set this false to schedule this workload independently.
   inheritGlobalScheduling: true
@@ -25,7 +140,7 @@ queryApi:
     repository: mzupan/rush-api
     tag: "0.1.25"
     digest: "" # sha256:<64 hex chars>; takes precedence over tag
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   replicas: 1
   port: 8080
   rollout:
@@ -64,150 +179,54 @@ queryApi:
       timeoutSeconds: 2
       failureThreshold: 3
       successThreshold: 1
-  # The local disk queue is safe for one API pod. HA API replicas must share an
-  # object-store queue and use exactly one dedicated drain worker.
-  buffer:
-    backend: disk                    # disk | object_store
-    maxBytes: 2147483648
-    objectStore:
-      endpoint: ""                   # blank uses the S3 provider default
-      bucket: ""
-      prefix: ingest/
-      region: us-east-1
-      credentialsSecret:
-        name: ""                     # existing Secret; required for object_store
-        accessKeyKey: access-key
-        secretKeyKey: secret-key
-    drainWorker:
+  # Optional singleton workload that drains a shared object-store ingest queue.
+  drainWorker:
+    enabled: false
+    inheritGlobalScheduling: true
+    scheduling: {}
+    podAnnotations: {}
+    podLabels: {}
+    imagePullSecrets: []
+    priorityClassName: ""
+    runtimeClassName: ""
+    extraEnvFrom: []
+    extraVolumes: []
+    extraVolumeMounts: []
+    serviceAccount:
+      create: false
+      name: ""
+      annotations: {}
+    # Recreate is deliberate: the queue contract allows exactly one drainer.
+    rollout:
+      strategy: Recreate
+      minReadySeconds: 0
+      progressDeadlineSeconds: 600
+      revisionHistoryLimit: 10
+    podDisruptionBudget:
       enabled: false
-      inheritGlobalScheduling: true
-      scheduling: {}
-      podAnnotations: {}
-      podLabels: {}
-      imagePullSecrets: []
-      priorityClassName: ""
-      runtimeClassName: ""
-      extraEnvFrom: []
-      extraVolumes: []
-      extraVolumeMounts: []
-      serviceAccount:
-        create: false
-        name: ""
-        annotations: {}
-      # Recreate is deliberate: the queue contract allows exactly one drainer.
-      rollout:
-        strategy: Recreate
-        minReadySeconds: 0
-        progressDeadlineSeconds: 600
-        revisionHistoryLimit: 10
-      podDisruptionBudget:
-        enabled: false
-        type: maxUnavailable
-        value: 1
-      terminationGracePeriodSeconds: 120
-      resources:
-        requests:
-          cpu: 100m
-          memory: 128Mi
-        limits:
-          cpu: "1"
-          memory: 512Mi
+      type: maxUnavailable
+      value: 1
+    terminationGracePeriodSeconds: 120
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+  # Storage for the Query API audit spool. Disable it to use an emptyDir.
+  auditSpoolPersistence:
+    enabled: true
+    existingClaim: ""
+    storageClass: ""
+    accessModes: ["ReadWriteOnce"]
+    size: 1Gi
   # The preStop hook makes readiness fail before termination and lets query-api
   # flush in-memory batches plus drain its durable ingest queue. Increase this
   # for large backlogs or a ClickHouse recovery window.
   gracefulShutdown:
     enabled: true
   terminationGracePeriodSeconds: 120
-  # ── Bootstrap secrets (admin password + API/audit/session HMAC keys) ──
-  # Leave blank to AUTO-GENERATE on first install and preserve across upgrades
-  # (stored in the <release>-bootstrap Secret — ArgoCD-style). Set a value to
-  # pin/preset it, or point existingSecret at your own Secret to bring your own.
-  adminPassword: ""        # INITIAL_ADMIN_PASSWORD — first-boot admin seed
-  apiKeyHmacSecret: ""     # RUSH_API_KEY_SECRET — HMAC key for stored API-key hashes
-  auditHmacSecret: ""      # RUSH_AUDIT_HMAC_SECRET — audit hash-chain key; MUST stay stable
-  sessionHmacSecret: ""    # RUSH_SESSION_HMAC_SECRET — one-way browser-session token key
-  ssoTransactionSecret: "" # RUSH_SSO_TRANSACTION_SECRET — signed OIDC/SAML transaction key; MUST stay stable
-  configEncryptionKey: ""  # RUSH_CONFIG_ENCRYPTION_KEY — encrypts SSO and LLM provider secrets; MUST stay stable
-  audit:
-    # Change keyId whenever auditHmacSecret is deliberately rotated. Supply old
-    # keys as a JSON object (for example {"primary":"old-secret"}) so historical
-    # segments remain verifiable. Prefer existingSecret for production values.
-    keyId: primary
-    previousKeysJson: ""
-    spool:
-      maxBytes: 268435456
-      persistence:
-        enabled: true
-        existingClaim: ""
-        storageClass: ""
-        accessModes: ["ReadWriteOnce"]
-        size: 1Gi
-  # Use a pre-created Secret instead of the auto-generated one. When set, the
-  # chart creates no bootstrap Secret and reads these keys from yours:
-  #   initial-admin-password, api-key-hmac-secret, audit-hmac-secret, session-hmac-secret,
-  #   sso-transaction-secret, config-encryption-key, and optionally
-  #   audit-hmac-previous-keys. When kubernetesAccess.enabled is true, it must
-  #   also contain kubernetes-access-internal-token.
-  existingSecret: ""
-  # Authentication is fail-closed by default. The anonymous-default switch is
-  # only for local development; enabling it leaves /readyz unhealthy in a
-  # production environment.
-  environment: production
-  # Required when environment is production. Use the externally reachable
-  # HTTPS origin without a trailing path, query, or fragment.
-  baseUrl: ""
-  # Forwarded client addresses are ignored unless the direct peer belongs to
-  # one of these proxy networks. Use pod/ingress CIDRs, never 0.0.0.0/0.
-  trustedProxyCidrs: []
-  # One-time OIDC/SAML/setup claims. "auto" uses an in-process store for one
-  # replica and ClickHouse KeeperMap for two or more replicas. HA therefore
-  # requires clickhouse.keeper.enabled=true (or Keeper on external ClickHouse).
-  ssoReplayStore: auto
-  loginRateLimit:
-    accountPerMinute: 10
-    ipPerMinute: 50
-  # Shared request/decompression/entity budgets for every telemetry protocol.
-  # Invalid values fail query-api startup rather than silently disabling limits.
-  ingestLimits:
-    maxCompressedBytes: 8388608
-    maxDecompressedBytes: 33554432
-    maxEntities: 200000
-    maxSeries: 20000
-    maxSamples: 200000
-    maxMetadata: 10000
-    maxLabelsPerSeries: 128
-    maxLabelNameBytes: 256
-    maxLabelValueBytes: 4096
-    decodeConcurrency: 4
-  # Licensed Kubernetes access recording. The query API accepts bounded event
-  # and session uploads from the Rush CLI or access gateway when enabled.
-  kubernetesAccess:
-    enabled: false
-    # Leave blank to generate and preserve a token in the bootstrap Secret.
-    # Set this only when clients cannot read that Secret through their normal
-    # deployment workflow.
-    internalToken: ""
-    maxResultBytes: 262144
-    maxSessionBytes: 67108864
-    retentionDays: 30
-    retainRawIp: false
-    # Keep private addresses from Rush exec-credential enrichment. Device
-    # metadata is unverified and never used for access decisions.
-    collectPrivateIp: false
-    # Initial lifetime of browser-approved kubectl credentials. An administrator
-    # can override it later in Settings > Integrations > Kubernetes logging.
-    # API keys are never accepted by the Kubernetes access gateway.
-    credentialTtlSeconds: 3600
-  # Browser sessions use a renewable idle deadline plus a hard maximum age.
-  # Renewal rotates the HttpOnly bearer and never extends absoluteTimeoutSeconds.
-  session:
-    idleTimeoutSeconds: 1800
-    absoluteTimeoutSeconds: 86400
-    renewalIntervalSeconds: 300
-  allowAnonymousDefault: false
-  env:
-    CLICKHOUSE_DATABASE: observability
-    RUST_LOG: rush_api=info,tower_http=info
   resources:
     requests:
       cpu: 100m
@@ -229,12 +248,10 @@ queryApi:
     allowSmtpEgress: false
     extraIngress: []
     extraEgress: []
-
 # ══ Enterprise (commercial, license-gated) ══════════════════════════════
 # Commercial license configuration used by Query API. Add-on workloads are
 # installed by the rush-observability-stack chart.
 enterprise:
-
   # ── Commercial license ──
   # When enabled, query-api reads RUSH_LICENSE_KEY from the named Secret and
   # verifies it offline. Create the secret with your minted license token:
@@ -244,7 +261,6 @@ enterprise:
     secret:
       name: rush-license
       key: license-key
-
 # ── Kubernetes access gateway add-on ──
 # Standard kubectl clients connect to this gateway through a generated
 # kubeconfig. It proxies Kubernetes API requests and sends bounded records to
@@ -332,9 +348,6 @@ kubernetesAccessGateway:
     limits:
       cpu: "1"
       memory: 512Mi
-
-
-
 # ── anomaly engine ──
 # The anomaly engine evaluates rules and sends notifications. By default the
 # query-api runs it in-process (fine for a single query-api replica). If you
@@ -342,7 +355,7 @@ kubernetesAccessGateway:
 # the chart then sets RUSH_RUN_ANOMALY_ENGINE=false on the API pods so rules are
 # evaluated exactly once (no duplicate alerts).
 anomalyEngine:
-  enabled: false                     # set true when running multiple query-api pods
+  enabled: false # set true when running multiple query-api pods
   inheritGlobalScheduling: true
   scheduling: {}
   podAnnotations: {}
@@ -386,53 +399,17 @@ anomalyEngine:
     limits:
       cpu: "1"
       memory: 512Mi
-
 # ── internal stats engine ──
 # Cadence (seconds) for the rush_stats_* gauges the API emits about itself. 15s keeps
 # rate()/short windows usable; raise it to cut the (tiny) sample volume.
 statsEngine:
   intervalSecs: 15
-
 # ── PromQL query behavior ──
 # Staleness/lookback (seconds): how long a metric's last value is carried forward in
 # range queries. Default 300 (Prometheus 5m). Lower it so a stopped series' flat tail
 # ends sooner; keep it >= your slowest scrape interval or live series will show gaps.
 promql:
   lookbackSecs: 300
-
-# ── argocd integration ──
-# Infrastructure pages require a group permission of `infrastructure:read` and
-# an operator-owned tenant-to-namespace grant. Group tenant bindings choose the
-# active Rush tenant; this map limits the Kubernetes namespaces that tenant can
-# inspect. `*` may be used as a shared tenant key. A namespace value of `*`
-# requires kubernetes.clusterWide=true and is the explicit cluster-wide opt-in.
-infrastructure:
-  tenantNamespaces: {}
-
-argocd:
-  enabled: false                     # enable ArgoCD CRD reading
-  namespace: argocd                  # namespace where ArgoCD apps live
-
-# ── fluxcd integration (Flux v2 / GitOps Toolkit) ──
-# Free integration: reads Kustomizations, HelmReleases, and Sources in one namespace.
-fluxcd:
-  enabled: false                     # enable Flux v2 CRD reading
-  namespace: flux-system             # namespace containing Flux resources
-
-# ── kubernetes integration (read-only cluster browser) ──
-# Namespace-scoped by default. When enabled, list every namespace that the
-# service account may read. tenantNamespaces must grant each tenant a subset.
-kubernetes:
-  enabled: false                     # enable the read-only Kubernetes resource browser
-  namespaces: []
-  clusterWide: false                 # explicit opt-in; still never grants Secrets
-
-# ── cloudwatch integration (AWS CloudWatch Logs ingest via Kinesis Firehose) ──
-# Free integration: ingests CloudWatch Logs pushed through a Kinesis Data Firehose
-# HTTP endpoint. Tenant routing via access-key header or tenant URL path.
-cloudwatch:
-  enabled: false                     # enable CloudWatch Logs ingest endpoints
-
 # ── frontend ──
 frontend:
   inheritGlobalScheduling: true
@@ -450,10 +427,10 @@ frontend:
     name: ""
     annotations: {}
   image:
-    repository: mzupan/rush-frontend
-    tag: "0.1.12"
+    repository: ghcr.io/rushobservability/frontend
+    tag: "0.1.6"
     digest: ""
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   # Public base URL (scheme + host, no trailing slash) of the Rush API as seen from
   # outside the cluster. Surfaced to the UI wherever it shows or reaches the API by
   # its public address — e.g. the CloudWatch ingest endpoint AWS Firehose must POST
@@ -516,7 +493,6 @@ frontend:
     allowSameNamespaceIngress: true
     extraIngress: []
     extraEgress: []
-
 # Optional public entry points. The frontend host also proxies /api, /auth,
 # /prom, and /metrics. Enable the API host only when a separate direct API
 # origin is required. ingress.trustedProxyCidrs are added to query-api's trust
@@ -543,7 +519,6 @@ ingress:
     tls:
       enabled: true
       secretName: ""
-
 # ── Storage / S3 tiering — SINGLE source of truth ──
 # Lives under `global` so ONE block drives both the query-api rush.toml AND the
 # ClickHouse subchart's storage config. (Helm only shares values with subcharts
@@ -562,19 +537,6 @@ global:
       name: ""
       key: api-key
       value: ""
-
-  # Optional connection to an SRE agent installed separately or by the
-  # rush-observability-stack chart. This core chart does not deploy the agent.
-  sreAgent:
-    enabled: false
-    port: 8081
-    internalAuthToken: ""
-    service:
-      port: 8081
-    githubApp:
-      enabled: false
-      tenantRepositories: {}
-
   # Shared scheduling defaults for core Rush workloads: Query API, frontend,
   # and anomaly engine. ClickHouse is intentionally independent; use
   # clickhouse.clickhouse/keeper scheduling (or clickhouseStandalone scheduling)
@@ -600,17 +562,16 @@ global:
     annotations: {}
   storage:
     s3:
-      enabled: false            # set true + fill in to enable S3 tiered storage
-      endpoint: ""              # blank = AWS S3 native; set for MinIO/RustFS/etc.
+      enabled: false # set true + fill in to enable S3 tiered storage
+      endpoint: "" # blank = AWS S3 native; set for MinIO/RustFS/etc.
       bucket: "rush-clickhouse"
-      access_key_id: ""         # leave blank for keyless (IRSA / EKS Pod Identity)
+      access_key_id: "" # leave blank for keyless (IRSA / EKS Pod Identity)
       secret_access_key: ""
       region: "us-east-1"
     tiering:
-      metrics_move_after_days: 3   # 0 = disabled, keep on local disk only
+      metrics_move_after_days: 3 # 0 = disabled, keep on local disk only
       traces_move_after_days: 3
       logs_move_after_days: 7
-
 # ── rush.toml config ──
 # Rendered into a ConfigMap and mounted into query-api at /etc/rush/rush.toml
 rushConfig:
@@ -631,7 +592,6 @@ rushConfig:
       enabled: true
       interval_secs: 3600
       dry_run: false
-
 # ── ClickHouse (Altinity subchart) ──
 # Full options: https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse
 clickhouse:
@@ -643,8 +603,8 @@ clickhouse:
   # external (use an existing ClickHouse endpoint and Secret).
   mode: operator
   external:
-    url: ""                         # e.g. https://clickhouse.example:8443
-    credentialsSecret: ""           # migration/write identity
+    url: "" # e.g. https://clickhouse.example:8443
+    credentialsSecret: "" # migration/write identity
     userKey: user
     passwordKey: password
     # Distinct SELECT-only identity. The external ClickHouse administrator must
@@ -655,7 +615,7 @@ clickhouse:
   clickhouse:
     defaultUser:
       password_secret_name: "rushobs-clickhouse-credentials"
-      allowExternalAccess: true   # allow connections from other pods
+      allowExternalAccess: true # allow connections from other pods
     # Tenant-scoped application read identity. Never grant this user access to
     # config_* or audit_events; strict row policies are installed by query-api.
     users:
@@ -718,14 +678,14 @@ clickhouse:
     topologySpreadConstraints: []
     # Cache sizes in bytes — right-size with the memory limit above. Referenced by
     # the auto-generated extraConfig below (defaults suit the 8Gi baseline).
-    markCacheSize: 2147483648          # 2 GiB
-    uncompressedCacheSize: 134217728   # 128 MiB
-    s3CacheSize: 21474836480           # 20 GiB local cache for S3-tiered reads
+    markCacheSize: 2147483648 # 2 GiB
+    uncompressedCacheSize: 134217728 # 128 MiB
+    s3CacheSize: 21474836480 # 20 GiB local cache for S3-tiered reads
     # Text-index caches (26.6+): tokens/header/postings deserialized from the logs
     # `text` search index. Queries opt in via the default profile (extraUsers below);
     # sized down from ClickHouse's 1+1+2 GiB defaults to fit the 8Gi baseline.
-    textIndexTokensCacheSize: 268435456    # 256 MiB
-    textIndexHeaderCacheSize: 536870912    # 512 MiB
+    textIndexTokensCacheSize: 268435456 # 256 MiB
+    textIndexHeaderCacheSize: 536870912 # 512 MiB
     textIndexPostingsCacheSize: 1073741824 # 1 GiB
     # Server log level (→ config.d/extra_config.xml <logger><level>). The operator
     # defaults to `debug`, which logs every executed query (full SQL, incl. user
@@ -776,7 +736,7 @@ clickhouse:
     pullPolicy: IfNotPresent
   persistence:
     enabled: true
-    storageClass: ""      # empty = cluster default
+    storageClass: "" # empty = cluster default
     size: 500Gi
   service:
     type: ClusterIP
@@ -813,7 +773,6 @@ clickhouse:
     # so the operator is recognizable regardless of release name. Set to "" to
     # restore the release-prefixed default.
     fullnameOverride: clickhouse-operator
-
 # Standalone mode settings. This intentionally supports one ClickHouse pod;
 # replicated ClickHouse still needs Keeper and is better handled by the
 # operator mode.
@@ -886,8 +845,6 @@ clickhouseStandalone:
   tolerations: []
   affinity: {}
   topologySpreadConstraints: []
-
-
 # Native `helm test` connectivity checks. Jobs are created only as Helm test
 # hooks and use the query-api image, which already contains curl.
 helmTests:

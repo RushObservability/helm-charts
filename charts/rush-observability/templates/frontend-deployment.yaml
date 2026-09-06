@@ -51,7 +51,7 @@ spec:
             - name: API_PUBLIC_URL
               value: "{{ .Values.frontend.apiBaseUrl | default "" }}"
             - name: RUSH_ENVIRONMENT
-              value: "{{ .Values.queryApi.environment }}"
+              value: "{{ .Values.queryApi.config.runtime.environment }}"
           {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.frontend) | nindent 10 }}
           securityContext:
             {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}

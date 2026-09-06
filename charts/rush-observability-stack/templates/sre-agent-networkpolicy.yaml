@@ -1,4 +1,4 @@
-{{- if and .Values.global.sreAgent.enabled .Values.global.sreAgent.networkPolicy.enabled }}
+{{- if and .Values.rush.queryApi.config.integrations.sreAgent.enabled .Values.rush.queryApi.config.integrations.sreAgent.networkPolicy.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -18,7 +18,7 @@ spec:
       ports:
         - protocol: TCP
           port: http
-    {{- with .Values.global.sreAgent.networkPolicy.extraIngress }}
+    {{- with .Values.rush.queryApi.config.integrations.sreAgent.networkPolicy.extraIngress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   egress:
@@ -38,7 +38,7 @@ spec:
       ports:
         - protocol: TCP
           port: http
-    {{- if .Values.global.sreAgent.networkPolicy.allowExternalHttpsEgress }}
+    {{- if .Values.rush.queryApi.config.integrations.sreAgent.networkPolicy.allowExternalHttpsEgress }}
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
@@ -46,7 +46,7 @@ spec:
         - protocol: TCP
           port: 443
     {{- end }}
-    {{- with .Values.global.sreAgent.networkPolicy.extraEgress }}
+    {{- with .Values.rush.queryApi.config.integrations.sreAgent.networkPolicy.extraEgress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}

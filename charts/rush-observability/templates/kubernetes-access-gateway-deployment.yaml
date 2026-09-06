@@ -61,7 +61,7 @@ spec:
             - name: RUSH_GATEWAY_INTERNAL_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
+                  name: {{ .Values.queryApi.config.secrets.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
                   key: kubernetes-access-internal-token
             - name: RUSH_CLUSTER_ID
               value: {{ .Values.kubernetesAccessGateway.clusterId | quote }}
@@ -72,13 +72,13 @@ spec:
             - name: RUSH_GATEWAY_TRUSTED_PROXY_CIDRS
               value: {{ join "," .Values.kubernetesAccessGateway.trustedProxyCidrs | quote }}
             - name: RUSH_GATEWAY_RETAIN_RAW_IP
-              value: {{ .Values.queryApi.kubernetesAccess.retainRawIp | quote }}
+              value: {{ .Values.queryApi.config.integrations.kubernetesAccess.retainRawIp | quote }}
             - name: RUSH_GATEWAY_FAILURE_POLICY
               value: {{ .Values.kubernetesAccessGateway.failurePolicy | quote }}
             - name: RUSH_GATEWAY_MAX_RESULT_BYTES
-              value: {{ .Values.queryApi.kubernetesAccess.maxResultBytes | quote }}
+              value: {{ .Values.queryApi.config.integrations.kubernetesAccess.maxResultBytes | quote }}
             - name: RUSH_GATEWAY_MAX_SESSION_BYTES
-              value: {{ .Values.queryApi.kubernetesAccess.maxSessionBytes | quote }}
+              value: {{ .Values.queryApi.config.integrations.kubernetesAccess.maxSessionBytes | quote }}
             {{- if .Values.kubernetesAccessGateway.tls.existingSecret }}
             - name: TLS_CERT_FILE
               value: /etc/rush-gateway/tls/tls.crt

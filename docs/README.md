@@ -1,9 +1,11 @@
 # Helm chart documentation
 
-Use these guides after the [quick install](../README.md#quick-install).
+Start with [Getting started](getting-started.md). It covers installation,
+login, telemetry collection, and the first production values file.
 
 | Goal | Guide |
 |---|---|
+| Install Rush and sign in for the first time | [Getting started](getting-started.md) |
 | Install core Rush or the complete observability stack | [Choose a chart](stack.md) |
 | Choose operator-managed, standalone, or external ClickHouse | [ClickHouse](clickhouse.md) |
 | Place workloads on dedicated node groups | [Scheduling](scheduling.md) |

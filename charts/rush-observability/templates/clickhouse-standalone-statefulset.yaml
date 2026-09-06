@@ -94,7 +94,7 @@ spec:
               protocol: TCP
           env:
             - name: CLICKHOUSE_DB
-              value: {{ .Values.queryApi.env.CLICKHOUSE_DATABASE | default "observability" | quote }}
+              value: {{ .Values.queryApi.config.runtime.extraEnv.CLICKHOUSE_DATABASE | default "observability" | quote }}
             - name: CLICKHOUSE_USER
               value: default
             - name: CLICKHOUSE_PASSWORD

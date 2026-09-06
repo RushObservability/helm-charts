@@ -15,7 +15,8 @@
 # For Google Cloud Storage or Azure Blob, see the notes at the bottom.
 #
 # Deploy (choose one of the sections below, then run):
-#   helm install rushobs oci://... \
+#   helm install rushobs \
+#     oci://ghcr.io/rushobservability/helm-charts/rush-observability \
 #     -f examples/rush-s3-tiering.yaml \
 #     --set clickhouse.clickhouse.defaultUser.password_secret_name=my-ch-secret
 # ──────────────────────────────────────────────────────────────────────────────

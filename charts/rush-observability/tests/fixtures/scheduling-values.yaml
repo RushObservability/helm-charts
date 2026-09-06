@@ -1,5 +1,7 @@
 queryApi:
-  environment: development
+  config:
+    runtime:
+      environment: development
   scheduling:
     nodeSelector:
       nodegroup: query-api

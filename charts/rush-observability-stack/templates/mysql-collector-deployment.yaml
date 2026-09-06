@@ -46,8 +46,8 @@ spec:
             - name: RUSH_LICENSE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ (index .Values "rush-observability").enterprise.license.secret.name }}
-                  key: {{ (index .Values "rush-observability").enterprise.license.secret.key }}
+                  name: {{ .Values.rush.enterprise.license.secret.name }}
+                  key: {{ .Values.rush.enterprise.license.secret.key }}
             - name: RUSH_OTLP_ENDPOINT
               value: {{ include "rush.stackQueryApiUrl" . | quote }}
             {{- range $key, $value := .Values.mysqlCollector.env }}
