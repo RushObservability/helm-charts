@@ -127,7 +127,7 @@ queryApi:
   auditHmacSecret: ""      # RUSH_AUDIT_HMAC_SECRET — audit hash-chain key; MUST stay stable
   sessionHmacSecret: ""    # RUSH_SESSION_HMAC_SECRET — one-way browser-session token key
   ssoTransactionSecret: "" # RUSH_SSO_TRANSACTION_SECRET — signed OIDC/SAML transaction key; MUST stay stable
-  configEncryptionKey: ""  # RUSH_CONFIG_ENCRYPTION_KEY — encrypts SSO client secrets; MUST stay stable
+  configEncryptionKey: ""  # RUSH_CONFIG_ENCRYPTION_KEY — encrypts SSO and LLM provider secrets; MUST stay stable
   audit:
     # Change keyId whenever auditHmacSecret is deliberately rotated. Supply old
     # keys as a JSON object (for example {"primary":"old-secret"}) so historical

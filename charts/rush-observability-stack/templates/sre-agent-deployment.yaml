@@ -45,12 +45,8 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: sre-agent-internal-token
-            {{- include "rush.stackClickhouseWriteEnv" . | nindent 12 }}
-            - name: CLICKHOUSE_DATABASE
-              value: observability
-            # URL of query-api used to fetch user-defined custom skills.
-            # query-api owns the custom_skills table; sre-agent is a read-only
-            # HTTP consumer so the two services don't need a shared volume.
+            # The agent reads telemetry and configuration through query-api.
+            # It never receives ClickHouse credentials.
             - name: QUERY_API_URL
               value: {{ include "rush.stackQueryApiUrl" . | quote }}
             {{- if .Values.global.sreAgent.githubApp.enabled }}
@@ -65,16 +61,6 @@ spec:
             - name: REPOSITORY_CACHE_DIR
               value: /var/run/rush-repositories
             {{- end }}
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.global.sreAgent.llmApiKeySecret.name }}
-                  name: {{ .Values.global.sreAgent.llmApiKeySecret.name }}
-                  key: {{ .Values.global.sreAgent.llmApiKeySecret.key }}
-                  {{- else }}
-                  name: {{ include "rush.fullname" . }}-sre-agent-llm
-                  key: api-key
-                  {{- end }}
             {{- if (index .Values "rush-observability").argocd.enabled }}
             - name: ARGOCD_NAMESPACE
               value: {{ (index .Values "rush-observability").argocd.namespace | quote }}

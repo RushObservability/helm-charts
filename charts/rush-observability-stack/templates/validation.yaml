@@ -16,12 +16,6 @@
 {{- if and (or (and $collectorEnabled (not .Values.collectors.allowAnonymousIngest)) $metricsNeedsKey) (not $ingestSecretName) -}}
 {{- fail "enable global.rush.ingestApiKeySecret.autoGenerate or set name/value for authenticated collectors or metrics-agent remote write" -}}
 {{- end -}}
-{{- if and .Values.global.sreAgent.enabled (not .Values.global.sreAgent.llmApiKey) (not .Values.global.sreAgent.llmApiKeySecret.name) -}}
-{{- fail "global.sreAgent.llmApiKeySecret.name (or llmApiKey) is required when the SRE agent is enabled" -}}
-{{- end -}}
-{{- if and .Values.global.sreAgent.enabled .Values.global.sreAgent.networkPolicy.enabled (not .Values.global.sreAgent.networkPolicy.allowExternalHttpsEgress) (empty .Values.global.sreAgent.networkPolicy.extraEgress) -}}
-{{- fail "the SRE agent NetworkPolicy requires allowExternalHttpsEgress=true or explicit extraEgress rules" -}}
-{{- end -}}
 {{- if and .Values.postgresCollector.enabled (not (index .Values "rush-observability").enterprise.license.enabled) -}}
 {{- fail "postgresCollector.enabled=true requires rush-observability.enterprise.license.enabled=true" -}}
 {{- end -}}

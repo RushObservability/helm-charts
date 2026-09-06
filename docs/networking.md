@@ -28,8 +28,11 @@ global:
   sreAgent:
     enabled: true
     networkPolicy:
-      allowExternalHttpsEgress: true   # OpenAI, GitHub, Kubernetes API
+      allowExternalHttpsEgress: true   # GitHub or an external Kubernetes API
 ```
+
+LLM provider traffic leaves from query-api, not the SRE agent. Allow query-api
+HTTPS egress when a configured provider is outside the cluster.
 
 The stack's PostgreSQL collector needs an explicit
 `postgresCollector.networkPolicy.extraEgress` rule for the monitored database.

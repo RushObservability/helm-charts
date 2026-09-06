@@ -120,15 +120,17 @@ for expected in \
 done
 
 sre="$(helm template stack "$chart_dir" "${common[@]}" \
-  --set global.sreAgent.enabled=true \
-  --set global.sreAgent.llmApiKeySecret.name=openai \
-  --set global.sreAgent.networkPolicy.allowExternalHttpsEgress=true)"
-for expected in 'name: stack-sre-agent' 'value: "http://stack-query-api:8080"' 'name: openai'; do
+  --set global.sreAgent.enabled=true)"
+for expected in 'name: stack-sre-agent' 'value: "http://stack-query-api:8080"' 'name: SRE_AGENT_INTERNAL_TOKEN'; do
   grep -Fq "$expected" <<<"$sre" || {
     echo "SRE-agent stack render is missing: $expected" >&2
     exit 1
   }
 done
+if grep -Eq 'OPENAI_API_KEY|CLICKHOUSE_URL' <<<"$(sed -n '/name: stack-sre-agent/,/---/p' <<<"$sre")"; then
+  echo "SRE-agent must not receive provider or ClickHouse credentials" >&2
+  exit 1
+fi
 
 postgres="$(helm template stack "$chart_dir" "${common[@]}" \
   --set postgresCollector.enabled=true \
