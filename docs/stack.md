@@ -102,14 +102,14 @@ Use `otel` for a central OTLP gateway, `vector` for node-local logs, or
 ## Enable the SRE agent
 
 ```bash
-kubectl -n observability create secret generic openai \
-  --from-literal=api-key='<key>'
-
 helm upgrade rush rush/rush-observability-stack -n observability \
   --set global.sreAgent.enabled=true \
-  --set global.sreAgent.llmApiKeySecret.name=openai \
-  --set global.sreAgent.networkPolicy.allowExternalHttpsEgress=true
+  --set rush-observability.queryApi.networkPolicy.allowExternalHttpsEgress=true
 ```
+
+Then open **Settings → AI Agent** in Rush, connect an LLM provider, and add a
+model. Query API stores the credential encrypted and makes provider requests;
+the SRE agent receives neither the credential nor direct provider access.
 
 See [access and integrations](access-and-integrations.md) before granting the
 agent Kubernetes or GitHub access.

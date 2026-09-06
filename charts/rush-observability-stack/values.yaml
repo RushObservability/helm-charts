@@ -116,16 +116,10 @@ global:
       liveness: { enabled: true, path: /healthz, initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 2, failureThreshold: 3, successThreshold: 1 }
     internalAuthToken: ""
     env:
-      CLICKHOUSE_DATABASE: observability
       RUST_LOG: sre_agent=info,tower_http=info
-      OPENAI_BASE_URL: https://api.openai.com
     kube:
       tenantNamespaces: {}
       allowClusterScopedForAdmins: false
-    llmApiKey: ""
-    llmApiKeySecret:
-      name: ""
-      key: api-key
     githubApp:
       enabled: false
       appId: ""

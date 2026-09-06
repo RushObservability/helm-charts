@@ -34,20 +34,6 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app.kubernetes.io/name: clickhouse
-              app.kubernetes.io/instance: {{ .Release.Name }}
-        - podSelector:
-            matchLabels:
-              app.kubernetes.io/component: clickhouse
-              app.kubernetes.io/instance: {{ .Release.Name }}
-      ports:
-        - protocol: TCP
-          port: 8123
-        - protocol: TCP
-          port: 9000
-    - to:
-        - podSelector:
-            matchLabels:
               {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
       ports:
         - protocol: TCP
