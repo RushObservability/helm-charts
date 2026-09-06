@@ -16,9 +16,9 @@ Open the UI:
   open http://localhost:8080
 {{- end }}
 
-{{- if .Values.queryApi.existingSecret }}
-The initial admin password is in Secret {{ .Values.queryApi.existingSecret }}.
-{{- else if not .Values.queryApi.adminPassword }}
+{{- if .Values.queryApi.config.secrets.existingSecret }}
+The initial admin password is in Secret {{ .Values.queryApi.config.secrets.existingSecret }}.
+{{- else if not .Values.queryApi.config.secrets.adminPassword }}
 Retrieve the generated initial admin password:
   kubectl -n {{ $ns }} get secret {{ $fullName }}-bootstrap \
     -o jsonpath="{.data.initial-admin-password}" | base64 -d ; echo

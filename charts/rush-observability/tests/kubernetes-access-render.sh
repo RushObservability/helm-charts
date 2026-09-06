@@ -43,11 +43,11 @@ assert_contains "$defaults" 'kubernetes-access-internal-token:' 'preserved recor
 
 enabled="$(helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
-  --set queryApi.integrations.kubernetesAccess.enabled=true \
-  --set queryApi.integrations.kubernetesAccess.maxResultBytes=524288 \
-  --set queryApi.integrations.kubernetesAccess.maxSessionBytes=134217728 \
-  --set queryApi.integrations.kubernetesAccess.retentionDays=14 \
-  --set queryApi.integrations.kubernetesAccess.credentialTtlSeconds=7200 \
+  --set queryApi.config.integrations.kubernetesAccess.enabled=true \
+  --set queryApi.config.integrations.kubernetesAccess.maxResultBytes=524288 \
+  --set queryApi.config.integrations.kubernetesAccess.maxSessionBytes=134217728 \
+  --set queryApi.config.integrations.kubernetesAccess.retentionDays=14 \
+  --set queryApi.config.integrations.kubernetesAccess.credentialTtlSeconds=7200 \
   --set kubernetesAccessGateway.gatewayId=primary \
   --set kubernetesAccessGateway.clusterId=prod-us-east-1 \
   --set kubernetesAccessGateway.tenantIds[0]=default)"
@@ -99,7 +99,7 @@ assert_absent "$gateway" 'resources: ["users", "groups"]' 'implicit impersonatio
 
 external_secret="$(helm template kubernetes-access "$chart_dir" \
   --set enterprise.license.enabled=true \
-  --set queryApi.existingSecret=operator-bootstrap \
+  --set queryApi.config.secrets.existingSecret=operator-bootstrap \
   --set kubernetesAccessGateway.enabled=true \
   --set kubernetesAccessGateway.gatewayId=primary \
   --set kubernetesAccessGateway.clusterId=prod-us-east-1 \
@@ -183,7 +183,7 @@ if helm template kubernetes-access "$chart_dir" \
 fi
 
 if helm template kubernetes-access "$chart_dir" \
-  --set queryApi.integrations.kubernetesAccess.retentionDays=0 >/dev/null 2>&1; then
+  --set queryApi.config.integrations.kubernetesAccess.retentionDays=0 >/dev/null 2>&1; then
   echo 'chart accepted zero-day Kubernetes access retention' >&2
   exit 1
 fi

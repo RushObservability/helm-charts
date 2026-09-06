@@ -140,8 +140,10 @@ A small production values file can start like this:
 ```yaml
 rush:
   queryApi:
-    environment: production
-    baseUrl: https://rush.example.com
+    config:
+      runtime:
+        environment: production
+        baseUrl: https://rush.example.com
   ingress:
     enabled: true
     className: nginx

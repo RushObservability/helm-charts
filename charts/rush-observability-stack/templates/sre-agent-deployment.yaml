@@ -1,4 +1,4 @@
-{{- $integrations := .Values.rush.queryApi.integrations -}}
+{{- $integrations := .Values.rush.queryApi.config.integrations -}}
 {{- $sreAgent := $integrations.sreAgent -}}
 {{- if $sreAgent.enabled }}
 apiVersion: apps/v1
@@ -38,7 +38,7 @@ spec:
           ports:
             - name: http
               containerPort: {{ $sreAgent.port }}
-          {{- $bootstrapSecret := .Values.rush.queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
+          {{- $bootstrapSecret := .Values.rush.queryApi.config.secrets.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
           env:
             - name: SRE_AGENT_PORT
               value: {{ $sreAgent.port | quote }}
@@ -53,7 +53,7 @@ spec:
               value: {{ include "rush.stackQueryApiUrl" . | quote }}
             {{- if $sreAgent.githubApp.enabled }}
             - name: GITHUB_APP_ID
-              value: {{ required "queryApi.integrations.sreAgent.githubApp.appId is required when GitHub App access is enabled" $sreAgent.githubApp.appId | quote }}
+              value: {{ required "queryApi.config.integrations.sreAgent.githubApp.appId is required when GitHub App access is enabled" $sreAgent.githubApp.appId | quote }}
             - name: SRE_AGENT_GITHUB_REPOSITORY_POLICY
               value: {{ $sreAgent.githubApp.tenantRepositories | toJson | quote }}
             - name: GITHUB_API_URL
@@ -119,7 +119,7 @@ spec:
       volumes:
         - name: github-app-private-key
           secret:
-            secretName: {{ required "queryApi.integrations.sreAgent.githubApp.privateKeySecret.name is required when GitHub App access is enabled" $sreAgent.githubApp.privateKeySecret.name }}
+            secretName: {{ required "queryApi.config.integrations.sreAgent.githubApp.privateKeySecret.name is required when GitHub App access is enabled" $sreAgent.githubApp.privateKeySecret.name }}
             items:
               - key: {{ $sreAgent.githubApp.privateKeySecret.key }}
                 path: private-key.pem

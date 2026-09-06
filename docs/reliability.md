@@ -24,20 +24,22 @@ Configure the buffer and ClickHouse Keeper:
 ```yaml
 queryApi:
   replicas: 3
-  buffer:
-    backend: object_store
-    maxBytes: 2147483648
-    objectStore:
-      endpoint: "" # blank for AWS; set for MinIO, Ceph, or RustFS
-      bucket: rush-ingest-buffer
-      prefix: ingest/
-      region: us-east-1
-      credentialsSecret:
-        name: rush-ingest-buffer
-        accessKeyKey: access-key
-        secretKeyKey: secret-key
-    drainWorker:
-      enabled: true
+  config:
+    ingest:
+      buffer:
+        backend: object_store
+        maxBytes: 2147483648
+        objectStore:
+          endpoint: "" # blank for AWS; set for MinIO, Ceph, or RustFS
+          bucket: rush-ingest-buffer
+          prefix: ingest/
+          region: us-east-1
+          credentialsSecret:
+            name: rush-ingest-buffer
+            accessKeyKey: access-key
+            secretKeyKey: secret-key
+  drainWorker:
+    enabled: true
   networkPolicy:
     allowExternalHttpsEgress: true # or add a bucket-specific extraEgress rule
 

@@ -49,7 +49,7 @@ app.kubernetes.io/component: {{ .component }}
 {{- end -}}
 
 {{- define "rush.sreAgentUrl" -}}
-{{- printf "http://%s:%v" (include "rush.sreAgentServiceName" .) .Values.queryApi.integrations.sreAgent.service.port -}}
+{{- printf "http://%s:%v" (include "rush.sreAgentServiceName" .) .Values.queryApi.config.integrations.sreAgent.service.port -}}
 {{- end -}}
 
 {{/* ClickHouse writer connection environment for Rush application workloads. */}}
@@ -252,8 +252,8 @@ automountServiceAccountToken: false
 
 {{/* Public browser origin used by SSO, links, and CSRF validation. */}}
 {{- define "rush.effectiveBaseUrl" -}}
-{{- if .Values.queryApi.baseUrl -}}
-{{- trimSuffix "/" .Values.queryApi.baseUrl -}}
+{{- if .Values.queryApi.config.runtime.baseUrl -}}
+{{- trimSuffix "/" .Values.queryApi.config.runtime.baseUrl -}}
 {{- else if and .Values.ingress.enabled .Values.ingress.frontend.enabled .Values.ingress.frontend.host -}}
 {{- $scheme := ternary "https" "http" .Values.ingress.frontend.tls.enabled -}}
 {{- printf "%s://%s" $scheme .Values.ingress.frontend.host -}}
@@ -262,7 +262,7 @@ automountServiceAccountToken: false
 
 {{/* Explicit trusted proxies plus ingress-controller CIDRs. */}}
 {{- define "rush.trustedProxyCidrs" -}}
-{{- concat (.Values.queryApi.trustedProxyCidrs | default list) (.Values.ingress.trustedProxyCidrs | default list) | uniq | join "," -}}
+{{- concat (.Values.queryApi.config.runtime.trustedProxyCidrs | default list) (.Values.ingress.trustedProxyCidrs | default list) | uniq | join "," -}}
 {{- end -}}
 
 {{/* Configurable Deployment rollout policy. Singleton workers use Recreate. */}}
@@ -311,7 +311,7 @@ successThreshold: {{ $probe.successThreshold }}
 {{/* Shared durable ingest-buffer contract for API pods and the drain worker. */}}
 {{- define "rush.queryApiBufferEnv" -}}
 {{- $root := .root -}}
-{{- $buffer := $root.Values.queryApi.buffer -}}
+{{- $buffer := $root.Values.queryApi.config.ingest.buffer -}}
 {{- $drainOnly := .drainOnly | default false -}}
 - name: RUSH_SPOOL_MAX_BYTES
   value: {{ $buffer.maxBytes | int64 | quote }}
@@ -322,7 +322,7 @@ successThreshold: {{ $probe.successThreshold }}
 - name: RUSH_EXPECTED_QUERY_API_REPLICAS
   value: {{ $root.Values.queryApi.replicas | quote }}
 - name: RUSH_RUN_REPLAYER
-  value: {{ or $drainOnly (not $buffer.drainWorker.enabled) | quote }}
+  value: {{ or $drainOnly (not $root.Values.queryApi.drainWorker.enabled) | quote }}
 {{- if $drainOnly }}
 - name: RUSH_DRAIN_WORKER_ONLY
   value: "true"
@@ -486,7 +486,7 @@ through `tpl`. Reads `.Values.global.storage` (shared with subcharts via global)
   <custom_settings_prefixes>rush_</custom_settings_prefixes>
   <!-- KeeperMap is the linearizable one-time-claim store used by SSO when
        query-api has multiple replicas. The engine remains unused for a
-       single-replica deployment unless queryApi.ssoReplayStore=keeper. -->
+       single-replica deployment unless queryApi.config.authentication.ssoReplayStore=keeper. -->
   <keeper_map_path_prefix>/rush</keeper_map_path_prefix>
   <!-- The operator's default log level is `debug`, which writes every executed
        query (full SQL, including user search terms) to the server log as

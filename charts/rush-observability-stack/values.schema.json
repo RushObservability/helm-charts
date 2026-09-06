@@ -17,19 +17,47 @@
         "cloudwatch": { "not": {} },
         "queryApi": {
           "type": "object",
-          "required": ["integrations"],
+          "required": ["config"],
           "additionalProperties": true,
           "properties": {
+            "environment": { "not": {} },
+            "baseUrl": { "not": {} },
+            "existingSecret": { "not": {} },
             "kubernetesAccess": { "not": {} },
-            "integrations": {
+            "integrations": { "not": {} },
+            "config": {
               "type": "object",
-              "required": ["sreAgent", "kubernetes", "argocd", "fluxcd"],
+              "required": ["runtime", "secrets", "integrations"],
               "additionalProperties": true,
               "properties": {
-                "sreAgent": { "type": "object", "required": ["enabled"], "additionalProperties": true },
-                "kubernetes": { "type": "object", "required": ["enabled"], "additionalProperties": true },
-                "argocd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true },
-                "fluxcd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true }
+                "runtime": {
+                  "type": "object",
+                  "required": ["environment", "baseUrl"],
+                  "additionalProperties": true,
+                  "properties": {
+                    "environment": { "type": "string", "enum": ["production", "development", "local", "test"] },
+                    "baseUrl": { "type": "string" }
+                  }
+                },
+                "secrets": {
+                  "type": "object",
+                  "required": ["existingSecret"],
+                  "additionalProperties": true,
+                  "properties": {
+                    "existingSecret": { "type": "string" }
+                  }
+                },
+                "integrations": {
+                  "type": "object",
+                  "required": ["sreAgent", "kubernetes", "argocd", "fluxcd"],
+                  "additionalProperties": true,
+                  "properties": {
+                    "sreAgent": { "type": "object", "required": ["enabled"], "additionalProperties": true },
+                    "kubernetes": { "type": "object", "required": ["enabled"], "additionalProperties": true },
+                    "argocd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true },
+                    "fluxcd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true }
+                  }
+                }
               }
             }
           }

@@ -81,7 +81,7 @@ grep -Fq 'nodegroup: rush-apps' <<<"$crd_hook" || {
 
 standalone_clickhouse="$(helm template scheduling "$chart_dir" \
   --show-only templates/clickhouse-standalone-statefulset.yaml \
-  --set queryApi.environment=development \
+  --set queryApi.config.runtime.environment=development \
   --set clickhouse.mode=standalone \
   --set clickhouse.enabled=false \
   --set-string global.scheduling.nodeSelector.nodegroup=rush-apps \

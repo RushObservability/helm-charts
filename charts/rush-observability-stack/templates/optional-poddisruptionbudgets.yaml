@@ -1,5 +1,5 @@
-{{- if and .Values.rush.queryApi.integrations.sreAgent.enabled .Values.rush.queryApi.integrations.sreAgent.podDisruptionBudget.enabled }}
-{{ include "rush.podDisruptionBudget" (dict "root" . "component" "sre-agent" "pdb" .Values.rush.queryApi.integrations.sreAgent.podDisruptionBudget) }}
+{{- if and .Values.rush.queryApi.config.integrations.sreAgent.enabled .Values.rush.queryApi.config.integrations.sreAgent.podDisruptionBudget.enabled }}
+{{ include "rush.podDisruptionBudget" (dict "root" . "component" "sre-agent" "pdb" .Values.rush.queryApi.config.integrations.sreAgent.podDisruptionBudget) }}
 ---
 {{- end }}
 {{- if and .Values.mysqlCollector.enabled .Values.mysqlCollector.podDisruptionBudget.enabled }}

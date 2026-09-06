@@ -29,19 +29,21 @@ queryApi:
   replicas: 2   # run 2 query-api pods for HA; sit behind a ClusterIP load balancer
   # Every API replica writes failed ingest to one shared object-store queue. A
   # dedicated single-replica worker drains it; API pods never replay entries.
-  buffer:
-    backend: object_store
-    objectStore:
-      endpoint: ""             # blank for AWS; set for MinIO/Ceph/RustFS
-      bucket: your-rush-ingest-buffer
-      prefix: ingest/
-      region: us-east-1
-      credentialsSecret:
-        name: rush-ingest-buffer
-        accessKeyKey: access-key
-        secretKeyKey: secret-key
-    drainWorker:
-      enabled: true
+  config:
+    ingest:
+      buffer:
+        backend: object_store
+        objectStore:
+          endpoint: ""             # blank for AWS; set for MinIO/Ceph/RustFS
+          bucket: your-rush-ingest-buffer
+          prefix: ingest/
+          region: us-east-1
+          credentialsSecret:
+            name: rush-ingest-buffer
+            accessKeyKey: access-key
+            secretKeyKey: secret-key
+  drainWorker:
+    enabled: true
   podDisruptionBudget:
     enabled: true
     type: minAvailable

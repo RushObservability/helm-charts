@@ -6,7 +6,7 @@ Rush Observability is installed.
 
 2. Read the generated admin password:
 
-   kubectl -n {{ .Release.Namespace }} get secret {{ .Values.rush.queryApi.existingSecret | default (printf "%s-bootstrap" .Release.Name) }} -o jsonpath='{.data.initial-admin-password}' | base64 -d; echo
+   kubectl -n {{ .Release.Namespace }} get secret {{ .Values.rush.queryApi.config.secrets.existingSecret | default (printf "%s-bootstrap" .Release.Name) }} -o jsonpath='{.data.initial-admin-password}' | base64 -d; echo
 
 3. Open the UI:
 
@@ -17,7 +17,7 @@ Rush Observability is installed.
 Query API inside the cluster: {{ include "rush.stackQueryApiUrl" . }}
 
 Installed components:
-  SRE agent:          {{ ternary "yes" "no" .Values.rush.queryApi.integrations.sreAgent.enabled }}
+  SRE agent:          {{ ternary "yes" "no" .Values.rush.queryApi.config.integrations.sreAgent.enabled }}
   Metrics agent:      {{ ternary "yes" "no" .Values.metricsAgent.enabled }}
   PostgreSQL add-on:  {{ ternary "yes" "no" .Values.postgresCollector.enabled }}
   MySQL add-on:       {{ ternary "yes" "no" .Values.mysqlCollector.enabled }}

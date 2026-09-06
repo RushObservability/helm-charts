@@ -3,9 +3,10 @@
 rush:
   queryApi:
     replicas: 1
-    integrations:
-      sreAgent:
-        enabled: false
+    config:
+      integrations:
+        sreAgent:
+          enabled: false
   clickhouse:
     enabled: true
     mode: operator

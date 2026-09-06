@@ -3,7 +3,7 @@ set -euo pipefail
 
 chart_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-rendered="$(helm template audit-test "$chart_dir" --set queryApi.baseUrl=https://rush.example.com)"
+rendered="$(helm template audit-test "$chart_dir" --set queryApi.config.runtime.baseUrl=https://rush.example.com)"
 
 for expected in \
   'name: RUSH_AUDIT_HMAC_KEY_ID' \
@@ -21,8 +21,8 @@ do
 done
 
 ephemeral="$(helm template audit-test "$chart_dir" \
-  --set queryApi.baseUrl=https://rush.example.com \
-  --set queryApi.audit.spool.persistence.enabled=false)"
+  --set queryApi.config.runtime.baseUrl=https://rush.example.com \
+  --set queryApi.auditSpoolPersistence.enabled=false)"
 if grep -Fq 'kind: PersistentVolumeClaim' <<<"$ephemeral"; then
   echo "audit PVC rendered while persistence was disabled" >&2
   exit 1

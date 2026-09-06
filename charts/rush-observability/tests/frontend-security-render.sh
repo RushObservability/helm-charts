@@ -2,7 +2,7 @@
 set -euo pipefail
 
 chart_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-rendered="$(helm template frontend-security "$chart_dir" --set queryApi.environment=production --set queryApi.baseUrl=https://rush.example.com)"
+rendered="$(helm template frontend-security "$chart_dir" --set queryApi.config.runtime.environment=production --set queryApi.config.runtime.baseUrl=https://rush.example.com)"
 
 if grep -q 'Content-Security-Policy' <<<"$rendered"; then
   echo 'Helm must not duplicate the CSP policy baked into the frontend image' >&2

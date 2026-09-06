@@ -1,4 +1,4 @@
-{{- $integrations := .Values.queryApi.integrations -}}
+{{- $integrations := .Values.queryApi.config.integrations -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -49,7 +49,7 @@ spec:
             - name: RUSH_CONFIG
               value: /etc/rush/rush.toml
             - name: RUSH_ENVIRONMENT
-              value: {{ .Values.queryApi.environment | quote }}
+              value: {{ .Values.queryApi.config.runtime.environment | quote }}
             - name: RUSH_BASE_URL
               value: {{ include "rush.effectiveBaseUrl" . | quote }}
             - name: RUSH_TRUSTED_PROXY_CIDRS
@@ -57,48 +57,48 @@ spec:
             - name: RUSH_QUERY_API_REPLICAS
               value: {{ .Values.queryApi.replicas | quote }}
             - name: RUSH_SSO_REPLAY_STORE
-              value: {{ .Values.queryApi.ssoReplayStore | quote }}
+              value: {{ .Values.queryApi.config.authentication.ssoReplayStore | quote }}
             - name: RUSH_LOGIN_ACCOUNT_LIMIT_PER_MINUTE
-              value: {{ .Values.queryApi.loginRateLimit.accountPerMinute | quote }}
+              value: {{ .Values.queryApi.config.authentication.loginRateLimit.accountPerMinute | quote }}
             - name: RUSH_LOGIN_IP_LIMIT_PER_MINUTE
-              value: {{ .Values.queryApi.loginRateLimit.ipPerMinute | quote }}
+              value: {{ .Values.queryApi.config.authentication.loginRateLimit.ipPerMinute | quote }}
             - name: RUSH_INGEST_MAX_COMPRESSED_BYTES
-              value: {{ .Values.queryApi.ingestLimits.maxCompressedBytes | int64 | quote }}
+              value: {{ .Values.queryApi.config.ingest.limits.maxCompressedBytes | int64 | quote }}
             - name: RUSH_INGEST_MAX_DECOMPRESSED_BYTES
-              value: {{ .Values.queryApi.ingestLimits.maxDecompressedBytes | int64 | quote }}
+              value: {{ .Values.queryApi.config.ingest.limits.maxDecompressedBytes | int64 | quote }}
             - name: RUSH_INGEST_MAX_ENTITIES
-              value: {{ .Values.queryApi.ingestLimits.maxEntities | quote }}
+              value: {{ .Values.queryApi.config.ingest.limits.maxEntities | quote }}
             - name: RUSH_INGEST_MAX_SERIES
-              value: {{ .Values.queryApi.ingestLimits.maxSeries | quote }}
+              value: {{ .Values.queryApi.config.ingest.limits.maxSeries | quote }}
             - name: RUSH_INGEST_MAX_SAMPLES
-              value: {{ .Values.queryApi.ingestLimits.maxSamples | quote }}
+              value: {{ .Values.queryApi.config.ingest.limits.maxSamples | quote }}
             - name: RUSH_INGEST_MAX_METADATA
-              value: {{ .Values.queryApi.ingestLimits.maxMetadata | quote }}
+              value: {{ .Values.queryApi.config.ingest.limits.maxMetadata | quote }}
             - name: RUSH_INGEST_MAX_LABELS_PER_SERIES
-              value: {{ .Values.queryApi.ingestLimits.maxLabelsPerSeries | quote }}
+              value: {{ .Values.queryApi.config.ingest.limits.maxLabelsPerSeries | quote }}
             - name: RUSH_INGEST_MAX_LABEL_NAME_BYTES
-              value: {{ .Values.queryApi.ingestLimits.maxLabelNameBytes | quote }}
+              value: {{ .Values.queryApi.config.ingest.limits.maxLabelNameBytes | quote }}
             - name: RUSH_INGEST_MAX_LABEL_VALUE_BYTES
-              value: {{ .Values.queryApi.ingestLimits.maxLabelValueBytes | quote }}
+              value: {{ .Values.queryApi.config.ingest.limits.maxLabelValueBytes | quote }}
             - name: RUSH_INGEST_DECODE_CONCURRENCY
-              value: {{ .Values.queryApi.ingestLimits.decodeConcurrency | quote }}
+              value: {{ .Values.queryApi.config.ingest.limits.decodeConcurrency | quote }}
             - name: RUSH_SESSION_IDLE_TIMEOUT_SECS
-              value: {{ .Values.queryApi.session.idleTimeoutSeconds | quote }}
+              value: {{ .Values.queryApi.config.authentication.session.idleTimeoutSeconds | quote }}
             - name: RUSH_SESSION_ABSOLUTE_TIMEOUT_SECS
-              value: {{ .Values.queryApi.session.absoluteTimeoutSeconds | quote }}
+              value: {{ .Values.queryApi.config.authentication.session.absoluteTimeoutSeconds | quote }}
             - name: RUSH_SESSION_RENEWAL_INTERVAL_SECS
-              value: {{ .Values.queryApi.session.renewalIntervalSeconds | quote }}
+              value: {{ .Values.queryApi.config.authentication.session.renewalIntervalSeconds | quote }}
             - name: RUSH_ALLOW_ANONYMOUS_DEFAULT
-              value: {{ .Values.queryApi.allowAnonymousDefault | quote }}
+              value: {{ .Values.queryApi.config.authentication.allowAnonymousDefault | quote }}
             - name: RUSH_SPOOL_DIR
               value: /var/lib/rush/spool
             {{- include "rush.queryApiBufferEnv" (dict "root" . "drainOnly" false) | nindent 12 }}
             - name: RUSH_AUDIT_SPOOL_DIR
               value: /var/lib/rush/audit-spool
             - name: RUSH_AUDIT_SPOOL_MAX_BYTES
-              value: {{ .Values.queryApi.audit.spool.maxBytes | int64 | quote }}
+              value: {{ .Values.queryApi.config.audit.spoolMaxBytes | int64 | quote }}
             - name: RUSH_AUDIT_HMAC_KEY_ID
-              value: {{ .Values.queryApi.audit.keyId | quote }}
+              value: {{ .Values.queryApi.config.audit.keyId | quote }}
             # Run the anomaly engine in-process only when there is no dedicated
             # anomaly-engine Deployment, so rules aren't evaluated twice.
             - name: RUSH_RUN_ANOMALY_ENGINE
@@ -152,10 +152,11 @@ spec:
                   name: {{ .Values.enterprise.license.secret.name }}
                   key: {{ .Values.enterprise.license.secret.key }}
             {{- end }}
-            {{- $bootstrapSecret := .Values.queryApi.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
+            {{- $bootstrapSecret := .Values.queryApi.config.secrets.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
             # First-boot admin seed plus API-key/audit/session HMAC keys. Auto-generated and
             # preserved across upgrades by query-api-secret.yaml (or supply your
-            # own via queryApi.existingSecret). Never hard-code these in values.
+            # own via queryApi.config.secrets.existingSecret). Never hard-code
+            # these in values.
             - name: INITIAL_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -246,7 +247,7 @@ spec:
                   name: {{ $bootstrapSecret }}
                   key: sre-agent-internal-token
             {{- end }}
-            {{- range $key, $val := .Values.queryApi.env }}
+            {{- range $key, $val := .Values.queryApi.config.runtime.extraEnv }}
             - name: {{ $key }}
               value: {{ $val | quote }}
             {{- end }}
@@ -296,9 +297,9 @@ spec:
         - name: rush-spool
           emptyDir: {}
         - name: audit-spool
-          {{- if .Values.queryApi.audit.spool.persistence.enabled }}
+          {{- if .Values.queryApi.auditSpoolPersistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ .Values.queryApi.audit.spool.persistence.existingClaim | default (printf "%s-query-api-audit" (include "rush.fullname" .)) }}
+            claimName: {{ .Values.queryApi.auditSpoolPersistence.existingClaim | default (printf "%s-query-api-audit" (include "rush.fullname" .)) }}
           {{- else }}
           emptyDir: {}
           {{- end }}

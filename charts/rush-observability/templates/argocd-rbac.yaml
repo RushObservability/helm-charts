@@ -1,9 +1,9 @@
-{{- if .Values.queryApi.integrations.argocd.enabled }}
+{{- if .Values.queryApi.config.integrations.argocd.enabled }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: {{ include "rush.fullname" . }}-argocd-reader
-  namespace: {{ .Values.queryApi.integrations.argocd.namespace | quote }}
+  namespace: {{ .Values.queryApi.config.integrations.argocd.namespace | quote }}
   labels:
     app.kubernetes.io/component: query-api
     {{- include "rush.labels" . | nindent 4 }}
@@ -17,7 +17,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: {{ include "rush.fullname" . }}-argocd-reader
-  namespace: {{ .Values.queryApi.integrations.argocd.namespace | quote }}
+  namespace: {{ .Values.queryApi.config.integrations.argocd.namespace | quote }}
   labels:
     app.kubernetes.io/component: query-api
     {{- include "rush.labels" . | nindent 4 }}

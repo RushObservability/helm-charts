@@ -24,11 +24,12 @@ rush:
       allowSmtpEgress: false
       extraIngress: []                 # ingress controller or external collector
       extraEgress: []
-    integrations:
-      sreAgent:
-        enabled: true
-        networkPolicy:
-          allowExternalHttpsEgress: true # GitHub or an external Kubernetes API
+    config:
+      integrations:
+        sreAgent:
+          enabled: true
+          networkPolicy:
+            allowExternalHttpsEgress: true # GitHub or an external Kubernetes API
 ```
 
 LLM provider traffic leaves from query-api, not the SRE agent. Allow query-api
@@ -69,8 +70,9 @@ rush:
         secretName: rush-api-tls
 ```
 
-When `queryApi.baseUrl` is empty, the chart derives it from the frontend TLS
-host. `ingress.trustedProxyCidrs` is merged into Query API's trusted proxy list.
+When `queryApi.config.runtime.baseUrl` is empty, the chart derives it from the
+frontend TLS host. `ingress.trustedProxyCidrs` is merged into Query API's
+trusted proxy list.
 
 If the ingress controller runs outside the release namespace, add an
 `extraIngress` rule matching its namespace and pod labels.

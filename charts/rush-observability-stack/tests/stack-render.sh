@@ -3,7 +3,7 @@ set -euo pipefail
 
 chart_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 core_chart_dir="$chart_dir/../rush-observability"
-common=(--set rush.queryApi.environment=development)
+common=(--set rush.queryApi.config.runtime.environment=development)
 
 if ! helm dependency list "$core_chart_dir" | awk 'NR > 1 && NF && $NF != "ok" { bad=1 } END { exit bad }'; then
   helm dependency build "$core_chart_dir" >/dev/null
@@ -14,7 +14,7 @@ fi
 helm lint "$chart_dir" >/dev/null
 helm template stack-example "$chart_dir" \
   -f "$chart_dir/../../examples/rush-stack.yaml" \
-  --set rush.queryApi.environment=development >/dev/null
+  --set rush.queryApi.config.runtime.environment=development >/dev/null
 
 defaults="$(helm template stack "$chart_dir" "${common[@]}")"
 for core in stack-query-api stack-frontend; do
@@ -52,7 +52,7 @@ for expected in 'value: "development"' 'value: "http://localhost:8080"' 'value: 
   }
 done
 
-if helm template stack "$chart_dir" --set rush-observability.queryApi.environment=development >/dev/null 2>&1; then
+if helm template stack "$chart_dir" --set rush-observability.queryApi.config.runtime.environment=development >/dev/null 2>&1; then
   echo 'the removed rush-observability values block was accepted; use rush instead' >&2
   exit 1
 fi
@@ -137,7 +137,7 @@ for expected in \
 done
 
 sre="$(helm template stack "$chart_dir" "${common[@]}" \
-  --set rush.queryApi.integrations.sreAgent.enabled=true)"
+  --set rush.queryApi.config.integrations.sreAgent.enabled=true)"
 for expected in 'name: stack-sre-agent' 'value: "http://stack-query-api:8080"' 'name: SRE_AGENT_INTERNAL_TOKEN'; do
   grep -Fq "$expected" <<<"$sre" || {
     echo "SRE-agent stack render is missing: $expected" >&2
@@ -151,21 +151,31 @@ fi
 
 if helm template stack "$chart_dir" "${common[@]}" \
   --set rush.sreAgent.enabled=true >/dev/null 2>&1; then
-  echo 'the removed rush.sreAgent block was accepted; use rush.queryApi.integrations.sreAgent' >&2
+  echo 'the removed rush.sreAgent block was accepted; use rush.queryApi.config.integrations.sreAgent' >&2
   exit 1
 fi
 if helm template stack "$chart_dir" "${common[@]}" \
   --set rush.queryApi.kubernetesAccess.enabled=true >/dev/null 2>&1; then
-  echo 'the removed rush.queryApi.kubernetesAccess block was accepted; use rush.queryApi.integrations.kubernetesAccess' >&2
+  echo 'the removed rush.queryApi.kubernetesAccess block was accepted; use rush.queryApi.config.integrations.kubernetesAccess' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.environment=development >/dev/null 2>&1; then
+  echo 'the removed rush.queryApi.environment value was accepted; use rush.queryApi.config.runtime.environment' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.integrations.sreAgent.enabled=true >/dev/null 2>&1; then
+  echo 'the removed rush.queryApi.integrations block was accepted; use rush.queryApi.config.integrations' >&2
   exit 1
 fi
 
 integrations="$(helm template stack "$chart_dir" "${common[@]}" \
-  --set rush.queryApi.integrations.argocd.enabled=true \
-  --set rush.queryApi.integrations.fluxcd.enabled=true \
-  --set rush.queryApi.integrations.kubernetes.enabled=true \
-  --set 'rush.queryApi.integrations.kubernetes.namespaces[0]=apps' \
-  --set rush.queryApi.integrations.cloudwatch.enabled=true)"
+  --set rush.queryApi.config.integrations.argocd.enabled=true \
+  --set rush.queryApi.config.integrations.fluxcd.enabled=true \
+  --set rush.queryApi.config.integrations.kubernetes.enabled=true \
+  --set 'rush.queryApi.config.integrations.kubernetes.namespaces[0]=apps' \
+  --set rush.queryApi.config.integrations.cloudwatch.enabled=true)"
 for expected in 'name: ARGOCD_NAMESPACE' 'name: FLUXCD_NAMESPACE' 'name: KUBERNETES_ENABLED' 'name: CLOUDWATCH_ENABLED'; do
   grep -Fq "$expected" <<<"$integrations" || {
     echo "stack integration render is missing: $expected" >&2

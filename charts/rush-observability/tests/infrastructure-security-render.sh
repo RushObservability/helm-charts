@@ -24,7 +24,7 @@ assert_lacks() {
 }
 
 argocd="$(helm template infra "$chart_dir" --show-only templates/argocd-rbac.yaml \
-  --set queryApi.integrations.argocd.enabled=true)"
+  --set queryApi.config.integrations.argocd.enabled=true)"
 assert_has "$argocd" 'kind: Role' 'namespace-scoped ArgoCD Role'
 assert_has "$argocd" 'apiGroups: ["argoproj.io"]' 'ArgoCD API group'
 assert_lacks "$argocd" 'kind: ClusterRole' 'ArgoCD ClusterRole'
@@ -32,7 +32,7 @@ assert_lacks "$argocd" 'apiGroups: [""]' 'ArgoCD core API permissions'
 assert_lacks "$argocd" 'secrets' 'ArgoCD Secret permission'
 
 flux="$(helm template infra "$chart_dir" --show-only templates/fluxcd-rbac.yaml \
-  --set queryApi.integrations.fluxcd.enabled=true)"
+  --set queryApi.config.integrations.fluxcd.enabled=true)"
 assert_has "$flux" 'kind: Role' 'namespace-scoped Flux Role'
 assert_has "$flux" 'apiGroups: ["source.toolkit.fluxcd.io"]' 'Flux API group'
 assert_lacks "$flux" 'kind: ClusterRole' 'Flux ClusterRole'
@@ -40,20 +40,20 @@ assert_lacks "$flux" 'apiGroups: [""]' 'Flux core API permissions'
 assert_lacks "$flux" 'secrets' 'Flux Secret permission'
 
 kubernetes="$(helm template infra "$chart_dir" --show-only templates/kubernetes-rbac.yaml \
-  --set queryApi.integrations.kubernetes.enabled=true \
-  --set 'queryApi.integrations.kubernetes.namespaces[0]=apps')"
+  --set queryApi.config.integrations.kubernetes.enabled=true \
+  --set 'queryApi.config.integrations.kubernetes.namespaces[0]=apps')"
 assert_has "$kubernetes" 'kind: Role' 'namespace-scoped Kubernetes Role'
 assert_lacks "$kubernetes" 'kind: ClusterRole' 'default Kubernetes ClusterRole'
 assert_lacks "$kubernetes" 'secrets' 'Kubernetes Secret permission'
 
 cluster="$(helm template infra "$chart_dir" --show-only templates/kubernetes-rbac.yaml \
-  --set queryApi.integrations.kubernetes.enabled=true \
-  --set queryApi.integrations.kubernetes.clusterWide=true)"
+  --set queryApi.config.integrations.kubernetes.enabled=true \
+  --set queryApi.config.integrations.kubernetes.clusterWide=true)"
 assert_has "$cluster" 'kind: ClusterRole' 'opt-in Kubernetes ClusterRole'
 assert_lacks "$cluster" 'secrets' 'cluster-wide Kubernetes Secret permission'
 
 if helm template infra "$chart_dir" --show-only templates/kubernetes-rbac.yaml \
-  --set queryApi.integrations.kubernetes.enabled=true >/dev/null 2>&1; then
+  --set queryApi.config.integrations.kubernetes.enabled=true >/dev/null 2>&1; then
   echo 'kubernetes integration rendered without namespaces or clusterWide opt-in' >&2
   exit 1
 fi
@@ -62,8 +62,8 @@ network_policy="$(helm template infra "$chart_dir" --show-only templates/query-a
 assert_has "$network_policy" 'policyTypes: [Ingress, Egress]' 'query-api ingress and egress policy'
 
 deployment="$(helm template infra "$chart_dir" --show-only templates/query-api-deployment.yaml \
-  --set 'queryApi.integrations.infrastructure.tenantNamespaces.acme[0]=acme-prod' \
-  --set queryApi.integrations.cloudwatch.enabled=true)"
+  --set 'queryApi.config.integrations.infrastructure.tenantNamespaces.acme[0]=acme-prod' \
+  --set queryApi.config.integrations.cloudwatch.enabled=true)"
 assert_has "$deployment" 'name: RUSH_INFRASTRUCTURE_TENANT_NAMESPACES' 'tenant namespace policy env'
 assert_has "$deployment" '{\"acme\":[\"acme-prod\"]}' 'serialized tenant namespace policy'
 assert_has "$deployment" 'name: CLOUDWATCH_ENABLED' 'CloudWatch integration flag'

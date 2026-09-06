@@ -20,8 +20,8 @@ assert_render "$defaults" 'name: RUSH_ALLOW_ANONYMOUS_DEFAULT' 'anonymous compat
 assert_render "$defaults" 'value: "false"' 'anonymous compatibility disabled by default'
 
 development="$(helm template secure-ingest "$chart_dir" \
-  --set queryApi.environment=development \
-  --set queryApi.allowAnonymousDefault=true)"
+  --set queryApi.config.runtime.environment=development \
+  --set queryApi.config.authentication.allowAnonymousDefault=true)"
 assert_render "$development" 'value: "development"' 'explicit development environment'
 assert_render "$development" 'value: "true"' 'explicit anonymous compatibility override'
 

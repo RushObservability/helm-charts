@@ -8,26 +8,27 @@ Kubernetes, Argo CD, and Flux pages require the separate
 `infrastructure:read` group permission. Telemetry viewers do not receive it.
 
 The active Rush tenant comes from group tenant bindings.
-`queryApi.integrations.infrastructure.tenantNamespaces` maps that tenant to the
-Kubernetes namespaces it may inspect:
+`queryApi.config.integrations.infrastructure.tenantNamespaces` maps that
+tenant to the Kubernetes namespaces it may inspect:
 
 ```yaml
 queryApi:
-  integrations:
-    infrastructure:
-      tenantNamespaces:
-        acme: [acme-prod, acme-staging]
-        "*": [shared-observability]
-    kubernetes:
-      enabled: true
-      namespaces: [acme-prod, acme-staging, shared-observability]
-      clusterWide: false
-    argocd:
-      enabled: true
-      namespace: argocd
-    fluxcd:
-      enabled: true
-      namespace: flux-system
+  config:
+    integrations:
+      infrastructure:
+        tenantNamespaces:
+          acme: [acme-prod, acme-staging]
+          "*": [shared-observability]
+      kubernetes:
+        enabled: true
+        namespaces: [acme-prod, acme-staging, shared-observability]
+        clusterWide: false
+      argocd:
+        enabled: true
+        namespace: argocd
+      fluxcd:
+        enabled: true
+        namespace: flux-system
 ```
 
 Add `argocd` or `flux-system` only to tenants that should see those
@@ -39,7 +40,7 @@ Flux roles contain only their CRD API groups. Query API roles never grant
 Secret access.
 
 Cluster-wide Kubernetes browsing requires both
-`queryApi.integrations.kubernetes.clusterWide: true` and a `"*"` namespace
+`queryApi.config.integrations.kubernetes.clusterWide: true` and a `"*"` namespace
 grant. This adds nodes and namespaces but never Secrets. Kubernetes API access
 also needs `queryApi.networkPolicy.allowExternalHttpsEgress: true` or a narrower
 egress rule.
@@ -64,22 +65,23 @@ The SRE agent is installed by `rush-observability-stack`:
 ```yaml
 rush:
   queryApi:
-    integrations:
-      sreAgent:
-        enabled: true
-        networkPolicy:
-          allowExternalHttpsEgress: true
-        githubApp:
+    config:
+      integrations:
+        sreAgent:
           enabled: true
-          appId: "123456"
-          tenantRepositories:
-            acme:
-              - repository: acme/api
-                installationId: 654321
-                repositoryId: 123456789
-          privateKeySecret:
-            name: rush-github-app
-            key: private-key.pem
+          networkPolicy:
+            allowExternalHttpsEgress: true
+          githubApp:
+            enabled: true
+            appId: "123456"
+            tenantRepositories:
+              acme:
+                - repository: acme/api
+                  installationId: 654321
+                  repositoryId: 123456789
+            privateKeySecret:
+              name: rush-github-app
+              key: private-key.pem
 ```
 
 Query API and SRE agent receive the same deny-by-default policy. Only tenant
@@ -100,14 +102,15 @@ those namespaces:
 ```yaml
 rush:
   queryApi:
-    integrations:
-      sreAgent:
-        enabled: true
-        kube:
-          tenantNamespaces:
-            acme: [acme-prod, acme-staging]
-            "*": [shared-observability]
-          allowClusterScopedForAdmins: false
+    config:
+      integrations:
+        sreAgent:
+          enabled: true
+          kube:
+            tenantNamespaces:
+              acme: [acme-prod, acme-staging]
+              "*": [shared-observability]
+            allowClusterScopedForAdmins: false
 ```
 
 By default, the agent cannot read Secrets, pod logs, nodes, or the namespace
@@ -122,15 +125,16 @@ API endpoints and bounded storage limits with:
 
 ```yaml
 queryApi:
-  integrations:
-    kubernetesAccess:
-      enabled: true
-      maxResultBytes: 262144
-      maxSessionBytes: 67108864
-      retentionDays: 30
-      retainRawIp: false
-      collectPrivateIp: false
-      credentialTtlSeconds: 3600
+  config:
+    integrations:
+      kubernetesAccess:
+        enabled: true
+        maxResultBytes: 262144
+        maxSessionBytes: 67108864
+        retentionDays: 30
+        retainRawIp: false
+        collectPrivateIp: false
+        credentialTtlSeconds: 3600
 
 enterprise:
   license:
@@ -150,8 +154,8 @@ kubernetesAccessGateway:
 ```
 
 The chart creates a random internal recorder token in the bootstrap Secret and
-preserves it across upgrades. If `queryApi.existingSecret` is set, add a
-`kubernetes-access-internal-token` key to that Secret instead.
+preserves it across upgrades. If `queryApi.config.secrets.existingSecret` is
+set, add a `kubernetes-access-internal-token` key to that Secret instead.
 
 Keep `retainRawIp` and `collectPrivateIp` disabled unless the tenant has an
 approved retention and privacy policy. The Rush exec-credential helper reports

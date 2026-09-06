@@ -241,157 +241,282 @@
     },
     "queryApi": {
       "type": "object",
-      "required": ["image", "replicas", "port", "environment", "ssoReplayStore", "rollout", "podDisruptionBudget", "probes", "buffer", "integrations"],
+      "required": ["config", "image", "replicas", "port", "rollout", "podDisruptionBudget", "probes", "drainWorker", "auditSpoolPersistence"],
       "additionalProperties": true,
       "properties": {
-        "image": { "$ref": "#/definitions/image" },
-        "replicas": { "type": "integer", "minimum": 1 },
-        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
-        "apiKeyHmacSecret": { "type": "string", "pattern": "^$|^.{32,}$" },
-        "environment": { "type": "string", "enum": ["production", "development", "local", "test"] },
-        "ssoReplayStore": { "type": "string", "enum": ["auto", "local", "keeper"] },
-        "inheritGlobalScheduling": { "type": "boolean" },
-        "scheduling": { "$ref": "#/definitions/scheduling" },
-        "rollout": { "$ref": "#/definitions/rollout" },
-        "podDisruptionBudget": { "$ref": "#/definitions/pdb" },
-        "probes": { "$ref": "#/definitions/probes" },
-        "networkPolicy": { "$ref": "#/definitions/networkPolicy" },
-        "kubernetesAccess": { "not": {} },
-        "integrations": {
+        "config": {
           "type": "object",
-          "required": ["infrastructure", "argocd", "fluxcd", "kubernetes", "cloudwatch", "kubernetesAccess", "sreAgent"],
+          "required": ["runtime", "authentication", "secrets", "audit", "ingest", "integrations"],
           "additionalProperties": false,
           "properties": {
-            "infrastructure": {
+            "runtime": {
               "type": "object",
-              "required": ["tenantNamespaces"],
+              "required": ["environment", "baseUrl", "trustedProxyCidrs", "extraEnv"],
               "additionalProperties": false,
               "properties": {
-                "tenantNamespaces": {
+                "environment": { "type": "string", "enum": ["production", "development", "local", "test"] },
+                "baseUrl": { "type": "string" },
+                "trustedProxyCidrs": { "type": "array", "items": { "type": "string" } },
+                "extraEnv": {
                   "type": "object",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": { "type": "string", "minLength": 1 }
+                  "additionalProperties": { "type": ["string", "number", "boolean"] }
+                }
+              }
+            },
+            "authentication": {
+              "type": "object",
+              "required": ["allowAnonymousDefault", "ssoReplayStore", "loginRateLimit", "session"],
+              "additionalProperties": false,
+              "properties": {
+                "allowAnonymousDefault": { "type": "boolean" },
+                "ssoReplayStore": { "type": "string", "enum": ["auto", "local", "keeper"] },
+                "loginRateLimit": {
+                  "type": "object",
+                  "required": ["accountPerMinute", "ipPerMinute"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "accountPerMinute": { "type": "integer", "minimum": 1 },
+                    "ipPerMinute": { "type": "integer", "minimum": 1 }
+                  }
+                },
+                "session": {
+                  "type": "object",
+                  "required": ["idleTimeoutSeconds", "absoluteTimeoutSeconds", "renewalIntervalSeconds"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "idleTimeoutSeconds": { "type": "integer", "minimum": 1 },
+                    "absoluteTimeoutSeconds": { "type": "integer", "minimum": 1 },
+                    "renewalIntervalSeconds": { "type": "integer", "minimum": 1 }
                   }
                 }
               }
             },
-            "argocd": {
+            "secrets": {
               "type": "object",
-              "required": ["enabled", "namespace"],
+              "required": ["existingSecret", "adminPassword", "apiKeyHmacSecret", "auditHmacSecret", "sessionHmacSecret", "ssoTransactionSecret", "configEncryptionKey"],
               "additionalProperties": false,
               "properties": {
-                "enabled": { "type": "boolean" },
-                "namespace": { "type": "string", "minLength": 1 }
+                "existingSecret": { "type": "string" },
+                "adminPassword": { "type": "string" },
+                "apiKeyHmacSecret": { "type": "string", "pattern": "^$|^.{32,}$" },
+                "auditHmacSecret": { "type": "string" },
+                "sessionHmacSecret": { "type": "string" },
+                "ssoTransactionSecret": { "type": "string" },
+                "configEncryptionKey": { "type": "string" }
               }
             },
-            "fluxcd": {
+            "audit": {
               "type": "object",
-              "required": ["enabled", "namespace"],
+              "required": ["keyId", "previousKeysJson", "spoolMaxBytes"],
               "additionalProperties": false,
               "properties": {
-                "enabled": { "type": "boolean" },
-                "namespace": { "type": "string", "minLength": 1 }
+                "keyId": { "type": "string", "minLength": 1 },
+                "previousKeysJson": { "type": "string" },
+                "spoolMaxBytes": { "type": "integer", "minimum": 1 }
               }
             },
-            "kubernetes": {
+            "ingest": {
               "type": "object",
-              "required": ["enabled", "namespaces", "clusterWide"],
+              "required": ["limits", "buffer"],
               "additionalProperties": false,
               "properties": {
-                "enabled": { "type": "boolean" },
-                "namespaces": {
-                  "type": "array",
-                  "items": { "type": "string", "minLength": 1 }
+                "limits": {
+                  "type": "object",
+                  "required": ["maxCompressedBytes", "maxDecompressedBytes", "maxEntities", "maxSeries", "maxSamples", "maxMetadata", "maxLabelsPerSeries", "maxLabelNameBytes", "maxLabelValueBytes", "decodeConcurrency"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "maxCompressedBytes": { "type": "integer", "minimum": 1 },
+                    "maxDecompressedBytes": { "type": "integer", "minimum": 1 },
+                    "maxEntities": { "type": "integer", "minimum": 1 },
+                    "maxSeries": { "type": "integer", "minimum": 1 },
+                    "maxSamples": { "type": "integer", "minimum": 1 },
+                    "maxMetadata": { "type": "integer", "minimum": 1 },
+                    "maxLabelsPerSeries": { "type": "integer", "minimum": 1 },
+                    "maxLabelNameBytes": { "type": "integer", "minimum": 1 },
+                    "maxLabelValueBytes": { "type": "integer", "minimum": 1 },
+                    "decodeConcurrency": { "type": "integer", "minimum": 1 }
+                  }
                 },
-                "clusterWide": { "type": "boolean" }
+                "buffer": {
+                  "type": "object",
+                  "required": ["backend", "maxBytes", "objectStore"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "backend": { "type": "string", "enum": ["disk", "object_store"] },
+                    "maxBytes": { "type": "integer", "minimum": 1 },
+                    "objectStore": {
+                      "type": "object",
+                      "required": ["endpoint", "bucket", "prefix", "region", "credentialsSecret"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "endpoint": { "type": "string" },
+                        "bucket": { "type": "string" },
+                        "prefix": { "type": "string", "minLength": 1 },
+                        "region": { "type": "string", "minLength": 1 },
+                        "credentialsSecret": {
+                          "type": "object",
+                          "required": ["name", "accessKeyKey", "secretKeyKey"],
+                          "additionalProperties": false,
+                          "properties": {
+                            "name": { "type": "string" },
+                            "accessKeyKey": { "type": "string", "minLength": 1 },
+                            "secretKeyKey": { "type": "string", "minLength": 1 }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             },
-            "cloudwatch": {
+            "integrations": {
               "type": "object",
-              "required": ["enabled"],
+              "required": ["infrastructure", "argocd", "fluxcd", "kubernetes", "cloudwatch", "kubernetesAccess", "sreAgent"],
               "additionalProperties": false,
               "properties": {
-                "enabled": { "type": "boolean" }
-              }
-            },
-            "kubernetesAccess": {
-              "type": "object",
-              "required": ["enabled", "internalToken", "maxResultBytes", "maxSessionBytes", "retentionDays", "retainRawIp", "collectPrivateIp", "credentialTtlSeconds"],
-              "additionalProperties": false,
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "internalToken": { "type": "string", "pattern": "^$|^.{32,}$" },
-                "maxResultBytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
-                "maxSessionBytes": { "type": "integer", "minimum": 1048576, "maximum": 1073741824 },
-                "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 },
-                "retainRawIp": { "type": "boolean" },
-                "collectPrivateIp": { "type": "boolean" },
-                "credentialTtlSeconds": { "type": "integer", "minimum": 300, "maximum": 43200 }
-              }
-            },
-            "sreAgent": {
-              "type": "object",
-              "additionalProperties": true,
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
-                "internalAuthToken": { "type": "string" },
-                "service": {
+                "infrastructure": {
+                  "type": "object",
+                  "required": ["tenantNamespaces"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "tenantNamespaces": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": { "type": "string", "minLength": 1 }
+                      }
+                    }
+                  }
+                },
+                "argocd": {
+                  "type": "object",
+                  "required": ["enabled", "namespace"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "namespace": { "type": "string", "minLength": 1 }
+                  }
+                },
+                "fluxcd": {
+                  "type": "object",
+                  "required": ["enabled", "namespace"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "namespace": { "type": "string", "minLength": 1 }
+                  }
+                },
+                "kubernetes": {
+                  "type": "object",
+                  "required": ["enabled", "namespaces", "clusterWide"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "namespaces": {
+                      "type": "array",
+                      "items": { "type": "string", "minLength": 1 }
+                    },
+                    "clusterWide": { "type": "boolean" }
+                  }
+                },
+                "cloudwatch": {
+                  "type": "object",
+                  "required": ["enabled"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": { "type": "boolean" }
+                  }
+                },
+                "kubernetesAccess": {
+                  "type": "object",
+                  "required": ["enabled", "internalToken", "maxResultBytes", "maxSessionBytes", "retentionDays", "retainRawIp", "collectPrivateIp", "credentialTtlSeconds"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "internalToken": { "type": "string", "pattern": "^$|^.{32,}$" },
+                    "maxResultBytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
+                    "maxSessionBytes": { "type": "integer", "minimum": 1048576, "maximum": 1073741824 },
+                    "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 },
+                    "retainRawIp": { "type": "boolean" },
+                    "collectPrivateIp": { "type": "boolean" },
+                    "credentialTtlSeconds": { "type": "integer", "minimum": 300, "maximum": 43200 }
+                  }
+                },
+                "sreAgent": {
                   "type": "object",
                   "additionalProperties": true,
                   "properties": {
-                    "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+                    "enabled": { "type": "boolean" },
+                    "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+                    "internalAuthToken": { "type": "string" },
+                    "service": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "properties": {
+                        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+                      }
+                    }
                   }
                 }
               }
             }
           }
         },
-        "buffer": {
+        "image": { "$ref": "#/definitions/image" },
+        "replicas": { "type": "integer", "minimum": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "inheritGlobalScheduling": { "type": "boolean" },
+        "scheduling": { "$ref": "#/definitions/scheduling" },
+        "rollout": { "$ref": "#/definitions/rollout" },
+        "podDisruptionBudget": { "$ref": "#/definitions/pdb" },
+        "probes": { "$ref": "#/definitions/probes" },
+        "networkPolicy": { "$ref": "#/definitions/networkPolicy" },
+        "drainWorker": {
           "type": "object",
-          "required": ["backend", "maxBytes", "objectStore", "drainWorker"],
+          "required": ["enabled", "rollout", "podDisruptionBudget", "terminationGracePeriodSeconds"],
           "additionalProperties": true,
+          "allOf": [{ "$ref": "#/definitions/podOptions" }],
           "properties": {
-            "backend": { "type": "string", "enum": ["disk", "object_store"] },
-            "maxBytes": { "type": "integer", "minimum": 1 },
-            "objectStore": {
-              "type": "object",
-              "required": ["endpoint", "bucket", "prefix", "region", "credentialsSecret"],
-              "additionalProperties": true,
-              "properties": {
-                "endpoint": { "type": "string" },
-                "bucket": { "type": "string" },
-                "prefix": { "type": "string", "minLength": 1 },
-                "region": { "type": "string", "minLength": 1 },
-                "credentialsSecret": {
-                  "type": "object",
-                  "required": ["name", "accessKeyKey", "secretKeyKey"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "name": { "type": "string" },
-                    "accessKeyKey": { "type": "string", "minLength": 1 },
-                    "secretKeyKey": { "type": "string", "minLength": 1 }
-                  }
-                }
-              }
-            },
-            "drainWorker": {
-              "type": "object",
-              "required": ["enabled", "rollout", "podDisruptionBudget", "terminationGracePeriodSeconds"],
-              "additionalProperties": true,
-              "allOf": [{ "$ref": "#/definitions/podOptions" }],
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "inheritGlobalScheduling": { "type": "boolean" },
-                "scheduling": { "$ref": "#/definitions/scheduling" },
-                "rollout": { "$ref": "#/definitions/rollout" },
-                "podDisruptionBudget": { "$ref": "#/definitions/pdb" },
-                "terminationGracePeriodSeconds": { "type": "integer", "minimum": 1 }
-              }
-            }
+            "enabled": { "type": "boolean" },
+            "inheritGlobalScheduling": { "type": "boolean" },
+            "scheduling": { "$ref": "#/definitions/scheduling" },
+            "rollout": { "$ref": "#/definitions/rollout" },
+            "podDisruptionBudget": { "$ref": "#/definitions/pdb" },
+            "terminationGracePeriodSeconds": { "type": "integer", "minimum": 1 }
           }
-        }
+        },
+        "auditSpoolPersistence": {
+          "type": "object",
+          "required": ["enabled", "existingClaim", "storageClass", "accessModes", "size"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "existingClaim": { "type": "string" },
+            "storageClass": { "type": "string" },
+            "accessModes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "size": { "type": "string", "minLength": 1 }
+          }
+        },
+        "adminPassword": { "not": {} },
+        "apiKeyHmacSecret": { "not": {} },
+        "auditHmacSecret": { "not": {} },
+        "sessionHmacSecret": { "not": {} },
+        "ssoTransactionSecret": { "not": {} },
+        "configEncryptionKey": { "not": {} },
+        "existingSecret": { "not": {} },
+        "environment": { "not": {} },
+        "baseUrl": { "not": {} },
+        "trustedProxyCidrs": { "not": {} },
+        "ssoReplayStore": { "not": {} },
+        "loginRateLimit": { "not": {} },
+        "ingestLimits": { "not": {} },
+        "session": { "not": {} },
+        "allowAnonymousDefault": { "not": {} },
+        "env": { "not": {} },
+        "buffer": { "not": {} },
+        "audit": { "not": {} },
+        "integrations": { "not": {} },
+        "kubernetesAccess": { "not": {} }
       },
       "allOf": [
         { "$ref": "#/definitions/podOptions" },
@@ -399,31 +524,61 @@
           "if": { "properties": { "replicas": { "minimum": 2 } }, "required": ["replicas"] },
           "then": {
             "properties": {
-              "buffer": {
+              "config": {
                 "properties": {
-                  "backend": { "const": "object_store" },
-                  "drainWorker": { "properties": { "enabled": { "const": true } } },
-                  "objectStore": {
+                  "ingest": {
                     "properties": {
-                      "bucket": { "minLength": 1 },
-                      "credentialsSecret": { "properties": { "name": { "minLength": 1 } } }
+                      "buffer": {
+                        "properties": {
+                          "backend": { "const": "object_store" },
+                          "objectStore": {
+                            "properties": {
+                              "bucket": { "minLength": 1 },
+                              "credentialsSecret": { "properties": { "name": { "minLength": 1 } } }
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
+              },
+              "drainWorker": {
+                "properties": { "enabled": { "const": true } }
               }
             }
           }
         },
         {
-          "if": { "properties": { "buffer": { "properties": { "backend": { "const": "object_store" } } } } },
+          "if": {
+            "properties": {
+              "config": {
+                "properties": {
+                  "ingest": {
+                    "properties": {
+                      "buffer": { "properties": { "backend": { "const": "object_store" } } }
+                    }
+                  }
+                }
+              }
+            }
+          },
           "then": {
             "properties": {
-              "buffer": {
+              "config": {
                 "properties": {
-                  "objectStore": {
+                  "ingest": {
                     "properties": {
-                      "bucket": { "minLength": 1 },
-                      "credentialsSecret": { "properties": { "name": { "minLength": 1 } } }
+                      "buffer": {
+                        "properties": {
+                          "objectStore": {
+                            "properties": {
+                              "bucket": { "minLength": 1 },
+                              "credentialsSecret": { "properties": { "name": { "minLength": 1 } } }
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -432,8 +587,20 @@
           }
         },
         {
-          "if": { "properties": { "buffer": { "properties": { "drainWorker": { "properties": { "enabled": { "const": true } } } } } } },
-          "then": { "properties": { "buffer": { "properties": { "backend": { "const": "object_store" } } } } }
+          "if": { "properties": { "drainWorker": { "properties": { "enabled": { "const": true } } } } },
+          "then": {
+            "properties": {
+              "config": {
+                "properties": {
+                  "ingest": {
+                    "properties": {
+                      "buffer": { "properties": { "backend": { "const": "object_store" } } }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       ]
     },

@@ -31,12 +31,20 @@ shared ingest key work without extra configuration.
 Core settings live under `rush`. Collectors and database add-ons remain at the
 top level. `global` is reserved for settings shared across components, such as
 scheduling, pod labels, image pull Secrets, and the generated ingest key.
-Query API integrations live together under `rush.queryApi.integrations`.
+Query API integrations live together under `rush.queryApi.config.integrations`.
+Application behavior is grouped under `rush.queryApi.config`; Kubernetes
+workload settings such as replicas, images, probes, resources, and scheduling
+stay directly under `rush.queryApi`.
 
 ```yaml
 rush:
   queryApi:
     replicas: 1
+    config:
+      runtime:
+        baseUrl: https://rush.example.com
+      authentication:
+        allowAnonymousDefault: false
   clickhouseStandalone:
     persistence:
       size: 100Gi
@@ -58,6 +66,40 @@ metricsAgent:
 The stack derives the in-cluster Query API URL and reuses the ingest Secret for
 OTel Collector, Vector, and metrics-agent.
 
+The Query API application groups are:
+
+| Group | Settings |
+|---|---|
+| `config.runtime` | Environment, public base URL, trusted proxies, and extra application environment variables |
+| `config.authentication` | Anonymous access, SSO replay storage, login limits, and browser sessions |
+| `config.secrets` | Generated secret presets or an externally managed bootstrap Secret |
+| `config.audit` | Audit-chain key metadata and spool limits |
+| `config.ingest` | Protocol limits and durable ingest-buffer behavior |
+| `config.integrations` | Kubernetes, Argo CD, Flux, CloudWatch, access recording, and the SRE agent |
+
+For the core chart, remove only the leading `rush.` from these paths.
+
+### Query API config migration
+
+Move existing Query API application values as follows. Prefix both sides with
+`rush.` when using the stack chart.
+
+| Previous path | New path |
+|---|---|
+| `queryApi.environment`, `baseUrl`, `trustedProxyCidrs`, `env` | `queryApi.config.runtime.*` (`env` becomes `extraEnv`) |
+| `queryApi.ssoReplayStore`, `loginRateLimit`, `session`, `allowAnonymousDefault` | `queryApi.config.authentication.*` |
+| `queryApi.adminPassword`, HMAC/encryption keys, `existingSecret` | `queryApi.config.secrets.*` |
+| `queryApi.audit.keyId`, `audit.previousKeysJson` | `queryApi.config.audit.*` |
+| `queryApi.audit.spool.maxBytes` | `queryApi.config.audit.spoolMaxBytes` |
+| `queryApi.ingestLimits` | `queryApi.config.ingest.limits` |
+| `queryApi.buffer` | `queryApi.config.ingest.buffer` |
+| `queryApi.buffer.drainWorker` | `queryApi.drainWorker` |
+| `queryApi.audit.spool.persistence` | `queryApi.auditSpoolPersistence` |
+| `queryApi.integrations` | `queryApi.config.integrations` |
+
+The schemas reject the previous paths so an upgrade cannot appear successful
+while ignoring an old override.
+
 The stack values file shows the settings most installations change. Every
 advanced core value remains available under `rush`; use the
 [core values reference](../charts/rush-observability/values.yaml) when you need
@@ -71,7 +113,7 @@ defaults. Before upgrading:
 | Version 0.1 | Version 0.2 |
 |---|---|
 | `rush-observability.*` | `rush.*` |
-| `global.sreAgent.*` | `rush.queryApi.integrations.sreAgent.*` |
+| `global.sreAgent.*` | `rush.queryApi.config.integrations.sreAgent.*` |
 
 The default stack now uses standalone ClickHouse, enables hybrid collection,
 and enables metrics-agent. Existing production installations should set their
@@ -85,9 +127,9 @@ Install `rush-observability-stack` with the same release name, then move values:
 | Old core value | Stack value |
 |---|---|
 | Core settings such as `queryApi` and `clickhouse` | `rush.queryApi`, `rush.clickhouse` |
-| `sreAgent` | `rush.queryApi.integrations.sreAgent` |
-| `infrastructure`, `argocd`, `fluxcd`, `kubernetes`, `cloudwatch` | `rush.queryApi.integrations.*` |
-| `queryApi.kubernetesAccess` | `rush.queryApi.integrations.kubernetesAccess` |
+| `sreAgent` | `rush.queryApi.config.integrations.sreAgent` |
+| `infrastructure`, `argocd`, `fluxcd`, `kubernetes`, `cloudwatch` | `rush.queryApi.config.integrations.*` |
+| `queryApi.kubernetesAccess` | `rush.queryApi.config.integrations.kubernetesAccess` |
 | `collectors` | `collectors` |
 | `collectors.ingestApiKeySecret` | `global.rush.ingestApiKeySecret` |
 | `enterprise.license.integrations.postgresCollector` | `postgresCollector` |
@@ -138,7 +180,7 @@ Use `otel` for a central OTLP gateway, `vector` for node-local logs, or
 helm upgrade rush \
   oci://ghcr.io/rushobservability/helm-charts/rush-observability-stack \
   -n observability \
-  --set rush.queryApi.integrations.sreAgent.enabled=true \
+  --set rush.queryApi.config.integrations.sreAgent.enabled=true \
   --set rush.queryApi.networkPolicy.allowExternalHttpsEgress=true
 ```
 

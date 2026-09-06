@@ -1,8 +1,8 @@
-{{- if .Values.queryApi.integrations.kubernetes.enabled }}
-{{- if and (not .Values.queryApi.integrations.kubernetes.clusterWide) (empty .Values.queryApi.integrations.kubernetes.namespaces) }}
-{{- fail "queryApi.integrations.kubernetes.namespaces must contain at least one namespace when the Kubernetes integration is enabled without clusterWide" }}
+{{- if .Values.queryApi.config.integrations.kubernetes.enabled }}
+{{- if and (not .Values.queryApi.config.integrations.kubernetes.clusterWide) (empty .Values.queryApi.config.integrations.kubernetes.namespaces) }}
+{{- fail "queryApi.config.integrations.kubernetes.namespaces must contain at least one namespace when the Kubernetes integration is enabled without clusterWide" }}
 {{- end }}
-{{- if .Values.queryApi.integrations.kubernetes.clusterWide }}
+{{- if .Values.queryApi.config.integrations.kubernetes.clusterWide }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -42,7 +42,7 @@ subjects:
     name: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.queryApi "component" "query-api") }}
     namespace: {{ .Release.Namespace }}
 {{- else }}
-{{- range $namespace := .Values.queryApi.integrations.kubernetes.namespaces }}
+{{- range $namespace := .Values.queryApi.config.integrations.kubernetes.namespaces }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role

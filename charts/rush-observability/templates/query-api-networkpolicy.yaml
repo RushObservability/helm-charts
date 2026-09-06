@@ -60,7 +60,7 @@ spec:
           port: 8123
         - protocol: TCP
           port: 9000
-    {{- if .Values.queryApi.integrations.sreAgent.enabled }}
+    {{- if .Values.queryApi.config.integrations.sreAgent.enabled }}
     - to:
         - podSelector:
             matchLabels:
@@ -105,7 +105,7 @@ spec:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}
-{{- if and .Values.queryApi.networkPolicy.enabled .Values.queryApi.buffer.drainWorker.enabled }}
+{{- if and .Values.queryApi.networkPolicy.enabled .Values.queryApi.drainWorker.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

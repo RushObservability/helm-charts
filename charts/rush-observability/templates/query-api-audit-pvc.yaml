@@ -1,4 +1,4 @@
-{{- if and .Values.queryApi.audit.spool.persistence.enabled (not .Values.queryApi.audit.spool.persistence.existingClaim) }}
+{{- if and .Values.queryApi.auditSpoolPersistence.enabled (not .Values.queryApi.auditSpoolPersistence.existingClaim) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -12,11 +12,11 @@ metadata:
     "helm.sh/resource-policy": keep
 spec:
   accessModes:
-    {{- toYaml .Values.queryApi.audit.spool.persistence.accessModes | nindent 4 }}
-  {{- with .Values.queryApi.audit.spool.persistence.storageClass }}
+    {{- toYaml .Values.queryApi.auditSpoolPersistence.accessModes | nindent 4 }}
+  {{- with .Values.queryApi.auditSpoolPersistence.storageClass }}
   storageClassName: {{ . | quote }}
   {{- end }}
   resources:
     requests:
-      storage: {{ .Values.queryApi.audit.spool.persistence.size | quote }}
+      storage: {{ .Values.queryApi.auditSpoolPersistence.size | quote }}
 {{- end }}

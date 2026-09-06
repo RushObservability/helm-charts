@@ -64,10 +64,11 @@ ingestion remains the default.
   ingestion.
 - Existing API keys become `legacy` query-only keys. Create ingest keys before
   enabling or upgrading in-chart collectors.
-- `queryApi.environment` defaults to `development`, and
-  `queryApi.allowAnonymousDefault` defaults to `false`.
+- `queryApi.config.runtime.environment` defaults to `development`, and
+  `queryApi.config.authentication.allowAnonymousDefault` defaults to `false`.
 - To allow anonymous default-tenant reads during local development, set
-  `allowAnonymousDefault: true`. `/healthz` marks the deployment insecure.
+  `queryApi.config.authentication.allowAnonymousDefault: true`. `/healthz`
+  marks the deployment insecure.
 
 Source restrictions use the direct peer address seen by Query API. If a proxy
 terminates the collector connection, allowlist the proxy CIDR instead of an
@@ -138,11 +139,11 @@ non-whitespace character, and not match a bundled common password. The default
 ```bash
 helm install rush \
   oci://ghcr.io/rushobservability/helm-charts/rush-observability \
-  --set queryApi.adminPassword="$(openssl rand -base64 18)" \
-  --set queryApi.apiKeyHmacSecret="$(openssl rand -hex 32)" \
-  --set queryApi.auditHmacSecret="$(openssl rand -hex 32)" \
-  --set queryApi.sessionHmacSecret="$(openssl rand -hex 32)" \
-  --set queryApi.integrations.sreAgent.internalAuthToken="$(openssl rand -hex 32)"
+  --set queryApi.config.secrets.adminPassword="$(openssl rand -base64 18)" \
+  --set queryApi.config.secrets.apiKeyHmacSecret="$(openssl rand -hex 32)" \
+  --set queryApi.config.secrets.auditHmacSecret="$(openssl rand -hex 32)" \
+  --set queryApi.config.secrets.sessionHmacSecret="$(openssl rand -hex 32)" \
+  --set queryApi.config.integrations.sreAgent.internalAuthToken="$(openssl rand -hex 32)"
 ```
 
 ### Option 3: Bring your own Secret
@@ -162,7 +163,7 @@ kubectl create secret generic rush-bootstrap -n <namespace> \
 helm install rush \
   oci://ghcr.io/rushobservability/helm-charts/rush-observability \
   -n <namespace> \
-  --set queryApi.existingSecret=rush-bootstrap
+  --set queryApi.config.secrets.existingSecret=rush-bootstrap
 ```
 
 Or create it declaratively:
@@ -187,7 +188,7 @@ stringData:
 HMAC secrets must be at least 32 bytes. Production startup rejects a weak audit
 key.
 
-To rotate the audit key, change `queryApi.audit.keyId` and retain old key
+To rotate the audit key, change `queryApi.config.audit.keyId` and retain old key
 material in `audit-hmac-previous-keys` as a JSON object, such as
 `{"primary":"old-secret"}`. The new segment stays linked to the previous tail,
 and historical verification selects the key by ID.
@@ -198,7 +199,7 @@ The audit outbox uses a retained 1 GiB PVC by default. It fsyncs every event
 before ordered ClickHouse delivery. `/readyz` fails and audit queue metrics rise
 while delivery is degraded.
 
-Use `queryApi.audit.spool.persistence.existingClaim` for an operator-owned PVC.
+Use `queryApi.auditSpoolPersistence.existingClaim` for an operator-owned PVC.
 Disable persistence only for local testing.
 
 ## Multi-replica SSO replay protection
@@ -209,7 +210,9 @@ IDs, OIDC transactions, and delegated SSO setup links are consumed atomically:
 ```yaml
 queryApi:
   replicas: 2
-  ssoReplayStore: auto
+  config:
+    authentication:
+      ssoReplayStore: auto
 
 clickhouse:
   keeper:
@@ -228,10 +231,12 @@ Rotation renews only the idle deadline.
 
 ```yaml
 queryApi:
-  session:
-    idleTimeoutSeconds: 1800
-    absoluteTimeoutSeconds: 86400
-    renewalIntervalSeconds: 300
+  config:
+    authentication:
+      session:
+        idleTimeoutSeconds: 1800
+        absoluteTimeoutSeconds: 86400
+        renewalIntervalSeconds: 300
 ```
 
 The renewal interval must be at least 30 seconds and shorter than the idle
