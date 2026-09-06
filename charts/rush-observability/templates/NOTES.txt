@@ -8,7 +8,7 @@ Services:
   Frontend:  svc/{{ include "rush.componentName" (dict "root" . "component" "frontend") }}:{{ .Values.frontend.service.port }}
   ClickHouse: svc/{{ include "rush.clickhouseService" . }}:8123
 
-{{- if and .Values.ingress.enabled .Values.ingress.frontend.enabled }}
+{{- if and .Values.queryApi.ingress.enabled .Values.queryApi.ingress.frontend.enabled }}
 UI: {{ include "rush.effectiveBaseUrl" . }}
 {{- else }}
 Open the UI:

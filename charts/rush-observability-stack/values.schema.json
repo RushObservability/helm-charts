@@ -16,15 +16,26 @@
         "kubernetes": { "not": {} },
         "cloudwatch": { "not": {} },
         "rushConfig": { "not": {} },
+        "ingress": { "not": {} },
         "queryApi": {
           "type": "object",
-          "required": ["config", "integrations"],
+          "required": ["config", "integrations", "ingress"],
           "additionalProperties": true,
           "properties": {
             "environment": { "not": {} },
             "baseUrl": { "not": {} },
             "existingSecret": { "not": {} },
             "kubernetesAccess": { "not": {} },
+            "ingress": {
+              "type": "object",
+              "required": ["enabled", "className", "frontend"],
+              "additionalProperties": true,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "className": { "type": "string" },
+                "frontend": { "type": "object", "required": ["host", "tls"], "additionalProperties": true }
+              }
+            },
             "config": {
               "type": "object",
               "required": ["runtime", "statsEngine", "promql", "secrets", "retention"],

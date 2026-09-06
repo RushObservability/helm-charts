@@ -50,27 +50,28 @@ that should not use the frontend proxy.
 
 ```yaml
 rush:
-  ingress:
-    enabled: true
-    className: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt
-    trustedProxyCidrs: [10.42.0.0/16]
-    frontend:
-      host: rush.example.com
-      tls:
-        enabled: true
-        secretName: rush-tls
-    api:
+  queryApi:
+    ingress:
       enabled: true
-      host: api.rush.example.com
-      tls:
+      className: nginx
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt
+      trustedProxyCidrs: [10.42.0.0/16]
+      frontend:
+        host: rush.example.com
+        tls:
+          enabled: true
+          secretName: rush-tls
+      api:
         enabled: true
-        secretName: rush-api-tls
+        host: api.rush.example.com
+        tls:
+          enabled: true
+          secretName: rush-api-tls
 ```
 
 When `queryApi.config.runtime.baseUrl` is empty, the chart derives it from the
-frontend TLS host. `ingress.trustedProxyCidrs` is merged into Query API's
+frontend TLS host. `queryApi.ingress.trustedProxyCidrs` is merged into Query API's
 trusted proxy list.
 
 If the ingress controller runs outside the release namespace, add an

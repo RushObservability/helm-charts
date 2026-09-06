@@ -158,6 +158,19 @@
         }
       }
     },
+    "ingress": {
+      "type": "object",
+      "required": ["enabled", "className", "annotations", "trustedProxyCidrs", "frontend", "api"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "className": { "type": "string" },
+        "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
+        "trustedProxyCidrs": { "type": "array", "items": { "type": "string" } },
+        "frontend": { "$ref": "#/definitions/ingressRoute" },
+        "api": { "$ref": "#/definitions/ingressRoute" }
+      }
+    },
     "podOptions": {
       "type": "object",
       "additionalProperties": true,
@@ -236,24 +249,12 @@
         }
       }
     },
-    "ingress": {
-      "type": "object",
-      "required": ["enabled", "className", "annotations", "trustedProxyCidrs", "frontend", "api"],
-      "additionalProperties": true,
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "className": { "type": "string" },
-        "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
-        "trustedProxyCidrs": { "type": "array", "items": { "type": "string" } },
-        "frontend": { "$ref": "#/definitions/ingressRoute" },
-        "api": { "$ref": "#/definitions/ingressRoute" }
-      }
-    },
     "queryApi": {
       "type": "object",
-      "required": ["config", "integrations", "image", "replicas", "port", "rollout", "podDisruptionBudget", "probes", "drainWorker", "auditSpoolPersistence"],
+      "required": ["config", "integrations", "ingress", "image", "replicas", "port", "rollout", "podDisruptionBudget", "probes", "drainWorker", "auditSpoolPersistence"],
       "additionalProperties": true,
       "properties": {
+        "ingress": { "$ref": "#/definitions/ingress" },
         "config": {
           "type": "object",
           "required": ["runtime", "authentication", "statsEngine", "promql", "secrets", "audit", "retention", "ingest"],

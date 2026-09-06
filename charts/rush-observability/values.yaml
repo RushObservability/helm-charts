@@ -147,6 +147,33 @@ queryApi:
         enabled: false
         tenantRepositories: {}
 
+  # Optional public entry points. The frontend host also proxies /api, /auth,
+  # /prom, and /metrics. Enable the API host only when a separate direct API
+  # origin is required. trustedProxyCidrs are merged into the Query API trust
+  # list so forwarded client addresses are accepted only from known proxies.
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    trustedProxyCidrs: []
+    frontend:
+      enabled: true
+      host: ""
+      path: /
+      pathType: Prefix
+      tls:
+        enabled: true
+        secretName: ""
+    api:
+      enabled: false
+      host: ""
+      path: /
+      pathType: Prefix
+      annotations: {}
+      tls:
+        enabled: true
+        secretName: ""
+
   # Kubernetes workload settings.
   # Inherit global.scheduling by default. Values under scheduling override the
   # global maps/lists; set this false to schedule this workload independently.
@@ -510,32 +537,6 @@ frontend:
     allowSameNamespaceIngress: true
     extraIngress: []
     extraEgress: []
-# Optional public entry points. The frontend host also proxies /api, /auth,
-# /prom, and /metrics. Enable the API host only when a separate direct API
-# origin is required. ingress.trustedProxyCidrs are added to query-api's trust
-# list so forwarded client addresses are accepted only from known proxies.
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-  trustedProxyCidrs: []
-  frontend:
-    enabled: true
-    host: ""
-    path: /
-    pathType: Prefix
-    tls:
-      enabled: true
-      secretName: ""
-  api:
-    enabled: false
-    host: ""
-    path: /
-    pathType: Prefix
-    annotations: {}
-    tls:
-      enabled: true
-      secretName: ""
 # ── Storage / S3 tiering — SINGLE source of truth ──
 # Lives under `global` so ONE block drives both the query-api rush.toml AND the
 # ClickHouse subchart's storage config. (Helm only shares values with subcharts

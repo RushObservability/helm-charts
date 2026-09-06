@@ -1,41 +1,41 @@
-{{- if and .Values.ingress.enabled .Values.ingress.frontend.enabled }}
+{{- if and .Values.queryApi.ingress.enabled .Values.queryApi.ingress.frontend.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "rush.componentName" (dict "root" . "component" "frontend") }}
   labels:
     {{- include "rush.componentLabels" (dict "root" . "component" "frontend") | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+  {{- with .Values.queryApi.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- with .Values.ingress.className }}
+  {{- with .Values.queryApi.ingress.className }}
   ingressClassName: {{ . | quote }}
   {{- end }}
-  {{- if .Values.ingress.frontend.tls.enabled }}
+  {{- if .Values.queryApi.ingress.frontend.tls.enabled }}
   tls:
     - hosts:
-        - {{ .Values.ingress.frontend.host | quote }}
-      {{- with .Values.ingress.frontend.tls.secretName }}
+        - {{ .Values.queryApi.ingress.frontend.host | quote }}
+      {{- with .Values.queryApi.ingress.frontend.tls.secretName }}
       secretName: {{ . | quote }}
       {{- end }}
   {{- end }}
   rules:
-    - host: {{ .Values.ingress.frontend.host | quote }}
+    - host: {{ .Values.queryApi.ingress.frontend.host | quote }}
       http:
         paths:
-          - path: {{ .Values.ingress.frontend.path | quote }}
-            pathType: {{ .Values.ingress.frontend.pathType }}
+          - path: {{ .Values.queryApi.ingress.frontend.path | quote }}
+            pathType: {{ .Values.queryApi.ingress.frontend.pathType }}
             backend:
               service:
                 name: {{ include "rush.componentName" (dict "root" . "component" "frontend") }}
                 port:
                   name: http
 {{- end }}
-{{- if and .Values.ingress.enabled .Values.ingress.api.enabled }}
+{{- if and .Values.queryApi.ingress.enabled .Values.queryApi.ingress.api.enabled }}
 ---
-{{- $annotations := mergeOverwrite (deepCopy (.Values.ingress.annotations | default dict)) (deepCopy (.Values.ingress.api.annotations | default dict)) }}
+{{- $annotations := mergeOverwrite (deepCopy (.Values.queryApi.ingress.annotations | default dict)) (deepCopy (.Values.queryApi.ingress.api.annotations | default dict)) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -47,23 +47,23 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- with .Values.ingress.className }}
+  {{- with .Values.queryApi.ingress.className }}
   ingressClassName: {{ . | quote }}
   {{- end }}
-  {{- if .Values.ingress.api.tls.enabled }}
+  {{- if .Values.queryApi.ingress.api.tls.enabled }}
   tls:
     - hosts:
-        - {{ .Values.ingress.api.host | quote }}
-      {{- with .Values.ingress.api.tls.secretName }}
+        - {{ .Values.queryApi.ingress.api.host | quote }}
+      {{- with .Values.queryApi.ingress.api.tls.secretName }}
       secretName: {{ . | quote }}
       {{- end }}
   {{- end }}
   rules:
-    - host: {{ .Values.ingress.api.host | quote }}
+    - host: {{ .Values.queryApi.ingress.api.host | quote }}
       http:
         paths:
-          - path: {{ .Values.ingress.api.path | quote }}
-            pathType: {{ .Values.ingress.api.pathType }}
+          - path: {{ .Values.queryApi.ingress.api.path | quote }}
+            pathType: {{ .Values.queryApi.ingress.api.pathType }}
             backend:
               service:
                 name: {{ include "rush.queryApiServiceName" . }}

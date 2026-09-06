@@ -33,8 +33,8 @@ top level. `global` is reserved for settings shared across components, such as
 scheduling, pod labels, image pull Secrets, and the generated ingest key.
 Query API integrations live together under `rush.queryApi.integrations`.
 Application behavior is grouped under `rush.queryApi.config`; Kubernetes
-workload settings such as replicas, images, probes, resources, and scheduling
-stay directly under `rush.queryApi`.
+workload and exposure settings such as replicas, images, ingress, probes,
+resources, and scheduling stay directly under `rush.queryApi`.
 
 ```yaml
 rush:
@@ -144,6 +144,7 @@ Install `rush-observability-stack` with the same release name, then move values:
 | `sreAgent` | `rush.queryApi.integrations.sreAgent` |
 | `infrastructure`, `argocd`, `fluxcd`, `kubernetes`, `cloudwatch` | `rush.queryApi.integrations.*` |
 | `queryApi.kubernetesAccess` | `rush.queryApi.integrations.kubernetesAccess` |
+| `ingress` | `rush.queryApi.ingress` |
 | `statsEngine` | `rush.queryApi.config.statsEngine` |
 | `promql` | `rush.queryApi.config.promql` |
 | `collectors` | `collectors` |

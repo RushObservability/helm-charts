@@ -254,15 +254,15 @@ automountServiceAccountToken: false
 {{- define "rush.effectiveBaseUrl" -}}
 {{- if .Values.queryApi.config.runtime.baseUrl -}}
 {{- trimSuffix "/" .Values.queryApi.config.runtime.baseUrl -}}
-{{- else if and .Values.ingress.enabled .Values.ingress.frontend.enabled .Values.ingress.frontend.host -}}
-{{- $scheme := ternary "https" "http" .Values.ingress.frontend.tls.enabled -}}
-{{- printf "%s://%s" $scheme .Values.ingress.frontend.host -}}
+{{- else if and .Values.queryApi.ingress.enabled .Values.queryApi.ingress.frontend.enabled .Values.queryApi.ingress.frontend.host -}}
+{{- $scheme := ternary "https" "http" .Values.queryApi.ingress.frontend.tls.enabled -}}
+{{- printf "%s://%s" $scheme .Values.queryApi.ingress.frontend.host -}}
 {{- end -}}
 {{- end -}}
 
 {{/* Explicit trusted proxies plus ingress-controller CIDRs. */}}
 {{- define "rush.trustedProxyCidrs" -}}
-{{- concat (.Values.queryApi.config.runtime.trustedProxyCidrs | default list) (.Values.ingress.trustedProxyCidrs | default list) | uniq | join "," -}}
+{{- concat (.Values.queryApi.config.runtime.trustedProxyCidrs | default list) (.Values.queryApi.ingress.trustedProxyCidrs | default list) | uniq | join "," -}}
 {{- end -}}
 
 {{/* Configurable Deployment rollout policy. Singleton workers use Recreate. */}}

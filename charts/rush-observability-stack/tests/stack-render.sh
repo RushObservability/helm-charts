@@ -214,6 +214,24 @@ if helm template stack "$chart_dir" "${common[@]}" \
   exit 1
 fi
 if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.ingress.enabled=true >/dev/null 2>&1; then
+  echo 'the removed rush.ingress block was accepted; use rush.queryApi.ingress' >&2
+  exit 1
+fi
+
+ingress="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set-string rush.queryApi.config.runtime.baseUrl= \
+  --set rush.queryApi.ingress.enabled=true \
+  --set rush.queryApi.ingress.className=nginx \
+  --set rush.queryApi.ingress.frontend.host=rush.example.test \
+  --set rush.queryApi.ingress.frontend.tls.secretName=rush-tls)"
+for expected in 'kind: Ingress' 'ingressClassName: "nginx"' 'host: "rush.example.test"' 'value: "https://rush.example.test"'; do
+  grep -Fq "$expected" <<<"$ingress" || {
+    echo "stack Query API ingress render is missing: $expected" >&2
+    exit 1
+  }
+done
+if helm template stack "$chart_dir" "${common[@]}" \
   --set rush.rushConfig.retention.defaults.metrics_days=30 >/dev/null 2>&1; then
   echo 'the removed rush.rushConfig block was accepted; use rush.queryApi.config.retention' >&2
   exit 1

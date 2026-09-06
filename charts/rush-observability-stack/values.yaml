@@ -4,7 +4,7 @@
 # Production examples are documented in docs/getting-started.md.
 #
 # Most installations only change:
-#   rush.queryApi, rush.ingress, rush.clickhouse,
+#   rush.queryApi, rush.clickhouse,
 #   global.scheduling, collectors, and metricsAgent.extraLabels.
 rush:
   queryApi:
@@ -136,6 +136,14 @@ rush:
       fluxcd:
         enabled: false
         namespace: flux-system
+    ingress:
+      enabled: false
+      className: ""
+      frontend:
+        host: ""
+        tls:
+          enabled: true
+          secretName: ""
     resources:
       requests: {cpu: 100m, memory: 128Mi}
       limits: {cpu: "1", memory: 512Mi}
@@ -148,14 +156,6 @@ rush:
       limits:
         cpu: 500m
         memory: 256Mi
-  ingress:
-    enabled: false
-    className: ""
-    frontend:
-      host: ""
-      tls:
-        enabled: true
-        secretName: ""
   clickhouse:
     mode: standalone
     # Helm dependency gate. Keep false for standalone/external and set true
