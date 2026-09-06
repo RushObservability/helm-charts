@@ -30,7 +30,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: mysql-collector
-          image: {{ include "rush.image" (dict "image" .Values.mysqlCollector.image "defaultTag" .Chart.AppVersion) | quote }}
+          image: {{ include "rush.image" (dict "root" . "image" .Values.mysqlCollector.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.mysqlCollector.image.pullPolicy }}
           env:
             - name: MYSQL_DSN

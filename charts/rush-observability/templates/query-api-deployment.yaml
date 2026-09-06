@@ -1,4 +1,4 @@
-{{- $integrations := .Values.queryApi.config.integrations -}}
+{{- $integrations := .Values.queryApi.integrations -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -38,7 +38,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: query-api
-          image: {{ include "rush.image" (dict "image" .Values.queryApi.image "defaultTag" .Chart.AppVersion) | quote }}
+          image: {{ include "rush.image" (dict "root" . "image" .Values.queryApi.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.queryApi.image.pullPolicy }}
           ports:
             - name: http
@@ -108,7 +108,7 @@ spec:
               value: {{ .Values.statsEngine.intervalSecs | default 15 | quote }}
             # PromQL staleness/lookback: how long a metric's last value carries forward.
             - name: RUSH_PROM_LOOKBACK_SECS
-              value: {{ .Values.promql.lookbackSecs | default 300 | quote }}
+              value: {{ .Values.queryApi.config.promql.lookbackSecs | quote }}
             # Operator-owned group -> tenant -> Kubernetes namespace boundary.
             # Empty/missing tenant entries deny infrastructure reads.
             - name: RUSH_INFRASTRUCTURE_TENANT_NAMESPACES

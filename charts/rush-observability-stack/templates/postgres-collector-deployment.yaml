@@ -32,7 +32,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: postgres-collector
-          image: {{ include "rush.image" (dict "image" .Values.postgresCollector.image "defaultTag" .Chart.AppVersion) | quote }}
+          image: {{ include "rush.image" (dict "root" . "image" .Values.postgresCollector.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.postgresCollector.image.pullPolicy }}
           env:
             - name: PG_DSN

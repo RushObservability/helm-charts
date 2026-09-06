@@ -37,7 +37,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: otel-collector
-          image: {{ include "rush.image" (dict "image" .Values.collectors.otel.image "defaultTag" .Chart.AppVersion) | quote }}
+          image: {{ include "rush.image" (dict "root" . "image" .Values.collectors.otel.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.collectors.otel.image.pullPolicy }}
           args:
             - "--config=/etc/otelcol/collector.yaml"

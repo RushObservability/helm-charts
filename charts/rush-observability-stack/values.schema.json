@@ -15,19 +15,19 @@
         "fluxcd": { "not": {} },
         "kubernetes": { "not": {} },
         "cloudwatch": { "not": {} },
+        "rushConfig": { "not": {} },
         "queryApi": {
           "type": "object",
-          "required": ["config"],
+          "required": ["config", "integrations"],
           "additionalProperties": true,
           "properties": {
             "environment": { "not": {} },
             "baseUrl": { "not": {} },
             "existingSecret": { "not": {} },
             "kubernetesAccess": { "not": {} },
-            "integrations": { "not": {} },
             "config": {
               "type": "object",
-              "required": ["runtime", "secrets", "integrations"],
+              "required": ["runtime", "promql", "secrets", "retention"],
               "additionalProperties": true,
               "properties": {
                 "runtime": {
@@ -39,6 +39,14 @@
                     "baseUrl": { "type": "string" }
                   }
                 },
+                "promql": {
+                  "type": "object",
+                  "required": ["lookbackSecs"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "lookbackSecs": { "type": "integer", "minimum": 1 }
+                  }
+                },
                 "secrets": {
                   "type": "object",
                   "required": ["existingSecret"],
@@ -47,17 +55,23 @@
                     "existingSecret": { "type": "string" }
                   }
                 },
-                "integrations": {
+                "retention": {
                   "type": "object",
-                  "required": ["sreAgent", "kubernetes", "argocd", "fluxcd"],
-                  "additionalProperties": true,
-                  "properties": {
-                    "sreAgent": { "type": "object", "required": ["enabled"], "additionalProperties": true },
-                    "kubernetes": { "type": "object", "required": ["enabled"], "additionalProperties": true },
-                    "argocd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true },
-                    "fluxcd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true }
-                  }
-                }
+                  "required": ["defaults", "metrics", "traces", "enforcer"],
+                  "additionalProperties": true
+                },
+                "integrations": { "not": {} }
+              }
+            },
+            "integrations": {
+              "type": "object",
+              "required": ["sreAgent", "kubernetes", "argocd", "fluxcd"],
+              "additionalProperties": true,
+              "properties": {
+                "sreAgent": { "type": "object", "required": ["enabled"], "additionalProperties": true },
+                "kubernetes": { "type": "object", "required": ["enabled"], "additionalProperties": true },
+                "argocd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true },
+                "fluxcd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true }
               }
             }
           }
@@ -66,9 +80,20 @@
     },
     "global": {
       "type": "object",
-      "required": ["rush"],
+      "required": ["image", "rush"],
       "additionalProperties": true,
       "properties": {
+        "image": {
+          "type": "object",
+          "required": ["registry"],
+          "additionalProperties": false,
+          "properties": {
+            "registry": {
+              "type": "string",
+              "pattern": "^$|^[A-Za-z0-9][A-Za-z0-9._-]*(:[0-9]+)?(/[A-Za-z0-9][A-Za-z0-9._-]*)*/?$"
+            }
+          }
+        },
         "rush": {
           "type": "object",
           "required": ["stack", "queryApi", "ingestApiKeySecret"],
