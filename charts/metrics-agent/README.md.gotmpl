@@ -1,0 +1,30 @@
+{{ template "chart.header" . }}
+{{ template "chart.badgesSection" . }}
+
+Cluster-wide metric collection from Prometheus and VictoriaMetrics CRDs.
+
+> Normally installed for you by
+> [rush-observability-stack](../rush-observability-stack). Install it directly
+> only when you want metric discovery without the rest of Rush.
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+## Install
+
+```bash
+helm upgrade --install metrics-agent \
+  oci://ghcr.io/rushobservability/helm-charts/metrics-agent \
+  --namespace observability --create-namespace \
+  --set global.rush.queryApi.serviceName=rush-query-api
+```
+
+The agent reads `ServiceMonitor`, `PodMonitor`, `Probe` and `ScrapeConfig`
+resources, plus the VictoriaMetrics equivalents, and remote-writes to Rush.
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "chart.sourcesSection" . }}

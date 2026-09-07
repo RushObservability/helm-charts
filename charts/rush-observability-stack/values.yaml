@@ -1,4 +1,4 @@
-# Start here. `rush` contains the API, UI, ClickHouse, ingress, and integration
+# -- Start here. `rush` contains the API, UI, ClickHouse, ingress, and integration
 # settings. The stack defaults are sized for a development or evaluation
 # cluster: standalone ClickHouse, a 20 GiB volume, and localhost access.
 # Production examples are documented in docs/getting-started.md.
@@ -32,7 +32,7 @@ rush:
           dryRun: false
     integrations:
       sreAgent:
-        # Optional investigation service. Provider credentials remain in Query API;
+        # -- Optional investigation service. Provider credentials remain in Query API;
         # the agent receives only short-lived requests and its internal token.
         enabled: false
         inheritGlobalScheduling: true
@@ -158,7 +158,7 @@ rush:
         memory: 256Mi
   clickhouse:
     mode: standalone
-    # Helm dependency gate. Keep false for standalone/external and set true
+    # -- Helm dependency gate. Keep false for standalone/external and set true
     # with mode=operator.
     enabled: false
     fullnameOverride: ""
@@ -186,10 +186,10 @@ rush:
         key: license-key
   imageSecurity:
     requireDigests: false
-# Shared Kubernetes defaults inherited by application and collector workloads.
+# -- Shared Kubernetes defaults inherited by application and collector workloads.
 global:
   image:
-    # Optional registry mirror for images rendered by the Rush charts.
+    # -- Optional registry mirror for images rendered by the Rush charts.
     # Example: mirror.example.com or mirror.example.com/dockerhub
     registry: ""
   scheduling:
@@ -207,7 +207,7 @@ global:
   extraVolumeMounts: []
   serviceAccount:
     annotations: {}
-  # Stack plumbing. Leave stack, ingress component names, and service details
+  # -- Stack plumbing. Leave stack, ingress component names, and service details
   # unchanged. ingestApiKeySecret may point to an externally managed Secret.
   rush:
     stack:
@@ -219,22 +219,22 @@ global:
       - mysql-collector
       - metrics-agent
     queryApi:
-      # Blank resolves to <release>-query-api.
+      # -- Blank resolves to <release>-query-api.
       serviceName: ""
       port: 8080
-    # Rush ingest-only API key shared by Query API, OTel Collector, Vector, and
+    # -- Rush ingest-only API key shared by Query API, OTel Collector, Vector, and
     # metrics-agent. By default Helm generates and registers it automatically.
     ingestApiKeySecret:
-      # Generate <release>-ingest on first install and preserve it on upgrades.
+      # -- Generate <release>-ingest on first install and preserve it on upgrades.
       # Set false only for anonymous ingest or when no authenticated add-on is used.
       autoGenerate: true
-      # Set a name to use an externally managed Secret instead.
+      # -- Set a name to use an externally managed Secret instead.
       name: ""
       key: api-key
-      # Optional explicit key. This creates the chart-managed Secret and takes
+      # -- Optional explicit key. This creates the chart-managed Secret and takes
       # precedence over automatic generation. It is stored in release history.
       value: ""
-# Telemetry collection. Hybrid means OTel receives traces and metrics while
+# -- Telemetry collection. Hybrid means OTel receives traces and metrics while
 # Vector tails Kubernetes logs. Set mode to none to use external collectors.
 collectors:
   mode: hybrid # none | otel | vector | hybrid
@@ -371,7 +371,7 @@ collectors:
       varLog: /var/log
       varLibDockerContainers: /var/lib/docker/containers
     configOverride: ""
-# Prometheus-compatible target discovery and remote write.
+# -- Prometheus-compatible target discovery and remote write.
 metricsAgent:
   enabled: true
   nameOverride: metrics-agent
@@ -382,7 +382,7 @@ metricsAgent:
   extraLabels:
     env: dev
 enterprise:
-  # Paid PostgreSQL diagnostics. Requires rush.enterprise.license and a
+  # -- Paid PostgreSQL diagnostics. Requires rush.enterprise.license and a
   # Secret containing the database DSN and Rush ingest key.
   postgresCollector:
     enabled: false
@@ -432,7 +432,7 @@ enterprise:
       limits:
         cpu: "500m"
         memory: 256Mi
-  # Paid MySQL diagnostics. Requires rush.enterprise.license and a Secret
+  # -- Paid MySQL diagnostics. Requires rush.enterprise.license and a Secret
   # containing the database DSN and Rush ingest key.
   mysqlCollector:
     enabled: false
@@ -462,7 +462,7 @@ enterprise:
     networkPolicy:
       enabled: true
       extraIngress: []
-      # Required when NetworkPolicy is enabled. Permit TCP 3306 only to the
+      # -- Required when NetworkPolicy is enabled. Permit TCP 3306 only to the
       # monitored database CIDR or namespace/pod selector.
       extraEgress: []
     image:

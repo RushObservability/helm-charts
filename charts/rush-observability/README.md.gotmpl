@@ -1,0 +1,42 @@
+{{ template "chart.header" . }}
+{{ template "chart.badgesSection" . }}
+
+The core Rush platform: Query API, frontend, anomaly processing, and ClickHouse.
+
+> **Most people should install
+> [rush-observability-stack](../rush-observability-stack) instead**, which
+> installs this chart plus log collection, an OTLP endpoint, and metric
+> discovery. Use this chart directly when you already run your own collectors.
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+## Install
+
+```bash
+helm upgrade --install rush \
+  oci://ghcr.io/rushobservability/helm-charts/rush-observability \
+  --namespace observability --create-namespace
+```
+
+## The values you are most likely to change
+
+| Value | Why |
+|---|---|
+| `queryApi.config.runtime.environment` | `production` enables fail-closed defaults |
+| `queryApi.config.runtime.baseUrl` | Required when environment is `production` |
+| `queryApi.config.runtime.trustedProxyCidrs` | Needed for correct client IPs behind an ingress |
+| `clickhouse.*` | Operator-managed, standalone, or external — see [ClickHouse](../../docs/clickhouse.md) |
+| `imageSecurity.requireDigests` | Recommended for production values files |
+
+Full guides are in [docs/](../../docs/); ready-made values files are in
+[examples/](../../examples/).
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}

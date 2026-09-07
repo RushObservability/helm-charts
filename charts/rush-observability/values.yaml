@@ -1,49 +1,49 @@
 # ── query-api ──
 imageSecurity:
-  # Recommended for every production values file. When enabled, the chart
+  # -- Recommended for every production values file. When enabled, the chart
   # refuses tag-only first-party Rush workloads.
   requireDigests: false
 queryApi:
-  # Query API application behavior. Kubernetes workload controls remain at the
+  # -- Query API application behavior. Kubernetes workload controls remain at the
   # queryApi level below this block.
   config:
     runtime:
       environment: development
-      # Required when environment is production. Use the externally reachable
+      # -- Required when environment is production. Use the externally reachable
       # HTTPS origin without a trailing path, query, or fragment.
       baseUrl: ""
-      # Forwarded client addresses are ignored unless the direct peer belongs
+      # -- Forwarded client addresses are ignored unless the direct peer belongs
       # to one of these proxy networks. Use pod/ingress CIDRs, never 0.0.0.0/0.
       trustedProxyCidrs: []
-      # Additional environment variables passed to Query API and its optional
+      # -- Additional environment variables passed to Query API and its optional
       # drain worker.
       extraEnv:
         CLICKHOUSE_DATABASE: observability
         RUST_LOG: rush_api=info,tower_http=info
     authentication:
-      # Authentication is fail-closed by default. Anonymous-default is only for
+      # -- Authentication is fail-closed by default. Anonymous-default is only for
       # local development and leaves /readyz unhealthy in production.
       allowAnonymousDefault: false
-      # One-time OIDC/SAML/setup claims. "auto" uses an in-process store for one
+      # -- One-time OIDC/SAML/setup claims. "auto" uses an in-process store for one
       # replica and ClickHouse KeeperMap for two or more replicas.
       ssoReplayStore: auto
       loginRateLimit:
         accountPerMinute: 10
         ipPerMinute: 50
-      # Browser sessions use a renewable idle deadline plus a hard maximum age.
+      # -- Browser sessions use a renewable idle deadline plus a hard maximum age.
       session:
         idleTimeoutSeconds: 1800
         absoluteTimeoutSeconds: 86400
         renewalIntervalSeconds: 300
     statsEngine:
-      # Cadence for the internal rush_stats_* gauges. Increase it to reduce the
+      # -- Cadence for the internal rush_stats_* gauges. Increase it to reduce the
       # sample volume, while keeping it short enough for rate-based queries.
       intervalSecs: 15
     promql:
-      # Staleness/lookback window for carrying the last metric value through a
+      # -- Staleness/lookback window for carrying the last metric value through a
       # range query. Keep it at least as long as the slowest scrape interval.
       lookbackSecs: 300
-    # Leave generated secrets blank to create them on first install and preserve
+    # -- Leave generated secrets blank to create them on first install and preserve
     # them across upgrades. Use existingSecret to bring your own Secret.
     secrets:
       existingSecret: ""
@@ -54,33 +54,33 @@ queryApi:
       ssoTransactionSecret: "" # RUSH_SSO_TRANSACTION_SECRET — signed OIDC/SAML transaction key
       configEncryptionKey: "" # RUSH_CONFIG_ENCRYPTION_KEY — encrypts provider secrets
     audit:
-      # Change keyId whenever auditHmacSecret is deliberately rotated. Supply old
+      # -- Change keyId whenever auditHmacSecret is deliberately rotated. Supply old
       # keys as a JSON object so historical segments remain verifiable.
       keyId: primary
       previousKeysJson: ""
       spoolMaxBytes: 268435456
     retention:
-      # Signal-wide defaults apply when no more specific rule matches.
+      # -- Signal-wide defaults apply when no more specific rule matches.
       defaults:
         metricsDays: 30
         tracesDays: 30
         logsDays: 30
-      # Metric rules are evaluated in order and may match an exact name, a name
+      # -- Metric rules are evaluated in order and may match an exact name, a name
       # regex, labels, or a combination of them.
       metrics: []
-      # - nameRegex: "^(node_|kube_)"
+      # -- - nameRegex: "^(node_|kube_)"
       #   labels: {environment: production}
       #   retainDays: 365
       # Trace rules may match a service name or one span attribute.
       traces: []
-      # - serviceName: gateway
+      # -- - serviceName: gateway
       #   retainDays: 60
       enforcer:
         enabled: true
         intervalSeconds: 3600
         dryRun: false
     ingest:
-      # Shared request/decompression/entity budgets for every telemetry protocol.
+      # -- Shared request/decompression/entity budgets for every telemetry protocol.
       limits:
         maxCompressedBytes: 8388608
         maxDecompressedBytes: 33554432
@@ -92,7 +92,7 @@ queryApi:
         maxLabelNameBytes: 256
         maxLabelValueBytes: 4096
         decodeConcurrency: 4
-      # The local disk queue is safe for one API pod. HA API replicas must share
+      # -- The local disk queue is safe for one API pod. HA API replicas must share
       # an object-store queue and use exactly one dedicated drain worker.
       buffer:
         backend: disk # disk | object_store
@@ -106,9 +106,9 @@ queryApi:
             name: "" # existing Secret; required for object_store
             accessKeyKey: access-key
             secretKeyKey: secret-key
-  # Query API integrations and their access boundaries.
+  # -- Query API integrations and their access boundaries.
   integrations:
-    # Operator-owned tenant-to-namespace grants shared by the Kubernetes,
+    # -- Operator-owned tenant-to-namespace grants shared by the Kubernetes,
     # Argo CD, and Flux integrations. Missing tenant entries deny access.
     infrastructure:
       tenantNamespaces: {}
@@ -124,7 +124,7 @@ queryApi:
       clusterWide: false # explicit opt-in; still never grants Secrets
     cloudwatch:
       enabled: false # enable CloudWatch Logs ingest endpoints
-    # The core chart does not deploy the agent; the stack chart extends this
+    # -- The core chart does not deploy the agent; the stack chart extends this
     # block with SRE agent workload settings.
     sreAgent:
       enabled: false
@@ -136,7 +136,7 @@ queryApi:
         enabled: false
         tenantRepositories: {}
 
-  # Optional public entry points. The frontend host also proxies /api, /auth,
+  # -- Optional public entry points. The frontend host also proxies /api, /auth,
   # /prom, and /metrics. Enable the API host only when a separate direct API
   # origin is required. trustedProxyCidrs are merged into the Query API trust
   # list so forwarded client addresses are accepted only from known proxies.
@@ -163,7 +163,7 @@ queryApi:
         enabled: true
         secretName: ""
 
-  # Kubernetes workload settings.
+  # -- Kubernetes workload settings.
   # Inherit global.scheduling by default. Values under scheduling override the
   # global maps/lists; set this false to schedule this workload independently.
   inheritGlobalScheduling: true
@@ -223,7 +223,7 @@ queryApi:
       timeoutSeconds: 2
       failureThreshold: 3
       successThreshold: 1
-  # Optional singleton workload that drains a shared object-store ingest queue.
+  # -- Optional singleton workload that drains a shared object-store ingest queue.
   drainWorker:
     enabled: false
     inheritGlobalScheduling: true
@@ -240,7 +240,7 @@ queryApi:
       create: false
       name: ""
       annotations: {}
-    # Recreate is deliberate: the queue contract allows exactly one drainer.
+    # -- Recreate is deliberate: the queue contract allows exactly one drainer.
     rollout:
       strategy: Recreate
       minReadySeconds: 0
@@ -258,14 +258,14 @@ queryApi:
       limits:
         cpu: "1"
         memory: 512Mi
-  # Storage for the Query API audit spool. Disable it to use an emptyDir.
+  # -- Storage for the Query API audit spool. Disable it to use an emptyDir.
   auditSpoolPersistence:
     enabled: true
     existingClaim: ""
     storageClass: ""
     accessModes: ["ReadWriteOnce"]
     size: 1Gi
-  # The preStop hook makes readiness fail before termination and lets query-api
+  # -- The preStop hook makes readiness fail before termination and lets query-api
   # flush in-memory batches plus drain its durable ingest queue. Increase this
   # for large backlogs or a ClickHouse recovery window.
   gracefulShutdown:
@@ -282,22 +282,22 @@ queryApi:
     type: ClusterIP
     port: 8080
   networkPolicy:
-    # Allows HTTP from this release namespace and restricts egress to DNS plus
+    # -- Allows HTTP from this release namespace and restricts egress to DNS plus
     # the ports used for Kubernetes/HTTPS, ClickHouse, SRE-agent, and SMTP.
     enabled: true
-    # Broad Internet access is off by default. Enable only for OIDC/SAML
+    # -- Broad Internet access is off by default. Enable only for OIDC/SAML
     # discovery, Kubernetes API access, webhooks, or other HTTPS integrations.
     allowExternalHttpsEgress: false
     allowExternalClickHouseEgress: false
     allowSmtpEgress: false
     extraIngress: []
     extraEgress: []
-# ══ Enterprise (commercial, license-gated) ══════════════════════════════
+# -- ══ Enterprise (commercial, license-gated) ══════════════════════════════
 # Commercial license configuration used by Query API. Add-on workloads are
 # installed by the rush-observability-stack chart.
 enterprise:
   # ── Commercial license ──
-  # When enabled, query-api reads RUSH_LICENSE_KEY from the named Secret and
+  # -- When enabled, query-api reads RUSH_LICENSE_KEY from the named Secret and
   # verifies it offline. Create the secret with your minted license token:
   #   kubectl create secret generic rush-license --from-literal=license-key='<token>'
   license:
@@ -305,7 +305,7 @@ enterprise:
     secret:
       name: rush-license
       key: license-key
-  # Licensed Kubernetes access recording. One switch enables the Query API
+  # -- Licensed Kubernetes access recording. One switch enables the Query API
   # endpoints and deploys the gateway used by kubectl clients.
   kubernetesAccess:
     enabled: false
@@ -316,7 +316,7 @@ enterprise:
     retainRawIp: false
     collectPrivateIp: false
     credentialTtlSeconds: 3600
-    # The gateway proxies Kubernetes API requests and sends bounded records to
+    # -- The gateway proxies Kubernetes API requests and sends bounded records to
     # Query API. Configure a commercial license and cluster identity first.
     inheritGlobalScheduling: true
     scheduling: {}
@@ -332,12 +332,12 @@ enterprise:
       create: true
       name: ""
       annotations: {}
-    # Creating the ClusterRole grants this service account permission to
+    # -- Creating the ClusterRole grants this service account permission to
     # impersonate Kubernetes users and groups. Leave it false when platform
     # administrators provide a narrower existing role binding.
     rbac:
       createImpersonationRole: false
-      # Reconcile saved group-to-role grants into native Kubernetes RBAC. The
+      # -- Reconcile saved group-to-role grants into native Kubernetes RBAC. The
       # controller needs bind and escalate privileges, so use a dedicated account.
       manageRoles: false
     image:
@@ -347,28 +347,28 @@ enterprise:
       pullPolicy: Always
     replicas: 2
     port: 8443
-    # Leave blank to use the Query API Service installed by this chart.
+    # -- Leave blank to use the Query API Service installed by this chart.
     queryApiUrl: ""
     gatewayId: ""
     clusterId: ""
-    # Tenants permitted to exchange their Rush credentials for this cluster.
+    # -- Tenants permitted to exchange their Rush credentials for this cluster.
     tenantIds: []
     failurePolicy: fail_open
-    # Trust only known proxy networks. Never use 0.0.0.0/0.
+    # -- Trust only known proxy networks. Never use 0.0.0.0/0.
     trustedProxyCidrs: []
     upstream:
       url: https://kubernetes.default.svc
       caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
       insecure: false
-      # Narrow this to the Kubernetes API endpoint CIDR when possible.
+      # -- Narrow this to the Kubernetes API endpoint CIDR when possible.
       egressCidrs: [0.0.0.0/0]
     tls:
-      # The Secret must contain tls.crt and tls.key.
+      # -- The Secret must contain tls.crt and tls.key.
       existingSecret: ""
     service:
       type: ClusterIP
       port: 443
-      # Leave blank to let Kubernetes choose a NodePort.
+      # -- Leave blank to let Kubernetes choose a NodePort.
       nodePort: null
     networkPolicy:
       enabled: true
@@ -388,7 +388,7 @@ enterprise:
         cpu: "1"
         memory: 512Mi
 # ── anomaly engine ──
-# The anomaly engine evaluates rules and sends notifications. By default the
+# -- The anomaly engine evaluates rules and sends notifications. By default the
 # query-api runs it in-process (fine for a single query-api replica). If you
 # scale queryApi.replicas > 1, enable this dedicated single-replica Deployment —
 # the chart then sets RUSH_RUN_ANOMALY_ENGINE=false on the API pods so rules are
@@ -409,7 +409,7 @@ anomalyEngine:
     create: false
     name: ""
     annotations: {}
-  # Recreate prevents duplicate rule evaluation and notification delivery.
+  # -- Recreate prevents duplicate rule evaluation and notification delivery.
   rollout:
     strategy: Recreate
     minReadySeconds: 0
@@ -425,7 +425,7 @@ anomalyEngine:
     allowSmtpEgress: false
     extraIngress: []
     extraEgress: []
-  # Inherits queryApi.image by default because both workloads run the same Rush
+  # -- Inherits queryApi.image by default because both workloads run the same Rush
   # API binary. Set only the fields that need to differ for an independent image.
   image: {}
   env:
@@ -459,13 +459,13 @@ frontend:
     tag: "0.1.6"
     digest: ""
     pullPolicy: IfNotPresent
-  # Public base URL (scheme + host, no trailing slash) of the Rush API as seen from
+  # -- Public base URL (scheme + host, no trailing slash) of the Rush API as seen from
   # outside the cluster. Surfaced to the UI wherever it shows or reaches the API by
   # its public address — e.g. the CloudWatch ingest endpoint AWS Firehose must POST
   # to. Set this when the public API host differs from where admins load the UI
   # (e.g. internal UI + public ingest endpoint). Empty → the UI uses its own origin.
   apiBaseUrl: ""
-  # The Rush frontend image runs nginx as uid 65532 and cannot bind below 1024.
+  # -- The Rush frontend image runs nginx as uid 65532 and cannot bind below 1024.
   # The Service targetPort follows this via the named "http" port.
   containerPort: 8080
   replicas: 1
@@ -517,34 +517,34 @@ frontend:
     port: 80
   networkPolicy:
     enabled: true
-    # Allows same-namespace ingress controllers and port-forward helpers.
+    # -- Allows same-namespace ingress controllers and port-forward helpers.
     allowSameNamespaceIngress: true
     extraIngress: []
     extraEgress: []
 # ── Storage / S3 tiering — SINGLE source of truth ──
-# Lives under `global` so ONE block drives both the query-api rush.toml AND the
+# -- Lives under `global` so ONE block drives both the query-api rush.toml AND the
 # ClickHouse subchart's storage config. (Helm only shares values with subcharts
 # via `global`; the ClickHouse dependency cannot see `queryApi.config`.) Enable S3
 # tiering with just this block — the chart auto-generates the ClickHouse S3 disk
 # + cold volume (see clickhouse.clickhouse.extraConfig). No hand-written XML.
 global:
   image:
-    # Optional registry mirror. This replaces an image repository's registry
+    # -- Optional registry mirror. This replaces an image repository's registry
     # while preserving its path, tag, digest, and pull policy.
     # Example: mirror.example.com or mirror.example.com/dockerhub
     registry: ""
   rush:
-    # Component labels allowed to send telemetry to Query API. The umbrella
+    # -- Component labels allowed to send telemetry to Query API. The umbrella
     # chart fills this with its enabled add-on component identities.
     queryApiIngressComponents: []
-    # The stack chart fills this in so Query API can register the same ingest
+    # -- The stack chart fills this in so Query API can register the same ingest
     # credential mounted by its collectors. Core-only installs leave it off.
     ingestApiKeySecret:
       autoGenerate: false
       name: ""
       key: api-key
       value: ""
-  # Shared scheduling defaults for core Rush workloads: Query API, frontend,
+  # -- Shared scheduling defaults for core Rush workloads: Query API, frontend,
   # and anomaly engine. ClickHouse is intentionally independent; use
   # clickhouse.clickhouse/keeper scheduling (or clickhouseStandalone scheduling)
   # for storage-optimized node groups.
@@ -555,7 +555,7 @@ global:
     tolerations: []
     affinity: {}
     topologySpreadConstraints: []
-  # Shared pod defaults. Non-empty component values replace shared lists and
+  # -- Shared pod defaults. Non-empty component values replace shared lists and
   # scalar values; annotations and labels merge with component values winning.
   podAnnotations: {}
   podLabels: {}
@@ -580,13 +580,13 @@ global:
       traces_move_after_days: 3
       logs_move_after_days: 7
 # ── ClickHouse (Altinity subchart) ──
-# Full options: https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse
+# -- Full options: https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse
 clickhouse:
-  # `enabled` controls the bundled Altinity chart dependency. Keep it true for
+  # -- `enabled` controls the bundled Altinity chart dependency. Keep it true for
   # operator mode. Set it false for standalone or external mode so the
   # operator-managed ClickHouseInstallation is not rendered as well.
   enabled: true
-  # Deployment strategy: operator (default), standalone (one StatefulSet), or
+  # -- Deployment strategy: operator (default), standalone (one StatefulSet), or
   # external (use an existing ClickHouse endpoint and Secret).
   mode: operator
   external:
@@ -594,7 +594,7 @@ clickhouse:
     credentialsSecret: "" # migration/write identity
     userKey: user
     passwordKey: password
-    # Distinct SELECT-only identity. The external ClickHouse administrator must
+    # -- Distinct SELECT-only identity. The external ClickHouse administrator must
     # grant it SELECT only on telemetry tables and let query-api own strict row policies.
     readCredentialsSecret: ""
     readUserKey: user
@@ -603,7 +603,7 @@ clickhouse:
     defaultUser:
       password_secret_name: "rushobs-clickhouse-credentials"
       allowExternalAccess: true # allow connections from other pods
-    # Tenant-scoped application read identity. Never grant this user access to
+    # -- Tenant-scoped application read identity. Never grant this user access to
     # config_* or audit_events; strict row policies are installed by query-api.
     users:
       - name: rushquery
@@ -627,7 +627,7 @@ clickhouse:
           - "GRANT SELECT ON observability.rum_replay"
           - "GRANT SELECT ON observability.signal_usage"
           - "GRANT SELECT ON observability.tenant_usage"
-    # Custom ClickHouse server configuration files.
+    # -- Custom ClickHouse server configuration files.
     # rush_settings.xml: enables the 'rush_' custom settings prefix so that
     # rush-api can set `rush_tenant_id` per-query for row-level security
     # policies. Without this, getSetting('rush_tenant_id') in row policies
@@ -639,14 +639,14 @@ clickhouse:
         <clickhouse>
           <custom_settings_prefixes>rush_</custom_settings_prefixes>
         </clickhouse>
-    # ClickHouse server image. The 26.6 line adds the direct-read and dictionary-assisted
+    # -- ClickHouse server image. The 26.6 line adds the direct-read and dictionary-assisted
     # LIKE capabilities used by log search. The Altinity operator runs upstream server
     # images fine. Pin a patch for reproducibility.
     image:
       repository: clickhouse/clickhouse-server
       tag: "26.6.1.1193"
       pullPolicy: IfNotPresent
-    # Bound ClickHouse memory. With NO limit the server sizes max_server_memory_usage to
+    # -- Bound ClickHouse memory. With NO limit the server sizes max_server_memory_usage to
     # ~90% of the whole node and the cgroup working-set grows unbounded. A hard limit caps
     # it and makes CH self-throttle instead of being OOM-killed. 8Gi is a conservative
     # baseline — SCALE WITH YOUR NODE and scale the cache sizes + memory profile below
@@ -657,30 +657,30 @@ clickhouse:
         memory: "8Gi"
       limits:
         memory: "8Gi"
-    # Scheduling for ClickHouse server pods is independent from
+    # -- Scheduling for ClickHouse server pods is independent from
     # global.scheduling, allowing a dedicated storage node group.
     nodeSelector: {}
     tolerations: []
     affinity: {}
     topologySpreadConstraints: []
-    # Cache sizes in bytes — right-size with the memory limit above. Referenced by
+    # -- Cache sizes in bytes — right-size with the memory limit above. Referenced by
     # the auto-generated extraConfig below (defaults suit the 8Gi baseline).
     markCacheSize: 2147483648 # 2 GiB
     uncompressedCacheSize: 134217728 # 128 MiB
     s3CacheSize: 21474836480 # 20 GiB local cache for S3-tiered reads
-    # Text-index caches (26.6+): tokens/header/postings deserialized from the logs
+    # -- Text-index caches (26.6+): tokens/header/postings deserialized from the logs
     # `text` search index. Queries opt in via the default profile (extraUsers below);
     # sized down from ClickHouse's 1+1+2 GiB defaults to fit the 8Gi baseline.
     textIndexTokensCacheSize: 268435456 # 256 MiB
     textIndexHeaderCacheSize: 536870912 # 512 MiB
     textIndexPostingsCacheSize: 1073741824 # 1 GiB
-    # Server log level (→ config.d/extra_config.xml <logger><level>). The operator
+    # -- Server log level (→ config.d/extra_config.xml <logger><level>). The operator
     # defaults to `debug`, which logs every executed query (full SQL, incl. user
     # search terms) — and Vector tails that back into the logs store. `information`
     # keeps warnings/errors without the per-query spam. Set `debug`/`trace` to
     # troubleshoot. Valid: none|fatal|error|warning|information|debug|trace.
     logLevel: information
-    # Server config (→ config.d/extra_config.xml) is AUTO-GENERATED from
+    # -- Server config (→ config.d/extra_config.xml) is AUTO-GENERATED from
     # global.storage.s3 by the rush.clickhouseExtraConfig template:
     #   • always emits the `tiered` storage policy (REQUIRED — migrations create
     #     tables with storage_policy='tiered'; without it CREATE TABLE fails);
@@ -690,7 +690,7 @@ clickhouse:
     # Override this string only for advanced ClickHouse storage customization.
     extraConfig: |
       {{- include "rush.clickhouseExtraConfig" . }}
-    # Per-query / per-user memory ceilings (default profile). Caps one query below the
+    # -- Per-query / per-user memory ceilings (default profile). Caps one query below the
     # server budget so it fails gracefully (MEMORY_LIMIT_EXCEEDED) instead of OOM-killing
     # the pod; GROUP BY/ORDER BY still spill to disk first. Scale with the memory limit.
     extraUsers: |
@@ -729,23 +729,23 @@ clickhouse:
     type: ClusterIP
   keeper:
     enabled: false
-    # Keeper supports an independent node selector and tolerations. zoneSpread
+    # -- Keeper supports an independent node selector and tolerations. zoneSpread
     # adds its built-in zone topology constraint.
     nodeSelector: {}
     tolerations: []
   operator:
-    # Set to false if the Altinity ClickHouse Operator is already installed
+    # -- Set to false if the Altinity ClickHouse Operator is already installed
     # cluster-wide (e.g. shared by multiple teams or managed separately).
     # Rush will still deploy the ClickHouseInstallation CRD resource; it just
     # won't install the operator Deployment, RBAC, or CRDs again.
     enabled: true
-    # Dependency-owned control-plane workload. Configure explicitly when node
+    # -- Dependency-owned control-plane workload. Configure explicitly when node
     # groups are tainted; it does not inherit global.scheduling.
     nodeSelector: {}
     tolerations: []
     affinity: {}
     topologySpreadConstraints: []
-    # Override the upstream chart's floating kubectl:latest CRD hook.
+    # -- Override the upstream chart's floating kubectl:latest CRD hook.
     crdHook:
       nodeSelector: {}
       tolerations: []
@@ -754,13 +754,13 @@ clickhouse:
         repository: bitnami/kubectl
         tag: "1.33.4"
         pullPolicy: IfNotPresent
-    # Name applied to the operator's resources (Deployment/pod, RBAC, Secret,
+    # -- Name applied to the operator's resources (Deployment/pod, RBAC, Secret,
     # ServiceMonitor, dashboards). Without this, the Altinity subchart names them
     # "<release>-operator" (e.g. rushobs-operator). Pin it to "clickhouse-operator"
     # so the operator is recognizable regardless of release name. Set to "" to
     # restore the release-prefixed default.
     fullnameOverride: clickhouse-operator
-# Standalone mode settings. This intentionally supports one ClickHouse pod;
+# -- Standalone mode settings. This intentionally supports one ClickHouse pod;
 # replicated ClickHouse still needs Keeper and is better handled by the
 # operator mode.
 clickhouseStandalone:
@@ -827,12 +827,12 @@ clickhouseStandalone:
       timeoutSeconds: 5
       failureThreshold: 3
       successThreshold: 1
-  # Standalone ClickHouse never inherits global.scheduling.
+  # -- Standalone ClickHouse never inherits global.scheduling.
   nodeSelector: {}
   tolerations: []
   affinity: {}
   topologySpreadConstraints: []
-# Native `helm test` connectivity checks. Jobs are created only as Helm test
+# -- Native `helm test` connectivity checks. Jobs are created only as Helm test
 # hooks and use the query-api image, which already contains curl.
 helmTests:
   enabled: true
