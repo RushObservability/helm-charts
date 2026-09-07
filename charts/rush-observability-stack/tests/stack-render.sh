@@ -52,6 +52,50 @@ for expected in 'value: "development"' 'value: "http://localhost:8080"' 'value: 
   }
 done
 
+retention="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.config.retention.defaults.logsDays=45)"
+grep -Fq 'logs_days = 45' <<<"$retention" || {
+  echo 'stack Query API retention override did not reach rush.toml' >&2
+  exit 1
+}
+
+promql="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.config.promql.lookbackSecs=120)"
+grep -Fq 'value: "120"' <<<"$promql" || {
+  echo 'stack Query API PromQL override did not reach RUSH_PROM_LOOKBACK_SECS' >&2
+  exit 1
+}
+
+stats_engine="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.config.statsEngine.intervalSecs=30)"
+grep -Fq 'value: "30"' <<<"$stats_engine" || {
+  echo 'stack Query API stats interval did not reach RUSH_STATS_INTERVAL_SECS' >&2
+  exit 1
+}
+
+mirrored="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set global.image.registry=mirror.example.com/cache \
+  --set rush.queryApi.integrations.sreAgent.enabled=true)"
+for expected in \
+  'image: "mirror.example.com/cache/mzupan/rush-api:0.1.25"' \
+  'image: "mirror.example.com/cache/rushobservability/frontend:0.1.6"' \
+  'image: "mirror.example.com/cache/clickhouse/clickhouse-server:26.6.1.1193"' \
+  'image: "mirror.example.com/cache/rushobservability/sre-agent:0.1.2"' \
+  'image: "mirror.example.com/cache/rushobservability/metrics-agent:0.1.0"' \
+  'image: "mirror.example.com/cache/otel/opentelemetry-collector-contrib:0.118.0"' \
+  'image: "mirror.example.com/cache/timberio/vector:0.56.0-distroless-libc"'; do
+  grep -Fq "$expected" <<<"$mirrored" || {
+    echo "stack global image registry render is missing: $expected" >&2
+    exit 1
+  }
+done
+
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set-string global.image.registry=https://mirror.example.com >/dev/null 2>&1; then
+  echo 'stack accepted a global image registry with a URL scheme' >&2
+  exit 1
+fi
+
 if helm template stack "$chart_dir" --set rush-observability.queryApi.config.runtime.environment=development >/dev/null 2>&1; then
   echo 'the removed rush-observability values block was accepted; use rush instead' >&2
   exit 1
@@ -137,7 +181,7 @@ for expected in \
 done
 
 sre="$(helm template stack "$chart_dir" "${common[@]}" \
-  --set rush.queryApi.config.integrations.sreAgent.enabled=true)"
+  --set rush.queryApi.integrations.sreAgent.enabled=true)"
 for expected in 'name: stack-sre-agent' 'value: "http://stack-query-api:8080"' 'name: SRE_AGENT_INTERNAL_TOKEN'; do
   grep -Fq "$expected" <<<"$sre" || {
     echo "SRE-agent stack render is missing: $expected" >&2
@@ -151,12 +195,37 @@ fi
 
 if helm template stack "$chart_dir" "${common[@]}" \
   --set rush.sreAgent.enabled=true >/dev/null 2>&1; then
-  echo 'the removed rush.sreAgent block was accepted; use rush.queryApi.config.integrations.sreAgent' >&2
+  echo 'the removed rush.sreAgent block was accepted; use rush.queryApi.integrations.sreAgent' >&2
   exit 1
 fi
 if helm template stack "$chart_dir" "${common[@]}" \
   --set rush.queryApi.kubernetesAccess.enabled=true >/dev/null 2>&1; then
-  echo 'the removed rush.queryApi.kubernetesAccess block was accepted; use rush.queryApi.config.integrations.kubernetesAccess' >&2
+  echo 'the removed rush.queryApi.kubernetesAccess block was accepted; use rush.enterprise.kubernetesAccess' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.integrations.kubernetesAccess.enabled=true >/dev/null 2>&1; then
+  echo 'the paid Kubernetes access settings were accepted under regular integrations; use rush.enterprise.kubernetesAccess' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.kubernetesAccessGateway.enabled=true >/dev/null 2>&1; then
+  echo 'the removed rush.kubernetesAccessGateway block was accepted; use rush.enterprise.kubernetesAccess' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.enterprise.kubernetesAccessGateway.enabled=true >/dev/null 2>&1; then
+  echo 'the separate gateway block was accepted; use rush.enterprise.kubernetesAccess' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set postgresCollector.enabled=true >/dev/null 2>&1; then
+  echo 'the removed postgresCollector block was accepted; use enterprise.postgresCollector' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set mysqlCollector.enabled=true >/dev/null 2>&1; then
+  echo 'the removed mysqlCollector block was accepted; use enterprise.mysqlCollector' >&2
   exit 1
 fi
 if helm template stack "$chart_dir" "${common[@]}" \
@@ -165,17 +234,45 @@ if helm template stack "$chart_dir" "${common[@]}" \
   exit 1
 fi
 if helm template stack "$chart_dir" "${common[@]}" \
-  --set rush.queryApi.integrations.sreAgent.enabled=true >/dev/null 2>&1; then
-  echo 'the removed rush.queryApi.integrations block was accepted; use rush.queryApi.config.integrations' >&2
+  --set rush.queryApi.config.integrations.sreAgent.enabled=true >/dev/null 2>&1; then
+  echo 'the removed rush.queryApi.config.integrations block was accepted; use rush.queryApi.integrations' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.ingress.enabled=true >/dev/null 2>&1; then
+  echo 'the removed rush.ingress block was accepted; use rush.queryApi.ingress' >&2
+  exit 1
+fi
+
+ingress="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set-string rush.queryApi.config.runtime.baseUrl= \
+  --set rush.queryApi.ingress.enabled=true \
+  --set rush.queryApi.ingress.className=nginx \
+  --set rush.queryApi.ingress.frontend.host=rush.example.test \
+  --set rush.queryApi.ingress.frontend.tls.secretName=rush-tls)"
+for expected in 'kind: Ingress' 'ingressClassName: "nginx"' 'host: "rush.example.test"' 'value: "https://rush.example.test"'; do
+  grep -Fq "$expected" <<<"$ingress" || {
+    echo "stack Query API ingress render is missing: $expected" >&2
+    exit 1
+  }
+done
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.rushConfig.retention.defaults.metrics_days=30 >/dev/null 2>&1; then
+  echo 'the removed rush.rushConfig block was accepted; use rush.queryApi.config.retention' >&2
+  exit 1
+fi
+if helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.config.retention.defaults.metrics_days=30 >/dev/null 2>&1; then
+  echo 'a snake_case retention key was accepted; use camelCase under rush.queryApi.config.retention' >&2
   exit 1
 fi
 
 integrations="$(helm template stack "$chart_dir" "${common[@]}" \
-  --set rush.queryApi.config.integrations.argocd.enabled=true \
-  --set rush.queryApi.config.integrations.fluxcd.enabled=true \
-  --set rush.queryApi.config.integrations.kubernetes.enabled=true \
-  --set 'rush.queryApi.config.integrations.kubernetes.namespaces[0]=apps' \
-  --set rush.queryApi.config.integrations.cloudwatch.enabled=true)"
+  --set rush.queryApi.integrations.argocd.enabled=true \
+  --set rush.queryApi.integrations.fluxcd.enabled=true \
+  --set rush.queryApi.integrations.kubernetes.enabled=true \
+  --set 'rush.queryApi.integrations.kubernetes.namespaces[0]=apps' \
+  --set rush.queryApi.integrations.cloudwatch.enabled=true)"
 for expected in 'name: ARGOCD_NAMESPACE' 'name: FLUXCD_NAMESPACE' 'name: KUBERNETES_ENABLED' 'name: CLOUDWATCH_ENABLED'; do
   grep -Fq "$expected" <<<"$integrations" || {
     echo "stack integration render is missing: $expected" >&2
@@ -184,10 +281,11 @@ for expected in 'name: ARGOCD_NAMESPACE' 'name: FLUXCD_NAMESPACE' 'name: KUBERNE
 done
 
 postgres="$(helm template stack "$chart_dir" "${common[@]}" \
-  --set postgresCollector.enabled=true \
+  --set global.image.registry=mirror.example.com/cache \
+  --set enterprise.postgresCollector.enabled=true \
   --set rush.enterprise.license.enabled=true \
-  --set-json 'postgresCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":5432}]}]')"
-for expected in 'name: stack-postgres-collector' 'name: RUSH_LICENSE_KEY' 'value: "http://stack-query-api:8080"'; do
+  --set-json 'enterprise.postgresCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":5432}]}]')"
+for expected in 'name: stack-postgres-collector' 'name: RUSH_LICENSE_KEY' 'value: "http://stack-query-api:8080"' 'image: "mirror.example.com/cache/mzupan/postgres-collector:0.1.0"'; do
   grep -Fq "$expected" <<<"$postgres" || {
     echo "Postgres stack render is missing: $expected" >&2
     exit 1
@@ -195,10 +293,11 @@ for expected in 'name: stack-postgres-collector' 'name: RUSH_LICENSE_KEY' 'value
 done
 
 mysql="$(helm template stack "$chart_dir" "${common[@]}" \
-  --set mysqlCollector.enabled=true \
+  --set global.image.registry=mirror.example.com/cache \
+  --set enterprise.mysqlCollector.enabled=true \
   --set rush.enterprise.license.enabled=true \
-  --set-json 'mysqlCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":3306}]}]')"
-for expected in 'name: stack-mysql-collector' 'name: MYSQL_DSN' 'name: RUSH_LICENSE_KEY' 'value: "http://stack-query-api:8080"'; do
+  --set-json 'enterprise.mysqlCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.0.0.0/8"}}],"ports":[{"protocol":"TCP","port":3306}]}]')"
+for expected in 'name: stack-mysql-collector' 'name: MYSQL_DSN' 'name: RUSH_LICENSE_KEY' 'value: "http://stack-query-api:8080"' 'image: "mirror.example.com/cache/mzupan/mysql-collector:0.1.0"'; do
   grep -Fq "$expected" <<<"$mysql" || {
     echo "MySQL stack render is missing: $expected" >&2
     exit 1

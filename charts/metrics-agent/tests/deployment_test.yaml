@@ -53,6 +53,19 @@ tests:
           path: spec.template.spec.containers[0].image
           value: ghcr.io/rushobservability/metrics-agent@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
+  - it: replaces the source registry with the global mirror
+    set:
+      global:
+        image:
+          registry: mirror.example.com/cache
+      image:
+        repository: ghcr.io/rushobservability/metrics-agent
+        tag: 1.2.3
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: mirror.example.com/cache/rushobservability/metrics-agent:1.2.3
+
   - it: renders extra labels for every remote-write series
     set:
       extraLabels:

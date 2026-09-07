@@ -35,14 +35,14 @@ for component in frontend query-api anomaly-engine; do
 done
 
 ingress="$(helm template remaining "$chart_dir" \
-  --set ingress.enabled=true \
-  --set ingress.className=nginx \
-  --set ingress.frontend.host=rush.example.test \
-  --set ingress.frontend.tls.secretName=rush-tls \
-  --set ingress.api.enabled=true \
-  --set ingress.api.host=api.rush.example.test \
-  --set ingress.api.tls.secretName=rush-api-tls \
-  --set ingress.trustedProxyCidrs[0]=10.42.0.0/16)"
+  --set queryApi.ingress.enabled=true \
+  --set queryApi.ingress.className=nginx \
+  --set queryApi.ingress.frontend.host=rush.example.test \
+  --set queryApi.ingress.frontend.tls.secretName=rush-tls \
+  --set queryApi.ingress.api.enabled=true \
+  --set queryApi.ingress.api.host=api.rush.example.test \
+  --set queryApi.ingress.api.tls.secretName=rush-api-tls \
+  --set queryApi.ingress.trustedProxyCidrs[0]=10.42.0.0/16)"
 for expected in \
   'kind: Ingress' \
   'ingressClassName: "nginx"' \
@@ -58,19 +58,19 @@ done
 
 if helm template remaining "$chart_dir" \
   --set queryApi.config.runtime.environment=production \
-  --set ingress.enabled=true \
-  --set ingress.frontend.host=rush.example.test \
-  --set ingress.api.enabled=true \
-  --set ingress.api.host=rush.example.test >/dev/null 2>&1; then
+  --set queryApi.ingress.enabled=true \
+  --set queryApi.ingress.frontend.host=rush.example.test \
+  --set queryApi.ingress.api.enabled=true \
+  --set queryApi.ingress.api.host=rush.example.test >/dev/null 2>&1; then
   echo 'Ingress accepted colliding frontend and API hosts' >&2
   exit 1
 fi
 
 if helm template remaining "$chart_dir" \
   --set queryApi.config.runtime.environment=production \
-  --set ingress.enabled=true \
-  --set ingress.frontend.host=rush.example.test \
-  --set ingress.frontend.tls.enabled=false >/dev/null 2>&1; then
+  --set queryApi.ingress.enabled=true \
+  --set queryApi.ingress.frontend.host=rush.example.test \
+  --set queryApi.ingress.frontend.tls.enabled=false >/dev/null 2>&1; then
   echo 'production Ingress accepted an automatically derived HTTP base URL' >&2
   exit 1
 fi

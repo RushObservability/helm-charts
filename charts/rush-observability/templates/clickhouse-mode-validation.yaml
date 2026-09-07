@@ -2,10 +2,10 @@
 {{- fail "clickhouse.mode must be one of: operator, standalone, external" -}}
 {{- end -}}
 {{- if hasKey .Values.global "sreAgent" -}}
-{{- fail "global.sreAgent moved to queryApi.config.integrations.sreAgent" -}}
+{{- fail "global.sreAgent moved to queryApi.integrations.sreAgent" -}}
 {{- end -}}
 {{- if hasKey .Values.queryApi "kubernetesAccess" -}}
-{{- fail "queryApi.kubernetesAccess moved to queryApi.config.integrations.kubernetesAccess" -}}
+{{- fail "queryApi.kubernetesAccess moved to enterprise.kubernetesAccess" -}}
 {{- end -}}
 {{- if and (eq .Values.clickhouse.mode "external") .Values.clickhouse.enabled -}}
 {{- fail "clickhouse.enabled must be false when clickhouse.mode=external; the external mode does not deploy the bundled ClickHouse chart" -}}
@@ -16,7 +16,7 @@
 {{- if and (eq .Values.clickhouse.mode "operator") (not .Values.clickhouse.enabled) -}}
 {{- fail "clickhouse.enabled must be true when clickhouse.mode=operator; operator mode deploys the ClickHouse dependency" -}}
 {{- end -}}
-{{- if and (eq .Values.queryApi.config.runtime.environment "production") (not .Values.queryApi.config.runtime.baseUrl) (not (and .Values.ingress.enabled .Values.ingress.frontend.enabled .Values.ingress.frontend.host .Values.ingress.frontend.tls.enabled)) -}}
+{{- if and (eq .Values.queryApi.config.runtime.environment "production") (not .Values.queryApi.config.runtime.baseUrl) (not (and .Values.queryApi.ingress.enabled .Values.queryApi.ingress.frontend.enabled .Values.queryApi.ingress.frontend.host .Values.queryApi.ingress.frontend.tls.enabled)) -}}
 {{- fail "production mode requires queryApi.config.runtime.baseUrl or an enabled HTTPS frontend ingress with a host" -}}
 {{- end -}}
 {{- if not (has .Values.queryApi.config.authentication.ssoReplayStore (list "auto" "local" "keeper")) -}}
@@ -48,12 +48,12 @@
 {{- if not .Values.queryApi.config.ingest.buffer.objectStore.credentialsSecret.name -}}{{- fail "queryApi.config.ingest.buffer.objectStore.credentialsSecret.name is required when queryApi.config.ingest.buffer.backend=object_store" -}}{{- end -}}
 {{- if and .Values.queryApi.networkPolicy.enabled (not .Values.queryApi.networkPolicy.allowExternalHttpsEgress) (empty .Values.queryApi.networkPolicy.extraEgress) -}}{{- fail "object-store buffering with queryApi.networkPolicy.enabled requires allowExternalHttpsEgress=true or an explicit queryApi.networkPolicy.extraEgress rule" -}}{{- end -}}
 {{- end -}}
-{{- if .Values.ingress.enabled -}}
-{{- if not .Values.ingress.frontend.enabled -}}{{- fail "ingress.enabled=true requires ingress.frontend.enabled=true; the frontend is the canonical browser and SSO origin" -}}{{- end -}}
-{{- if not .Values.ingress.frontend.host -}}{{- fail "ingress.frontend.host is required when ingress is enabled" -}}{{- end -}}
-{{- if and (eq .Values.queryApi.config.runtime.environment "production") (not .Values.queryApi.config.runtime.baseUrl) (not .Values.ingress.frontend.tls.enabled) -}}{{- fail "production ingress must enable frontend TLS or set queryApi.config.runtime.baseUrl to an explicit HTTPS origin" -}}{{- end -}}
-{{- if and .Values.ingress.api.enabled (not .Values.ingress.api.host) -}}{{- fail "ingress.api.host is required when ingress.api.enabled=true" -}}{{- end -}}
-{{- if and .Values.ingress.api.enabled (eq .Values.ingress.api.host .Values.ingress.frontend.host) -}}{{- fail "ingress.api.host must differ from ingress.frontend.host; the frontend already proxies API paths on its own host" -}}{{- end -}}
+{{- if .Values.queryApi.ingress.enabled -}}
+{{- if not .Values.queryApi.ingress.frontend.enabled -}}{{- fail "queryApi.ingress.enabled=true requires queryApi.ingress.frontend.enabled=true; the frontend is the canonical browser and SSO origin" -}}{{- end -}}
+{{- if not .Values.queryApi.ingress.frontend.host -}}{{- fail "queryApi.ingress.frontend.host is required when ingress is enabled" -}}{{- end -}}
+{{- if and (eq .Values.queryApi.config.runtime.environment "production") (not .Values.queryApi.config.runtime.baseUrl) (not .Values.queryApi.ingress.frontend.tls.enabled) -}}{{- fail "production ingress must enable frontend TLS or set queryApi.config.runtime.baseUrl to an explicit HTTPS origin" -}}{{- end -}}
+{{- if and .Values.queryApi.ingress.api.enabled (not .Values.queryApi.ingress.api.host) -}}{{- fail "queryApi.ingress.api.host is required when queryApi.ingress.api.enabled=true" -}}{{- end -}}
+{{- if and .Values.queryApi.ingress.api.enabled (eq .Values.queryApi.ingress.api.host .Values.queryApi.ingress.frontend.host) -}}{{- fail "queryApi.ingress.api.host must differ from queryApi.ingress.frontend.host; the frontend already proxies API paths on its own host" -}}{{- end -}}
 {{- end -}}
 {{- if and (eq .Values.clickhouse.mode "external") .Values.queryApi.networkPolicy.enabled (not .Values.queryApi.networkPolicy.allowExternalClickHouseEgress) (empty .Values.queryApi.networkPolicy.extraEgress) -}}
 {{- fail "external ClickHouse with queryApi.networkPolicy.enabled requires allowExternalClickHouseEgress=true or an explicit queryApi.networkPolicy.extraEgress rule" -}}

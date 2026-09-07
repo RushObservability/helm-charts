@@ -1,4 +1,4 @@
-{{- if and .Values.postgresCollector.enabled .Values.postgresCollector.networkPolicy.enabled }}
+{{- if and .Values.enterprise.postgresCollector.enabled .Values.enterprise.postgresCollector.networkPolicy.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -10,7 +10,7 @@ spec:
     matchLabels:
       {{- include "rush.selectorLabels" (dict "root" . "component" "postgres-collector") | nindent 6 }}
   policyTypes: [Ingress, Egress]
-  {{- with .Values.postgresCollector.networkPolicy.extraIngress }}
+  {{- with .Values.enterprise.postgresCollector.networkPolicy.extraIngress }}
   ingress:
     {{- toYaml . | nindent 4 }}
   {{- else }}
@@ -30,12 +30,12 @@ spec:
               {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
       ports:
         - { protocol: TCP, port: http }
-    {{- with .Values.postgresCollector.networkPolicy.extraEgress }}
+    {{- with .Values.enterprise.postgresCollector.networkPolicy.extraEgress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}
 
-{{- if and .Values.mysqlCollector.enabled .Values.mysqlCollector.networkPolicy.enabled }}
+{{- if and .Values.enterprise.mysqlCollector.enabled .Values.enterprise.mysqlCollector.networkPolicy.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -48,7 +48,7 @@ spec:
     matchLabels:
       {{- include "rush.selectorLabels" (dict "root" . "component" "mysql-collector") | nindent 6 }}
   policyTypes: [Ingress, Egress]
-  {{- with .Values.mysqlCollector.networkPolicy.extraIngress }}
+  {{- with .Values.enterprise.mysqlCollector.networkPolicy.extraIngress }}
   ingress:
     {{- toYaml . | nindent 4 }}
   {{- else }}
@@ -68,7 +68,7 @@ spec:
               {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
       ports:
         - { protocol: TCP, port: http }
-    {{- with .Values.mysqlCollector.networkPolicy.extraEgress }}
+    {{- with .Values.enterprise.mysqlCollector.networkPolicy.extraEgress }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 {{- end }}

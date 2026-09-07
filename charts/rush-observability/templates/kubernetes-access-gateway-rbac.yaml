@@ -1,4 +1,4 @@
-{{- if and .Values.kubernetesAccessGateway.enabled (or .Values.kubernetesAccessGateway.rbac.createImpersonationRole .Values.kubernetesAccessGateway.rbac.manageRoles) }}
+{{- if and .Values.enterprise.kubernetesAccess.enabled (or .Values.enterprise.kubernetesAccess.rbac.createImpersonationRole .Values.enterprise.kubernetesAccess.rbac.manageRoles) }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -9,7 +9,7 @@ rules:
   - apiGroups: [""]
     resources: ["users", "groups"]
     verbs: ["impersonate"]
-  {{- if .Values.kubernetesAccessGateway.rbac.manageRoles }}
+  {{- if .Values.enterprise.kubernetesAccess.rbac.manageRoles }}
   # Required for the opt-in Settings-driven RBAC reconciler. Kubernetes checks
   # bind on referenced roles and escalate when a custom ClusterRole is applied.
   - apiGroups: ["rbac.authorization.k8s.io"]
@@ -32,6 +32,6 @@ roleRef:
   name: {{ include "rush.componentName" (dict "root" . "component" "kubernetes-access-gateway-control-plane") }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.kubernetesAccessGateway "component" "kubernetes-access-gateway") }}
+    name: {{ include "rush.serviceAccountName" (dict "root" . "workload" .Values.enterprise.kubernetesAccess "component" "kubernetes-access-gateway") }}
     namespace: {{ .Release.Namespace }}
 {{- end }}

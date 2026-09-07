@@ -31,7 +31,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install Helm
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
 
       - name: Build missing chart dependencies
         run: |
@@ -43,6 +43,22 @@ jobs:
             helm repo add altinity https://helm.altinity.com || true
             helm dependency build "$chart"
           done
+
+      - name: Check chart READMEs are up to date
+        # helm-docs regenerates every chart README from Chart.yaml and the
+        # `# --` comments in values.yaml. If the committed README differs, the
+        # values table has drifted from the values file.
+        run: |
+          curl -fsSL -o /tmp/helm-docs.tar.gz \
+            https://github.com/norwoodj/helm-docs/releases/download/v1.14.2/helm-docs_1.14.2_Linux_x86_64.tar.gz
+          echo "a8cf72ada34fad93285ba2a452b38bdc5bd52cc9a571236244ec31022928d6cc  /tmp/helm-docs.tar.gz" | sha256sum -c - || {
+            echo "::error::helm-docs checksum mismatch"; exit 1; }
+          tar -xzf /tmp/helm-docs.tar.gz -C /tmp helm-docs
+          /tmp/helm-docs --chart-search-root=charts
+          if ! git diff --exit-code -- 'charts/*/README.md'; then
+            echo "::error::Chart READMEs are stale. Run: helm-docs --chart-search-root=charts"
+            exit 1
+          fi
 
       - name: Lint charts
         run: |

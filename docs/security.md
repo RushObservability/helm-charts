@@ -74,6 +74,48 @@ Source restrictions use the direct peer address seen by Query API. If a proxy
 terminates the collector connection, allowlist the proxy CIDR instead of an
 untrusted forwarding header.
 
+## Registry mirrors
+
+Set one top-level registry to redirect images rendered by the Rush charts to an
+internal mirror. Do not include `http://` or `https://`.
+
+```yaml
+global:
+  image:
+    registry: registry.example.com/rush-mirror
+```
+
+The registry replaces any registry already present in an image repository. The
+repository path, tag, digest, and pull policy stay component-specific. For
+example, `ghcr.io/rushobservability/frontend` becomes
+`registry.example.com/rush-mirror/rushobservability/frontend`. The stack chart
+uses the same top-level value; do not place it under `rush`.
+
+This setting covers core workloads, standalone ClickHouse, the SRE agent,
+collectors, and metrics-agent. The upstream Altinity operator chart does not
+consume this value. Mirror operator-mode ClickHouse images with its repository
+values:
+
+```yaml
+rush: # Remove this level when installing the core chart directly.
+  clickhouse:
+    clickhouse:
+      image:
+        repository: registry.example.com/rush-mirror/clickhouse/clickhouse-server
+    keeper:
+      image: registry.example.com/rush-mirror/altinity/clickhouse-keeper
+    operator:
+      operator:
+        image:
+          repository: registry.example.com/rush-mirror/altinity/clickhouse-operator
+      metrics:
+        image:
+          repository: registry.example.com/rush-mirror/altinity/metrics-exporter
+      crdHook:
+        image:
+          repository: registry.example.com/rush-mirror/bitnami/kubectl
+```
+
 ## Immutable production images
 
 Every Rush image supports a `digest`. A valid `sha256:<64 lowercase hex
@@ -143,7 +185,7 @@ helm install rush \
   --set queryApi.config.secrets.apiKeyHmacSecret="$(openssl rand -hex 32)" \
   --set queryApi.config.secrets.auditHmacSecret="$(openssl rand -hex 32)" \
   --set queryApi.config.secrets.sessionHmacSecret="$(openssl rand -hex 32)" \
-  --set queryApi.config.integrations.sreAgent.internalAuthToken="$(openssl rand -hex 32)"
+  --set queryApi.integrations.sreAgent.internalAuthToken="$(openssl rand -hex 32)"
 ```
 
 ### Option 3: Bring your own Secret

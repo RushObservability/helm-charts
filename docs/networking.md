@@ -24,21 +24,20 @@ rush:
       allowSmtpEgress: false
       extraIngress: []                 # ingress controller or external collector
       extraEgress: []
-    config:
-      integrations:
-        sreAgent:
-          enabled: true
-          networkPolicy:
-            allowExternalHttpsEgress: true # GitHub or an external Kubernetes API
+    integrations:
+      sreAgent:
+        enabled: true
+        networkPolicy:
+          allowExternalHttpsEgress: true # GitHub or an external Kubernetes API
 ```
 
 LLM provider traffic leaves from query-api, not the SRE agent. Allow query-api
 HTTPS egress when a configured provider is outside the cluster.
 
 The stack's PostgreSQL collector needs an explicit
-`postgresCollector.networkPolicy.extraEgress` rule for the monitored database.
+`enterprise.postgresCollector.networkPolicy.extraEgress` rule for the monitored database.
 The MySQL collector has the same requirement under
-`mysqlCollector.networkPolicy.extraEgress`; limit it to TCP 3306 on the target.
+`enterprise.mysqlCollector.networkPolicy.extraEgress`; limit it to TCP 3306 on the target.
 External ClickHouse needs
 `allowExternalClickHouseEgress` or an explicit rule. The chart fails rendering
 when a required external service would be unreachable.
@@ -51,27 +50,28 @@ that should not use the frontend proxy.
 
 ```yaml
 rush:
-  ingress:
-    enabled: true
-    className: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt
-    trustedProxyCidrs: [10.42.0.0/16]
-    frontend:
-      host: rush.example.com
-      tls:
-        enabled: true
-        secretName: rush-tls
-    api:
+  queryApi:
+    ingress:
       enabled: true
-      host: api.rush.example.com
-      tls:
+      className: nginx
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt
+      trustedProxyCidrs: [10.42.0.0/16]
+      frontend:
+        host: rush.example.com
+        tls:
+          enabled: true
+          secretName: rush-tls
+      api:
         enabled: true
-        secretName: rush-api-tls
+        host: api.rush.example.com
+        tls:
+          enabled: true
+          secretName: rush-api-tls
 ```
 
 When `queryApi.config.runtime.baseUrl` is empty, the chart derives it from the
-frontend TLS host. `ingress.trustedProxyCidrs` is merged into Query API's
+frontend TLS host. `queryApi.ingress.trustedProxyCidrs` is merged into Query API's
 trusted proxy list.
 
 If the ingress controller runs outside the release namespace, add an

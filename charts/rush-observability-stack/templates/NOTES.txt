@@ -17,10 +17,10 @@ Rush Observability is installed.
 Query API inside the cluster: {{ include "rush.stackQueryApiUrl" . }}
 
 Installed components:
-  SRE agent:          {{ ternary "yes" "no" .Values.rush.queryApi.config.integrations.sreAgent.enabled }}
+  SRE agent:          {{ ternary "yes" "no" .Values.rush.queryApi.integrations.sreAgent.enabled }}
   Metrics agent:      {{ ternary "yes" "no" .Values.metricsAgent.enabled }}
-  PostgreSQL add-on:  {{ ternary "yes" "no" .Values.postgresCollector.enabled }}
-  MySQL add-on:       {{ ternary "yes" "no" .Values.mysqlCollector.enabled }}
+  PostgreSQL add-on:  {{ ternary "yes" "no" .Values.enterprise.postgresCollector.enabled }}
+  MySQL add-on:       {{ ternary "yes" "no" .Values.enterprise.mysqlCollector.enabled }}
   Collector topology: {{ .Values.collectors.mode }}
 
 Ingest API key:

@@ -1,7 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["rush", "global", "collectors", "metricsAgent", "postgresCollector", "mysqlCollector"],
+  "required": ["rush", "global", "collectors", "metricsAgent", "enterprise"],
+  "allOf": [
+    {
+      "not": {
+        "anyOf": [
+          { "required": ["postgresCollector"] },
+          { "required": ["mysqlCollector"] }
+        ]
+      }
+    }
+  ],
   "additionalProperties": false,
   "properties": {
     "rush": {
@@ -15,19 +25,30 @@
         "fluxcd": { "not": {} },
         "kubernetes": { "not": {} },
         "cloudwatch": { "not": {} },
+        "rushConfig": { "not": {} },
+        "ingress": { "not": {} },
         "queryApi": {
           "type": "object",
-          "required": ["config"],
+          "required": ["config", "integrations", "ingress"],
           "additionalProperties": true,
           "properties": {
             "environment": { "not": {} },
             "baseUrl": { "not": {} },
             "existingSecret": { "not": {} },
             "kubernetesAccess": { "not": {} },
-            "integrations": { "not": {} },
+            "ingress": {
+              "type": "object",
+              "required": ["enabled", "className", "frontend"],
+              "additionalProperties": true,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "className": { "type": "string" },
+                "frontend": { "type": "object", "required": ["host", "tls"], "additionalProperties": true }
+              }
+            },
             "config": {
               "type": "object",
-              "required": ["runtime", "secrets", "integrations"],
+              "required": ["runtime", "statsEngine", "promql", "secrets", "retention"],
               "additionalProperties": true,
               "properties": {
                 "runtime": {
@@ -39,6 +60,22 @@
                     "baseUrl": { "type": "string" }
                   }
                 },
+                "promql": {
+                  "type": "object",
+                  "required": ["lookbackSecs"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "lookbackSecs": { "type": "integer", "minimum": 1 }
+                  }
+                },
+                "statsEngine": {
+                  "type": "object",
+                  "required": ["intervalSecs"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "intervalSecs": { "type": "integer", "minimum": 1 }
+                  }
+                },
                 "secrets": {
                   "type": "object",
                   "required": ["existingSecret"],
@@ -47,17 +84,24 @@
                     "existingSecret": { "type": "string" }
                   }
                 },
-                "integrations": {
+                "retention": {
                   "type": "object",
-                  "required": ["sreAgent", "kubernetes", "argocd", "fluxcd"],
-                  "additionalProperties": true,
-                  "properties": {
-                    "sreAgent": { "type": "object", "required": ["enabled"], "additionalProperties": true },
-                    "kubernetes": { "type": "object", "required": ["enabled"], "additionalProperties": true },
-                    "argocd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true },
-                    "fluxcd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true }
-                  }
-                }
+                  "required": ["defaults", "metrics", "traces", "enforcer"],
+                  "additionalProperties": true
+                },
+                "integrations": { "not": {} }
+              }
+            },
+            "integrations": {
+              "type": "object",
+              "required": ["sreAgent", "kubernetes", "argocd", "fluxcd"],
+              "additionalProperties": true,
+              "properties": {
+                "sreAgent": { "type": "object", "required": ["enabled"], "additionalProperties": true },
+                "kubernetes": { "type": "object", "required": ["enabled"], "additionalProperties": true },
+                "argocd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true },
+                "fluxcd": { "type": "object", "required": ["enabled", "namespace"], "additionalProperties": true },
+                "kubernetesAccess": { "not": {} }
               }
             }
           }
@@ -66,9 +110,20 @@
     },
     "global": {
       "type": "object",
-      "required": ["rush"],
+      "required": ["image", "rush"],
       "additionalProperties": true,
       "properties": {
+        "image": {
+          "type": "object",
+          "required": ["registry"],
+          "additionalProperties": false,
+          "properties": {
+            "registry": {
+              "type": "string",
+              "pattern": "^$|^[A-Za-z0-9][A-Za-z0-9._-]*(:[0-9]+)?(/[A-Za-z0-9][A-Za-z0-9._-]*)*/?$"
+            }
+          }
+        },
         "rush": {
           "type": "object",
           "required": ["stack", "queryApi", "ingestApiKeySecret"],
@@ -135,6 +190,15 @@
       "required": ["enabled"],
       "properties": { "enabled": { "type": "boolean" } },
       "additionalProperties": true
+    },
+    "enterprise": {
+      "type": "object",
+      "required": ["postgresCollector", "mysqlCollector"],
+      "additionalProperties": false,
+      "properties": {
+        "postgresCollector": { "$ref": "#/properties/postgresCollector" },
+        "mysqlCollector": { "$ref": "#/properties/mysqlCollector" }
+      }
     },
     "postgresCollector": {
       "type": "object",

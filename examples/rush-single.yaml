@@ -16,6 +16,18 @@
 # ── Rush components ───────────────────────────────────────────────────────────
 queryApi:
   replicas: 1
+  config:
+    retention:
+      defaults:
+        metricsDays: 30
+        tracesDays: 14
+        logsDays: 14
+      metrics: []
+      traces: []
+      enforcer:
+        enabled: true
+        intervalSeconds: 3600
+        dryRun: false
   resources:
     requests:
       cpu: 100m
@@ -93,15 +105,3 @@ global:
       metrics_move_after_days: 0
       traces_move_after_days: 0
       logs_move_after_days: 0
-rushConfig:
-  retention:
-    defaults:
-      metrics_days: 30
-      traces_days: 14
-      logs_days: 14
-    metrics: []
-    traces: []
-    enforcer:
-      enabled: true
-      interval_secs: 3600
-      dry_run: false

@@ -42,6 +42,23 @@ queryApi:
             name: rush-ingest-buffer
             accessKeyKey: access-key
             secretKeyKey: secret-key
+    retention:
+      defaults:
+        metricsDays: 365
+        tracesDays: 90
+        logsDays: 90
+      metrics:
+        - labels: {env: dev}
+          retainDays: 30
+        - labels: {env: prod}
+          retainDays: 365
+      traces:
+        - serviceName: gateway
+          retainDays: 90
+      enforcer:
+        enabled: true
+        intervalSeconds: 3600
+        dryRun: false
   drainWorker:
     enabled: true
   podDisruptionBudget:
@@ -171,21 +188,3 @@ global:
       metrics_move_after_days: 7
       traces_move_after_days: 3
       logs_move_after_days: 7
-rushConfig:
-  retention:
-    defaults:
-      metrics_days: 365
-      traces_days: 90
-      logs_days: 90
-    metrics:
-      - labels: { env: "dev" }
-        retain_days: 30
-      - labels: { env: "prod" }
-        retain_days: 365
-    traces:
-      - service_name: "gateway"
-        retain_days: 90
-    enforcer:
-      enabled: true
-      interval_secs: 3600
-      dry_run: false

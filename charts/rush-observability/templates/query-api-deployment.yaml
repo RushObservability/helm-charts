@@ -1,4 +1,4 @@
-{{- $integrations := .Values.queryApi.config.integrations -}}
+{{- $integrations := .Values.queryApi.integrations -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -38,7 +38,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: query-api
-          image: {{ include "rush.image" (dict "image" .Values.queryApi.image "defaultTag" .Chart.AppVersion) | quote }}
+          image: {{ include "rush.image" (dict "root" . "image" .Values.queryApi.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.queryApi.image.pullPolicy }}
           ports:
             - name: http
@@ -105,10 +105,10 @@ spec:
               value: {{ not .Values.anomalyEngine.enabled | quote }}
             # Emit cadence for internal rush_stats_* gauges (15s keeps rate() usable).
             - name: RUSH_STATS_INTERVAL_SECS
-              value: {{ .Values.statsEngine.intervalSecs | default 15 | quote }}
+              value: {{ .Values.queryApi.config.statsEngine.intervalSecs | quote }}
             # PromQL staleness/lookback: how long a metric's last value carries forward.
             - name: RUSH_PROM_LOOKBACK_SECS
-              value: {{ .Values.promql.lookbackSecs | default 300 | quote }}
+              value: {{ .Values.queryApi.config.promql.lookbackSecs | quote }}
             # Operator-owned group -> tenant -> Kubernetes namespace boundary.
             # Empty/missing tenant entries deny infrastructure reads.
             - name: RUSH_INFRASTRUCTURE_TENANT_NAMESPACES
@@ -197,7 +197,7 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: config-encryption-key
-            {{- if or $integrations.kubernetesAccess.enabled .Values.kubernetesAccessGateway.enabled }}
+            {{- if .Values.enterprise.kubernetesAccess.enabled }}
             - name: KUBERNETES_ACCESS_ENABLED
               value: "true"
             - name: KUBERNETES_ACCESS_INTERNAL_TOKEN
@@ -206,26 +206,26 @@ spec:
                   name: {{ $bootstrapSecret }}
                   key: kubernetes-access-internal-token
             - name: KUBERNETES_ACCESS_MAX_RESULT_BYTES
-              value: {{ $integrations.kubernetesAccess.maxResultBytes | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.maxResultBytes | quote }}
             - name: KUBERNETES_ACCESS_MAX_SESSION_BYTES
-              value: {{ $integrations.kubernetesAccess.maxSessionBytes | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.maxSessionBytes | quote }}
             - name: KUBERNETES_ACCESS_RETENTION_DAYS
-              value: {{ $integrations.kubernetesAccess.retentionDays | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.retentionDays | quote }}
             - name: KUBERNETES_ACCESS_RETAIN_RAW_IP
-              value: {{ $integrations.kubernetesAccess.retainRawIp | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.retainRawIp | quote }}
             - name: KUBERNETES_ACCESS_COLLECT_PRIVATE_IP
-              value: {{ $integrations.kubernetesAccess.collectPrivateIp | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.collectPrivateIp | quote }}
             - name: KUBERNETES_ACCESS_CREDENTIAL_TTL_SECONDS
-              value: {{ $integrations.kubernetesAccess.credentialTtlSeconds | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.credentialTtlSeconds | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_ID
-              value: {{ .Values.kubernetesAccessGateway.gatewayId | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.gatewayId | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_TENANT_IDS
-              value: {{ join "," .Values.kubernetesAccessGateway.tenantIds | quote }}
+              value: {{ join "," .Values.enterprise.kubernetesAccess.tenantIds | quote }}
             - name: KUBERNETES_ACCESS_GATEWAY_CLUSTER_ID
-              value: {{ .Values.kubernetesAccessGateway.clusterId | quote }}
+              value: {{ .Values.enterprise.kubernetesAccess.clusterId | quote }}
             {{- $tenantClusters := dict }}
-            {{- range .Values.kubernetesAccessGateway.tenantIds }}
-            {{- $_ := set $tenantClusters . (list $.Values.kubernetesAccessGateway.clusterId) }}
+            {{- range .Values.enterprise.kubernetesAccess.tenantIds }}
+            {{- $_ := set $tenantClusters . (list $.Values.enterprise.kubernetesAccess.clusterId) }}
             {{- end }}
             - name: KUBERNETES_ACCESS_TENANT_CLUSTERS
               value: {{ $tenantClusters | toJson | quote }}

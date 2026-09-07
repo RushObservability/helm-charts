@@ -22,36 +22,36 @@ data:
     logs_move_after_days = {{ .Values.global.storage.tiering.logs_move_after_days }}
 
     [retention.defaults]
-    metrics_days = {{ .Values.rushConfig.retention.defaults.metrics_days }}
-    traces_days = {{ .Values.rushConfig.retention.defaults.traces_days }}
-    logs_days = {{ .Values.rushConfig.retention.defaults.logs_days }}
+    metrics_days = {{ .Values.queryApi.config.retention.defaults.metricsDays }}
+    traces_days = {{ .Values.queryApi.config.retention.defaults.tracesDays }}
+    logs_days = {{ .Values.queryApi.config.retention.defaults.logsDays }}
 
-    {{- range .Values.rushConfig.retention.metrics }}
+    {{- range .Values.queryApi.config.retention.metrics }}
     [[retention.metrics]]
     {{- if .name }}
     name = {{ .name | quote }}
     {{- end }}
-    {{- if .name_regex }}
-    name_regex = {{ .name_regex | quote }}
+    {{- if .nameRegex }}
+    name_regex = {{ .nameRegex | quote }}
     {{- end }}
     {{- if .labels }}
     labels = { {{- $first := true }}{{- range $k, $v := .labels }}{{- if not $first }}, {{ end }}{{ $k }} = {{ $v | quote }}{{- $first = false }}{{- end }} }
     {{- end }}
-    retain_days = {{ .retain_days }}
+    retain_days = {{ .retainDays }}
     {{- end }}
 
-    {{- range .Values.rushConfig.retention.traces }}
+    {{- range .Values.queryApi.config.retention.traces }}
     [[retention.traces]]
-    {{- if .service_name }}
-    service_name = {{ .service_name | quote }}
+    {{- if .serviceName }}
+    service_name = {{ .serviceName | quote }}
     {{- end }}
     {{- if .attribute }}
     attribute = { key = {{ .attribute.key | quote }}, value = {{ .attribute.value | quote }} }
     {{- end }}
-    retain_days = {{ .retain_days }}
+    retain_days = {{ .retainDays }}
     {{- end }}
 
     [retention.enforcer]
-    enabled = {{ .Values.rushConfig.retention.enforcer.enabled }}
-    interval_secs = {{ .Values.rushConfig.retention.enforcer.interval_secs }}
-    dry_run = {{ .Values.rushConfig.retention.enforcer.dry_run }}
+    enabled = {{ .Values.queryApi.config.retention.enforcer.enabled }}
+    interval_secs = {{ .Values.queryApi.config.retention.enforcer.intervalSeconds }}
+    dry_run = {{ .Values.queryApi.config.retention.enforcer.dryRun }}

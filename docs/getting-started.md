@@ -144,14 +144,14 @@ rush:
       runtime:
         environment: production
         baseUrl: https://rush.example.com
-  ingress:
-    enabled: true
-    className: nginx
-    frontend:
-      host: rush.example.com
-      tls:
-        enabled: true
-        secretName: rush-tls
+    ingress:
+      enabled: true
+      className: nginx
+      frontend:
+        host: rush.example.com
+        tls:
+          enabled: true
+          secretName: rush-tls
   clickhouse:
     enabled: true
     mode: operator

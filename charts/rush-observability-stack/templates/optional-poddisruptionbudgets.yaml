@@ -1,13 +1,13 @@
-{{- if and .Values.rush.queryApi.config.integrations.sreAgent.enabled .Values.rush.queryApi.config.integrations.sreAgent.podDisruptionBudget.enabled }}
-{{ include "rush.podDisruptionBudget" (dict "root" . "component" "sre-agent" "pdb" .Values.rush.queryApi.config.integrations.sreAgent.podDisruptionBudget) }}
+{{- if and .Values.rush.queryApi.integrations.sreAgent.enabled .Values.rush.queryApi.integrations.sreAgent.podDisruptionBudget.enabled }}
+{{ include "rush.podDisruptionBudget" (dict "root" . "component" "sre-agent" "pdb" .Values.rush.queryApi.integrations.sreAgent.podDisruptionBudget) }}
 ---
 {{- end }}
-{{- if and .Values.mysqlCollector.enabled .Values.mysqlCollector.podDisruptionBudget.enabled }}
-{{ include "rush.podDisruptionBudget" (dict "root" . "component" "mysql-collector" "pdb" .Values.mysqlCollector.podDisruptionBudget) }}
+{{- if and .Values.enterprise.mysqlCollector.enabled .Values.enterprise.mysqlCollector.podDisruptionBudget.enabled }}
+{{ include "rush.podDisruptionBudget" (dict "root" . "component" "mysql-collector" "pdb" .Values.enterprise.mysqlCollector.podDisruptionBudget) }}
 ---
 {{- end }}
-{{- if and .Values.postgresCollector.enabled .Values.postgresCollector.podDisruptionBudget.enabled }}
-{{ include "rush.podDisruptionBudget" (dict "root" . "component" "postgres-collector" "pdb" .Values.postgresCollector.podDisruptionBudget) }}
+{{- if and .Values.enterprise.postgresCollector.enabled .Values.enterprise.postgresCollector.podDisruptionBudget.enabled }}
+{{ include "rush.podDisruptionBudget" (dict "root" . "component" "postgres-collector" "pdb" .Values.enterprise.postgresCollector.podDisruptionBudget) }}
 ---
 {{- end }}
 {{- if and (include "rush.stackOtelEnabled" .) .Values.collectors.otel.podDisruptionBudget.enabled }}

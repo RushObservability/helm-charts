@@ -158,6 +158,19 @@
         }
       }
     },
+    "ingress": {
+      "type": "object",
+      "required": ["enabled", "className", "annotations", "trustedProxyCidrs", "frontend", "api"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "className": { "type": "string" },
+        "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
+        "trustedProxyCidrs": { "type": "array", "items": { "type": "string" } },
+        "frontend": { "$ref": "#/definitions/ingressRoute" },
+        "api": { "$ref": "#/definitions/ingressRoute" }
+      }
+    },
     "podOptions": {
       "type": "object",
       "additionalProperties": true,
@@ -174,20 +187,40 @@
       }
     }
   },
-  "required": ["queryApi", "frontend", "clickhouse", "kubernetesAccessGateway"],
+  "required": ["queryApi", "frontend", "clickhouse", "enterprise"],
+  "allOf": [
+    {
+      "not": {
+        "anyOf": [
+          { "required": ["kubernetesAccess"] },
+          { "required": ["kubernetesAccessGateway"] }
+        ]
+      }
+    }
+  ],
   "properties": {
     "imageSecurity": {
       "type": "object",
       "properties": { "requireDigests": { "type": "boolean" } },
       "additionalProperties": true
     },
-    "statsEngine": { "type": "object", "additionalProperties": true },
-    "promql": { "type": "object", "additionalProperties": true },
-    "rushConfig": { "type": "object", "additionalProperties": true },
+    "rushConfig": { "not": {} },
     "global": {
       "type": "object",
+      "required": ["image"],
       "additionalProperties": true,
       "properties": {
+        "image": {
+          "type": "object",
+          "required": ["registry"],
+          "additionalProperties": false,
+          "properties": {
+            "registry": {
+              "type": "string",
+              "pattern": "^$|^[A-Za-z0-9][A-Za-z0-9._-]*(:[0-9]+)?(/[A-Za-z0-9][A-Za-z0-9._-]*)*/?$"
+            }
+          }
+        },
         "rush": {
           "type": "object",
           "additionalProperties": true,
@@ -226,27 +259,15 @@
         }
       }
     },
-    "ingress": {
-      "type": "object",
-      "required": ["enabled", "className", "annotations", "trustedProxyCidrs", "frontend", "api"],
-      "additionalProperties": true,
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "className": { "type": "string" },
-        "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
-        "trustedProxyCidrs": { "type": "array", "items": { "type": "string" } },
-        "frontend": { "$ref": "#/definitions/ingressRoute" },
-        "api": { "$ref": "#/definitions/ingressRoute" }
-      }
-    },
     "queryApi": {
       "type": "object",
-      "required": ["config", "image", "replicas", "port", "rollout", "podDisruptionBudget", "probes", "drainWorker", "auditSpoolPersistence"],
+      "required": ["config", "integrations", "ingress", "image", "replicas", "port", "rollout", "podDisruptionBudget", "probes", "drainWorker", "auditSpoolPersistence"],
       "additionalProperties": true,
       "properties": {
+        "ingress": { "$ref": "#/definitions/ingress" },
         "config": {
           "type": "object",
-          "required": ["runtime", "authentication", "secrets", "audit", "ingest", "integrations"],
+          "required": ["runtime", "authentication", "statsEngine", "promql", "secrets", "audit", "retention", "ingest"],
           "additionalProperties": false,
           "properties": {
             "runtime": {
@@ -291,6 +312,22 @@
                 }
               }
             },
+            "promql": {
+              "type": "object",
+              "required": ["lookbackSecs"],
+              "additionalProperties": false,
+              "properties": {
+                "lookbackSecs": { "type": "integer", "minimum": 1 }
+              }
+            },
+            "statsEngine": {
+              "type": "object",
+              "required": ["intervalSecs"],
+              "additionalProperties": false,
+              "properties": {
+                "intervalSecs": { "type": "integer", "minimum": 1 }
+              }
+            },
             "secrets": {
               "type": "object",
               "required": ["existingSecret", "adminPassword", "apiKeyHmacSecret", "auditHmacSecret", "sessionHmacSecret", "ssoTransactionSecret", "configEncryptionKey"],
@@ -313,6 +350,81 @@
                 "keyId": { "type": "string", "minLength": 1 },
                 "previousKeysJson": { "type": "string" },
                 "spoolMaxBytes": { "type": "integer", "minimum": 1 }
+              }
+            },
+            "retention": {
+              "type": "object",
+              "required": ["defaults", "metrics", "traces", "enforcer"],
+              "additionalProperties": false,
+              "properties": {
+                "defaults": {
+                  "type": "object",
+                  "required": ["metricsDays", "tracesDays", "logsDays"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "metricsDays": { "type": "integer", "minimum": 1 },
+                    "tracesDays": { "type": "integer", "minimum": 1 },
+                    "logsDays": { "type": "integer", "minimum": 1 }
+                  }
+                },
+                "metrics": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["retainDays"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": { "type": "string", "minLength": 1 },
+                      "nameRegex": { "type": "string", "minLength": 1 },
+                      "labels": {
+                        "type": "object",
+                        "minProperties": 1,
+                        "additionalProperties": { "type": "string" }
+                      },
+                      "retainDays": { "type": "integer", "minimum": 1 }
+                    },
+                    "anyOf": [
+                      { "required": ["name"] },
+                      { "required": ["nameRegex"] },
+                      { "required": ["labels"] }
+                    ]
+                  }
+                },
+                "traces": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["retainDays"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "serviceName": { "type": "string", "minLength": 1 },
+                      "attribute": {
+                        "type": "object",
+                        "required": ["key", "value"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "key": { "type": "string", "minLength": 1 },
+                          "value": { "type": "string" }
+                        }
+                      },
+                      "retainDays": { "type": "integer", "minimum": 1 }
+                    },
+                    "anyOf": [
+                      { "required": ["serviceName"] },
+                      { "required": ["attribute"] }
+                    ]
+                  }
+                },
+                "enforcer": {
+                  "type": "object",
+                  "required": ["enabled", "intervalSeconds", "dryRun"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "intervalSeconds": { "type": "integer", "minimum": 1 },
+                    "dryRun": { "type": "boolean" }
+                  }
+                }
               }
             },
             "ingest": {
@@ -368,94 +480,80 @@
                   }
                 }
               }
-            },
-            "integrations": {
+            }
+          }
+        },
+        "integrations": {
+          "type": "object",
+          "required": ["infrastructure", "argocd", "fluxcd", "kubernetes", "cloudwatch", "sreAgent"],
+          "additionalProperties": false,
+          "properties": {
+            "infrastructure": {
               "type": "object",
-              "required": ["infrastructure", "argocd", "fluxcd", "kubernetes", "cloudwatch", "kubernetesAccess", "sreAgent"],
+              "required": ["tenantNamespaces"],
               "additionalProperties": false,
               "properties": {
-                "infrastructure": {
+                "tenantNamespaces": {
                   "type": "object",
-                  "required": ["tenantNamespaces"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "tenantNamespaces": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "array",
-                        "items": { "type": "string", "minLength": 1 }
-                      }
-                    }
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 }
                   }
+                }
+              }
+            },
+            "argocd": {
+              "type": "object",
+              "required": ["enabled", "namespace"],
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "namespace": { "type": "string", "minLength": 1 }
+              }
+            },
+            "fluxcd": {
+              "type": "object",
+              "required": ["enabled", "namespace"],
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "namespace": { "type": "string", "minLength": 1 }
+              }
+            },
+            "kubernetes": {
+              "type": "object",
+              "required": ["enabled", "namespaces", "clusterWide"],
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "namespaces": {
+                  "type": "array",
+                  "items": { "type": "string", "minLength": 1 }
                 },
-                "argocd": {
-                  "type": "object",
-                  "required": ["enabled", "namespace"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "enabled": { "type": "boolean" },
-                    "namespace": { "type": "string", "minLength": 1 }
-                  }
-                },
-                "fluxcd": {
-                  "type": "object",
-                  "required": ["enabled", "namespace"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "enabled": { "type": "boolean" },
-                    "namespace": { "type": "string", "minLength": 1 }
-                  }
-                },
-                "kubernetes": {
-                  "type": "object",
-                  "required": ["enabled", "namespaces", "clusterWide"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "enabled": { "type": "boolean" },
-                    "namespaces": {
-                      "type": "array",
-                      "items": { "type": "string", "minLength": 1 }
-                    },
-                    "clusterWide": { "type": "boolean" }
-                  }
-                },
-                "cloudwatch": {
-                  "type": "object",
-                  "required": ["enabled"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "enabled": { "type": "boolean" }
-                  }
-                },
-                "kubernetesAccess": {
-                  "type": "object",
-                  "required": ["enabled", "internalToken", "maxResultBytes", "maxSessionBytes", "retentionDays", "retainRawIp", "collectPrivateIp", "credentialTtlSeconds"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "enabled": { "type": "boolean" },
-                    "internalToken": { "type": "string", "pattern": "^$|^.{32,}$" },
-                    "maxResultBytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
-                    "maxSessionBytes": { "type": "integer", "minimum": 1048576, "maximum": 1073741824 },
-                    "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 },
-                    "retainRawIp": { "type": "boolean" },
-                    "collectPrivateIp": { "type": "boolean" },
-                    "credentialTtlSeconds": { "type": "integer", "minimum": 300, "maximum": 43200 }
-                  }
-                },
-                "sreAgent": {
+                "clusterWide": { "type": "boolean" }
+              }
+            },
+            "cloudwatch": {
+              "type": "object",
+              "required": ["enabled"],
+              "additionalProperties": false,
+              "properties": {
+                "enabled": { "type": "boolean" }
+              }
+            },
+            "kubernetesAccess": { "not": {} },
+            "sreAgent": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+                "internalAuthToken": { "type": "string" },
+                "service": {
                   "type": "object",
                   "additionalProperties": true,
                   "properties": {
-                    "enabled": { "type": "boolean" },
-                    "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
-                    "internalAuthToken": { "type": "string" },
-                    "service": {
-                      "type": "object",
-                      "additionalProperties": true,
-                      "properties": {
-                        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
-                      }
-                    }
+                    "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
                   }
                 }
               }
@@ -515,7 +613,6 @@
         "env": { "not": {} },
         "buffer": { "not": {} },
         "audit": { "not": {} },
-        "integrations": { "not": {} },
         "kubernetesAccess": { "not": {} }
       },
       "allOf": [
@@ -632,13 +729,20 @@
         "networkPolicy": { "$ref": "#/definitions/networkPolicy" }
       }
     },
-    "kubernetesAccessGateway": {
+    "kubernetesAccess": {
       "type": "object",
-      "required": ["enabled", "image", "replicas", "port", "queryApiUrl", "gatewayId", "clusterId", "tenantIds", "failurePolicy", "trustedProxyCidrs", "upstream", "tls", "service", "serviceAccount", "rbac", "networkPolicy", "podDisruptionBudget"],
+      "required": ["enabled", "internalToken", "maxResultBytes", "maxSessionBytes", "retentionDays", "retainRawIp", "collectPrivateIp", "credentialTtlSeconds", "image", "replicas", "port", "queryApiUrl", "gatewayId", "clusterId", "tenantIds", "failurePolicy", "trustedProxyCidrs", "upstream", "tls", "service", "serviceAccount", "rbac", "networkPolicy", "podDisruptionBudget"],
       "additionalProperties": true,
       "allOf": [{ "$ref": "#/definitions/podOptions" }],
       "properties": {
         "enabled": { "type": "boolean" },
+        "internalToken": { "type": "string", "pattern": "^$|^.{32,}$" },
+        "maxResultBytes": { "type": "integer", "minimum": 1024, "maximum": 1048576 },
+        "maxSessionBytes": { "type": "integer", "minimum": 1048576, "maximum": 1073741824 },
+        "retentionDays": { "type": "integer", "minimum": 1, "maximum": 3650 },
+        "retainRawIp": { "type": "boolean" },
+        "collectPrivateIp": { "type": "boolean" },
+        "credentialTtlSeconds": { "type": "integer", "minimum": 300, "maximum": 43200 },
         "image": { "$ref": "#/definitions/image" },
         "replicas": { "type": "integer", "minimum": 1 },
         "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
@@ -757,7 +861,7 @@
 
     "enterprise": {
       "type": "object",
-      "required": ["license"],
+      "required": ["license", "kubernetesAccess"],
       "additionalProperties": false,
       "properties": {
         "license": {
@@ -776,7 +880,8 @@
               }
             }
           }
-        }
+        },
+        "kubernetesAccess": { "$ref": "#/properties/kubernetesAccess" }
       }
     },
     "helmTests": {
