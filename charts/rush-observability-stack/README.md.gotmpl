@@ -1,0 +1,52 @@
+{{ template "chart.header" . }}
+{{ template "chart.badgesSection" . }}
+
+**Start here.** This is the chart most people want: it installs Rush plus a
+single-node ClickHouse, Kubernetes log collection, an OTLP endpoint, and metric
+discovery. It installs [rush-observability](../rush-observability) for you.
+
+{{ template "chart.description" . }}
+
+{{ template "chart.homepageLine" . }}
+
+## Quick start
+
+No values are required for an evaluation install:
+
+```bash
+helm upgrade --install rush \
+  oci://ghcr.io/rushobservability/helm-charts/rush-observability-stack \
+  --namespace observability --create-namespace
+```
+
+Then get the generated admin password and open the UI:
+
+```bash
+kubectl -n observability get secret rush-bootstrap \
+  -o jsonpath='{.data.initial-admin-password}' | base64 -d; echo
+kubectl -n observability port-forward svc/rush-frontend 8080:80
+```
+
+Read [Getting started](../../docs/getting-started.md) before installing in
+production.
+
+## Guides
+
+| Goal | Guide |
+|---|---|
+| First install and login | [Getting started](../../docs/getting-started.md) |
+| Pick core vs stack | [Choose a chart](../../docs/stack.md) |
+| Operator, standalone, or external ClickHouse | [ClickHouse](../../docs/clickhouse.md) |
+| Replicas and safe rollouts | [Reliability](../../docs/reliability.md) |
+| NetworkPolicies, ingress, TLS | [Networking](../../docs/networking.md) |
+| Ingest keys, secrets, image digests | [Security](../../docs/security.md) |
+
+Ready-made values files live in [examples/](../../examples/).
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.sourcesSection" . }}
