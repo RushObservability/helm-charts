@@ -1,13 +1,11 @@
 name: Helm security and quality
 
 on:
+  # No path filter here on purpose. This job is a required status check, and a
+  # required check that is skipped never reports, leaving the pull request
+  # stuck on "Expected - waiting for status to be reported". Push keeps its
+  # filter, where skipping is harmless.
   pull_request:
-    paths:
-      - "charts/**"
-      - "examples/**"
-      - "docs/**"
-      - "README.md"
-      - ".github/workflows/**"
   push:
     branches: [main]
     paths:
