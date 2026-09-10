@@ -1,0 +1,15 @@
+<clickhouse>
+    <users>
+        <!-- SELECT grants and strict tenant row policies are installed and
+             verified by query-api before it becomes ready. -->
+        <rushquery>
+            <password from_env="CLICKHOUSE_READ_PASSWORD" />
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <access_management>0</access_management>
+        </rushquery>
+    </users>
+</clickhouse>

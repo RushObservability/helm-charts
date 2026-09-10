@@ -1,0 +1,65 @@
+# LOCAL DEVELOPMENT ONLY.
+# This collector accepts unauthenticated OTLP on all container interfaces and
+# forwards it to the local Rush query API. Do not use this file in Kubernetes
+# or expose ports 4317/4318 beyond the developer workstation.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 384
+    spike_limit_mib: 96
+
+  batch:
+    send_batch_size: 10000
+    send_batch_max_size: 20000
+    timeout: 5s
+
+  resource:
+    attributes:
+      - key: environment
+        value: "development"
+        action: upsert
+
+  transform:
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["service.name"], resource.attributes["service.name"])
+          - set(attributes["service.version"], resource.attributes["service.version"])
+          - set(attributes["host.name"], resource.attributes["host.name"])
+
+exporters:
+  otlphttp:
+    endpoint: ${env:RUSH_API_ENDPOINT:-http://query-api:8080}
+    encoding: proto
+    timeout: 30s
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 60s
+    sending_queue:
+      enabled: true
+      num_consumers: 10
+      queue_size: 5000
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, transform, batch]
+      exporters: [otlphttp]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlphttp]

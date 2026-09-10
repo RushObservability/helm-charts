@@ -1,0 +1,4 @@
+<clickhouse>
+    <!-- Required by query-api's tenant row-policy setting. -->
+    <custom_settings_prefixes>rush_</custom_settings_prefixes>
+</clickhouse>

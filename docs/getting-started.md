@@ -22,7 +22,7 @@ shown below are based on them.
 
 ## Install a development stack
 
-Run the [install command in the main README](../README.md#try-rush). It makes
+Run the [install command in the main README](../README.md#install-on-kubernetes). It makes
 these choices for you:
 
 | Setting | Choice | Why |

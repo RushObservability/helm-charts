@@ -1,10 +1,13 @@
 # Helm chart documentation
 
 Start with [Getting started](getting-started.md). It covers installation,
-login, telemetry collection, and the first production values file.
+login, telemetry collection, and the first production values file. To look at
+Rush before installing anything on a cluster, run the
+[Docker Compose stack](docker-compose.md) instead.
 
 | Goal | Guide |
 |---|---|
+| See Rush running on one machine, without Kubernetes | [Docker Compose](docker-compose.md) |
 | Install Rush and sign in for the first time | [Getting started](getting-started.md) |
 | Install core Rush or the complete observability stack | [Choose a chart](stack.md) |
 | Choose operator-managed, standalone, or external ClickHouse | [ClickHouse](clickhouse.md) |

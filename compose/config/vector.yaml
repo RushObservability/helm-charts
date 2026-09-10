@@ -1,0 +1,160 @@
+api:
+  enabled: true
+  address: 0.0.0.0:8686
+
+sources:
+  docker_logs:
+    type: docker_logs
+    exclude_containers:
+      - "*clickhouse*"
+      - "*minio*"
+      - "*otel-collector*"
+      - "*vector*"
+      - "*grafana*"
+
+  # Vector's own telemetry (throughput, errors, buffer depth, etc.). 15s cadence
+  # so rate() over short windows is usable.
+  vector_metrics:
+    type: internal_metrics
+    scrape_interval_secs: 15
+
+transforms:
+  parse_logs:
+    type: remap
+    inputs:
+      - docker_logs
+    source: |
+      # Service name — fallback: the container / compose-service identity.
+      # An explicit OTel service.name declared by the app (lifted from the body
+      # below) takes precedence so logs resolve to the SAME service name as APM.
+      svc_name = ""
+      if exists(.label."com.docker.compose.service") {
+        svc_name = string!(.label."com.docker.compose.service")
+      }
+      if svc_name == "" {
+        svc_name, err = to_string(.container_name)
+        if err != null { svc_name = "unknown" }
+      }
+
+      body = string!(.message)
+
+      # Lift context the app appended (example-app/log-events.js):
+      # "...message service.name=<n> trace_id=<hex> span_id=<hex>". The app's
+      # declared service.name wins over the container label (matches how APM
+      # resolves service_name from the OTel resource); trace/span IDs go to their
+      # columns. Then strip all of it so the stored Body stays clean.
+      trace_id_val = ""
+      span_id_val = ""
+      svc, svcerr = parse_regex(body, r'service\.name=(?P<v>[^\s]+)')
+      if svcerr == null { svc_name = svc.v }
+      tid, terr = parse_regex(body, r'trace_id=(?P<v>[0-9a-fA-F]+)')
+      if terr == null { trace_id_val = tid.v }
+      sid, serr = parse_regex(body, r'span_id=(?P<v>[0-9a-fA-F]+)')
+      if serr == null { span_id_val = sid.v }
+      body = replace(body, r' ?service\.name=[^\s]+', "")
+      body = replace(body, r' ?trace_id=[0-9a-fA-F]+', "")
+      body = replace(body, r' ?span_id=[0-9a-fA-F]+', "")
+      .ServiceName = svc_name
+
+      .SeverityText = "INFO"
+      .SeverityNumber = 9
+
+      if match(body, r'(?i)\berror\b|panic|fatal') {
+        .SeverityText = "ERROR"
+        .SeverityNumber = 17
+      } else if match(body, r'(?i)\bwarn(ing)?\b') {
+        .SeverityText = "WARN"
+        .SeverityNumber = 13
+      } else if match(body, r'(?i)\bdebug\b') {
+        .SeverityText = "DEBUG"
+        .SeverityNumber = 5
+      }
+
+      # Also check Docker stream (stderr = likely error/warn)
+      if .stream == "stderr" && .SeverityText == "INFO" {
+        .SeverityText = "WARN"
+        .SeverityNumber = 13
+      }
+
+      .Body = body
+
+      # Timestamp as nanoseconds (DateTime64(9))
+      ts, err = to_unix_timestamp(.timestamp, unit: "nanoseconds")
+      if err != null {
+        ts = to_unix_timestamp(now(), unit: "nanoseconds")
+      }
+      .Timestamp = ts
+
+      # Resource attributes from Docker metadata
+      .ResourceAttributes = {}
+      .ResourceAttributes."container.name" = to_string(.container_name) ?? ""
+      .ResourceAttributes."container.id" = to_string(.container_id) ?? ""
+      if exists(.label."com.docker.compose.project") {
+        .ResourceAttributes."compose.project" = string!(.label."com.docker.compose.project")
+      }
+      if exists(.label."com.docker.compose.service") {
+        .ResourceAttributes."compose.service" = string!(.label."com.docker.compose.service")
+      }
+
+      # Log attributes
+      .LogAttributes = {}
+      .LogAttributes."stream" = to_string(.stream) ?? "stdout"
+      .LogAttributes."source" = "docker"
+
+      # Trace context (lifted from the body above; empty when not present)
+      .TraceId = trace_id_val
+      .SpanId = span_id_val
+      .TraceFlags = 0
+      .ResourceSchemaUrl = ""
+      .ScopeSchemaUrl = ""
+      .ScopeName = "vector"
+      .ScopeVersion = ""
+      .ScopeAttributes = {}
+      .EventName = ""
+
+      # Clean up fields not in the target schema
+      del(.message)
+      del(.timestamp)
+      del(.source_type)
+      del(.container_name)
+      del(.container_id)
+      del(.container_created_at)
+      del(.container_image)
+      del(.label)
+      del(.stream)
+      del(.host)
+      del(.image)
+
+sinks:
+  # Send parsed logs to query-api over HTTP. query-api is the only writer to
+  # ClickHouse (it owns the durable disk spool + 429 backpressure). The default
+  # endpoint targets the in-compose query-api service; the dev compose, which
+  # runs query-api on the host, overrides RUSH_API_ENDPOINT to host.docker.internal.
+  rush_api_logs:
+    type: http
+    inputs:
+      - parse_logs
+    uri: "${RUSH_API_ENDPOINT:-http://query-api:8080}/api/v1/ingest/logs"
+    method: post
+    encoding:
+      codec: json
+    batch:
+      max_events: 500
+      timeout_secs: 3
+    request:
+      # Vector retries on query-api's 429 backpressure so nothing is lost while
+      # the spool drains.
+      retry_attempts: 10
+    healthcheck:
+      enabled: false
+
+  # Vector self-reports its internal metrics into query-api's Prometheus
+  # remote-write receiver (/prom/api/v1/write). They then query like any other
+  # metric via /prom and Grafana (no tenant header → the default tenant).
+  rush_api_metrics:
+    type: prometheus_remote_write
+    inputs:
+      - vector_metrics
+    endpoint: "${RUSH_API_ENDPOINT:-http://query-api:8080}/prom/api/v1/write"
+    healthcheck:
+      enabled: false

@@ -11,6 +11,19 @@ Install Rush Observability on Kubernetes.
 
 ## Try Rush
 
+No cluster handy? [`compose/`](compose/) runs the whole stack on one machine
+from released images, with demo services generating live telemetry:
+
+```bash
+cd compose
+docker compose --profile demo up -d
+```
+
+Then open <http://localhost:5173> and sign in as `admin` / `rush-admin123`. See
+[Docker Compose](docs/docker-compose.md) for profiles, ports, and limits.
+
+## Install on Kubernetes
+
 If you are unsure which chart to use, start with `rush-observability-stack`.
 It installs Rush, a small single-node ClickHouse instance, Kubernetes log
 collection, an OTLP endpoint, and metric discovery.
