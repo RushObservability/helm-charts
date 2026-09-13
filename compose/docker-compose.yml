@@ -67,7 +67,7 @@ services:
     restart: "no"
 
   query-api:
-    image: ghcr.io/rushobservability/query-api:0.1.2
+    image: ghcr.io/rushobservability/query-api:0.1.3
     environment:
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_DATABASE: observability
@@ -119,7 +119,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/rushobservability/frontend:0.1.8
+    image: ghcr.io/rushobservability/frontend:0.1.9
     environment:
       QUERY_API_HOST: query-api:8080
       API_PUBLIC_URL: http://localhost:${RUSH_API_PORT:-8080}
@@ -263,7 +263,7 @@ services:
     restart: unless-stopped
 
   sre-agent:
-    image: ghcr.io/rushobservability/sre-agent:0.1.1
+    image: ghcr.io/rushobservability/sre-agent:0.1.3
     profiles: [sre, all]
     environment:
       SRE_AGENT_PORT: "8081"

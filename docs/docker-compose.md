@@ -76,12 +76,11 @@ services send profiles directly to query-api at
 `http://query-api:8080/v1development/profiles`, in the `default` tenant. The
 bundled OpenTelemetry Collector does not forward profiles.
 
-Profiling requires a query-api build with the profiling endpoints and database
-migrations. The older `query-api:0.1.2` image does not support them. Updating the
-demo image alone will not add profiling support to that API image.
+The bundled `query-api:0.1.3` image includes the profiling endpoints and applies
+the required database migrations at startup.
 
-With a profiling-capable API running, allow about 30 seconds of demo traffic,
-then open **Observe > Profiles** and select `articles`, `users`, or `payments`.
+Allow about 30 seconds of demo traffic, then open **Observe > Profiles** and
+select `articles`, `users`, or `payments`.
 The mock database calls do real CPU work so the graph has samples to inspect.
 
 ```bash
