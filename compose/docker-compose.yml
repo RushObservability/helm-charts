@@ -5,12 +5,22 @@ name: rush-local
 # profiles so `docker compose up` stays small and predictable.
 
 x-demo-app: &demo-app
-  image: ghcr.io/rushobservability/example-app:0.1.0
+  image: ghcr.io/rushobservability/example-app:0.1.1
   profiles: [demo, all]
   restart: unless-stopped
   depends_on:
     otel-collector:
       condition: service_started
+
+# CPU profiles go directly to Rush; this collector version handles only
+# traces, metrics, and logs. Requires a query-api build with profiling support.
+x-demo-profiling: &demo-profiling
+  RUSH_PROFILING_ENABLED: ${RUSH_PROFILING_ENABLED:-true}
+  RUSH_PROFILE_ENDPOINT: http://query-api:8080
+  RUSH_PROFILE_TENANT: default
+  RUSH_PROFILE_API_KEY: ${RUSH_PROFILE_API_KEY:-${RUSH_API_KEY:-}}
+  RUSH_PROFILE_INTERVAL_SECS: ${RUSH_PROFILE_INTERVAL_SECS:-10}
+  DEMO_DB_CPU_MS: ${DEMO_DB_CPU_MS:-8}
 
 services:
   clickhouse:
@@ -188,6 +198,7 @@ services:
     <<: *demo-app
     command: [node, --require, ./tracing.js, articles.js]
     environment:
+      <<: *demo-profiling
       SERVICE_NAME: articles
       SERVICE_VERSION: 0.2.0
       PORT: "3001"
@@ -208,6 +219,7 @@ services:
     <<: *demo-app
     command: [node, --require, ./tracing.js, users.js]
     environment:
+      <<: *demo-profiling
       SERVICE_NAME: users
       SERVICE_VERSION: 0.2.0
       PORT: "3003"
@@ -218,6 +230,7 @@ services:
     <<: *demo-app
     command: [node, --require, ./tracing.js, payments.js]
     environment:
+      <<: *demo-profiling
       SERVICE_NAME: payments
       SERVICE_VERSION: 0.2.0
       PORT: "3004"
@@ -235,7 +248,7 @@ services:
       RUSH_LOG_EVENTS: "true"
 
   traffic:
-    image: ghcr.io/rushobservability/example-app:0.1.0
+    image: ghcr.io/rushobservability/example-app:0.1.1
     profiles: [demo, all]
     command:
       - node

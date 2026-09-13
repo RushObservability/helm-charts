@@ -68,6 +68,39 @@ Each profile adds to the core stack of ClickHouse, query-api, and the frontend.
 
 Profiles combine, so `--profile telemetry --profile sre` works without `all`.
 
+### Demo CPU profiles
+
+The demo image `0.1.1` includes V8 CPU profiling. Compose enables it for
+`articles`, `users`, and `payments`, with a 10-second sampling window. These
+services send profiles directly to query-api at
+`http://query-api:8080/v1development/profiles`, in the `default` tenant. The
+bundled OpenTelemetry Collector does not forward profiles.
+
+Profiling requires a query-api build with the profiling endpoints and database
+migrations. The older `query-api:0.1.2` image does not support them. Updating the
+demo image alone will not add profiling support to that API image.
+
+With a profiling-capable API running, allow about 30 seconds of demo traffic,
+then open **Observe > Profiles** and select `articles`, `users`, or `payments`.
+The mock database calls do real CPU work so the graph has samples to inspect.
+
+```bash
+docker compose --profile demo logs -f articles users payments
+```
+
+Look for `uploaded CPU samples`. A failed export does not stop the app; it
+tries again with the next sampling window.
+
+Set `RUSH_PROFILING_ENABLED=false` to disable sampling, or change
+`RUSH_PROFILE_INTERVAL_SECS` to a value from 1 to 60. `DEMO_DB_CPU_MS` controls
+the work per mock database call, from 0 to 50 milliseconds, with a default of 8.
+Re-run `docker compose --profile demo up -d` after changing these settings.
+
+If anonymous ingest is disabled, set `RUSH_PROFILE_API_KEY` to an ingest key
+for the `default` tenant with the `profiles` signal. It falls back to
+`RUSH_API_KEY` if provided. This key configures only the profile exporter;
+the trace, metric, and log collectors still need their own authentication.
+
 ## Send your own telemetry
 
 The `telemetry` profile exposes OTLP on `localhost:4317` (gRPC) and
