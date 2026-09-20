@@ -302,8 +302,9 @@ queryApi:
         accountPerMinute: 10
         ipPerMinute: 50
       # -- Browser sessions use a renewable idle deadline plus a hard maximum age.
+      # Settings > Users > Idle logout overrides the initial idle timeout.
       session:
-        idleTimeoutSeconds: 1800
+        idleTimeoutSeconds: 7200
         absoluteTimeoutSeconds: 86400
         renewalIntervalSeconds: 300
     statsEngine:
