@@ -104,10 +104,12 @@ the trace, metric, and log collectors still need their own authentication.
 
 The `telemetry` profile exposes OTLP on `localhost:4317` (gRPC) and
 `localhost:4318` (HTTP), and forwards traces, metrics, and OTLP logs to
-query-api. Point an instrumented application at it:
+query-api. Point an instrumented application at it, setting the protocol to match the
+port (`grpc` for 4317, `http/protobuf` for 4318), because SDKs disagree on the default:
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
 export OTEL_SERVICE_NAME=my-service
 ```
 
