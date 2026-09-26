@@ -43,6 +43,8 @@ spec:
             {{- include "rush.clickhouseReadEnv" . | nindent 12 }}
             - name: RUSH_CONFIG
               value: /etc/rush/rush.toml
+            - name: RUSH_LEADER_LEASE_TTL_SECS
+              value: {{ .Values.queryApi.config.leaderElection.leaseTtlSeconds | quote }}
             {{- range $key, $val := .Values.anomalyEngine.env }}
             - name: {{ $key }}
               value: {{ $val | quote }}

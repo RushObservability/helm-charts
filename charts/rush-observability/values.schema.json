@@ -320,6 +320,13 @@
                 "lookbackSecs": { "type": "integer", "minimum": 1 }
               }
             },
+            "leaderElection": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "leaseTtlSeconds": { "type": "integer", "minimum": 6, "maximum": 300 }
+              }
+            },
             "statsEngine": {
               "type": "object",
               "required": ["intervalSecs"],
