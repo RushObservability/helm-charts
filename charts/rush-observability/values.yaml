@@ -307,6 +307,12 @@ queryApi:
         idleTimeoutSeconds: 7200
         absoluteTimeoutSeconds: 86400
         renewalIntervalSeconds: 300
+    leaderElection:
+      # -- Every query-api replica runs the alert, SLO, anomaly, detection, and
+      # retention engines, and each engine only acts on the replica holding its
+      # ClickHouse Keeper lease. A shorter TTL fails over faster after a crash and
+      # renews more often; a clean shutdown hands over immediately either way.
+      leaseTtlSeconds: 15
     statsEngine:
       # -- Cadence for the internal rush_stats_* gauges. Increase it to reduce the
       # sample volume, while keeping it short enough for rate-based queries.
@@ -770,13 +776,6 @@ enterprise:
       limits:
         cpu: "1"
         memory: 512Mi
-# ── anomaly engine ──
-# -- The anomaly engine evaluates rules and sends notifications. By default the
-# query-api runs it in-process (fine for a single query-api replica). If you
-# scale queryApi.replicas > 1, enable this dedicated single-replica Deployment —
-# the chart then sets RUSH_RUN_ANOMALY_ENGINE=false on the API pods so rules are
-# evaluated exactly once (no duplicate alerts).
-
 # ========================================================================
 # imageSecurity  —  changed: Sometimes
 #  Refuse tag-only first-party images. Recommended in production.
@@ -790,13 +789,13 @@ imageSecurity:
 # anomalyEngine  —  changed: Rarely
 #  Background anomaly detection.
 # ========================================================================
-# -- The anomaly engine evaluates rules and sends notifications. By default the
-# query-api runs it in-process (fine for a single query-api replica). If you
-# scale queryApi.replicas > 1, enable this dedicated single-replica Deployment —
-# the chart then sets RUSH_RUN_ANOMALY_ENGINE=false on the API pods so rules are
-# evaluated exactly once (no duplicate alerts).
+# -- The anomaly engine evaluates anomaly detectors and sends their
+# notifications. query-api runs it in-process by default, and a Keeper lease
+# keeps it to one replica at a time, so any queryApi.replicas count is safe.
+# Enable this Deployment to move anomaly evaluation off the API pods; the chart
+# then sets RUSH_RUN_ANOMALY_ENGINE=false on them.
 anomalyEngine:
-  enabled: false # set true when running multiple query-api pods
+  enabled: false # optional; moves anomaly evaluation off the API pods
 
   # ---------------------------------------------------------------------
   # Kubernetes workload configuration below this point. Standard pod,

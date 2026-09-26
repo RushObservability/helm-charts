@@ -99,10 +99,13 @@ spec:
               value: {{ .Values.queryApi.config.audit.spoolMaxBytes | int64 | quote }}
             - name: RUSH_AUDIT_HMAC_KEY_ID
               value: {{ .Values.queryApi.config.audit.keyId | quote }}
-            # Run the anomaly engine in-process only when there is no dedicated
-            # anomaly-engine Deployment, so rules aren't evaluated twice.
+            # Engines coordinate through Keeper leases, so running the anomaly
+            # engine here and in its own Deployment would also be safe; this just
+            # keeps it off the API pods when that Deployment is enabled.
             - name: RUSH_RUN_ANOMALY_ENGINE
               value: {{ not .Values.anomalyEngine.enabled | quote }}
+            - name: RUSH_LEADER_LEASE_TTL_SECS
+              value: {{ .Values.queryApi.config.leaderElection.leaseTtlSeconds | quote }}
             # Emit cadence for internal rush_stats_* gauges (15s keeps rate() usable).
             - name: RUSH_STATS_INTERVAL_SECS
               value: {{ .Values.queryApi.config.statsEngine.intervalSecs | quote }}
