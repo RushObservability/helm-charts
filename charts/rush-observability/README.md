@@ -1,6 +1,6 @@
 # rush-observability
 
-![Version: 0.3.3](https://img.shields.io/badge/Version-0.3.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.25](https://img.shields.io/badge/AppVersion-0.1.25-informational?style=flat-square)
+![Version: 0.3.4](https://img.shields.io/badge/Version-0.3.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.25](https://img.shields.io/badge/AppVersion-0.1.25-informational?style=flat-square)
 
 The core Rush platform: Query API, frontend, anomaly processing, and ClickHouse.
 
@@ -175,7 +175,6 @@ Kubernetes: `>=1.25.0-0`
 | queryApi.extraEnvFrom | list | `[]` |  |
 | queryApi.extraVolumeMounts | list | `[]` |  |
 | queryApi.extraVolumes | list | `[]` |  |
-| queryApi.gracefulShutdown | object | `{"enabled":true}` | The preStop hook makes readiness fail before termination and lets query-api flush in-memory batches plus drain its durable ingest queue. Increase this for large backlogs or a ClickHouse recovery window. |
 | queryApi.image.digest | string | `""` |  |
 | queryApi.image.pullPolicy | string | `"IfNotPresent"` |  |
 | queryApi.image.repository | string | `"mzupan/rush-api"` |  |
@@ -238,7 +237,7 @@ Kubernetes: `>=1.25.0-0`
 | queryApi.serviceAccount.annotations | object | `{}` |  |
 | queryApi.serviceAccount.create | bool | `true` |  |
 | queryApi.serviceAccount.name | string | `""` |  |
-| queryApi.terminationGracePeriodSeconds | int | `120` |  |
+| queryApi.terminationGracePeriodSeconds | int | `120` | On SIGTERM, query-api fails readiness, flushes in-memory batches, and drains its durable ingest queue before exiting. Increase this for large backlogs or a ClickHouse recovery window. |
 
 ## Maintainers
 

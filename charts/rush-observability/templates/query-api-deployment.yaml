@@ -270,17 +270,6 @@ spec:
             {{- toYaml .Values.queryApi.resources | nindent 12 }}
           securityContext:
             {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
-          {{- if .Values.queryApi.gracefulShutdown.enabled }}
-          lifecycle:
-            preStop:
-              exec:
-                command:
-                  - /bin/sh
-                  - -c
-                  - >-
-                    exec /usr/bin/curl --fail --silent --show-error --max-time 5
-                    --request POST http://127.0.0.1:{{ .Values.queryApi.port }}/shutdown
-          {{- end }}
           {{- if .Values.queryApi.probes.startup.enabled }}
           startupProbe:
             {{- include "rush.httpProbe" (dict "probe" .Values.queryApi.probes.startup "port" "http") | nindent 12 }}
