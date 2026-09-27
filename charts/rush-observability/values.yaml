@@ -548,11 +548,9 @@ queryApi:
     storageClass: ""
     accessModes: ["ReadWriteOnce"]
     size: 1Gi
-  # -- The preStop hook makes readiness fail before termination and lets query-api
-  # flush in-memory batches plus drain its durable ingest queue. Increase this
-  # for large backlogs or a ClickHouse recovery window.
-  gracefulShutdown:
-    enabled: true
+  # -- On SIGTERM, query-api fails readiness, flushes in-memory batches, and
+  # drains its durable ingest queue before exiting. Increase this for large
+  # backlogs or a ClickHouse recovery window.
   terminationGracePeriodSeconds: 120
   resources:
     requests:
