@@ -187,7 +187,7 @@
       }
     }
   },
-  "required": ["queryApi", "frontend", "clickhouse", "enterprise"],
+  "required": ["queryApi", "frontend", "clickhouse"],
   "allOf": [
     {
       "not": {
@@ -867,29 +867,8 @@
     },
 
     "enterprise": {
-      "type": "object",
-      "required": ["license", "kubernetesAccess"],
-      "additionalProperties": false,
-      "properties": {
-        "license": {
-          "type": "object",
-          "required": ["enabled", "secret"],
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "secret": {
-              "type": "object",
-              "required": ["name", "key"],
-              "additionalProperties": false,
-              "properties": {
-                "name": { "type": "string", "minLength": 1 },
-                "key": { "type": "string", "minLength": 1 }
-              }
-            }
-          }
-        },
-        "kubernetesAccess": { "$ref": "#/properties/kubernetesAccess" }
-      }
+      "description": "Removed. Licensed add-ons are coming soon. Accepted only so older values files keep installing; enabling license or kubernetesAccess fails.",
+      "type": "object"
     },
     "helmTests": {
       "type": "object",

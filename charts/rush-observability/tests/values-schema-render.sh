@@ -23,7 +23,8 @@ assert_rejected 'the old Query API Kubernetes access block' --set queryApi.kuber
 assert_rejected 'the old Query API licensed integration path' --set queryApi.integrations.kubernetesAccess.enabled=true
 assert_rejected 'the old top-level Kubernetes access block' --set kubernetesAccess.enabled=true
 assert_rejected 'the old top-level Kubernetes access gateway' --set kubernetesAccessGateway.enabled=true
-assert_rejected 'the removed enterprise Kubernetes access gateway block' --set enterprise.kubernetesAccessGateway.enabled=true
+assert_rejected 'the removed enterprise license' --set enterprise.license.enabled=true
+assert_rejected 'the removed enterprise Kubernetes access recording' --set enterprise.kubernetesAccess.enabled=true
 assert_rejected 'the old Query API runtime path' --set queryApi.environment=development
 assert_rejected 'the old Query API secret path' --set queryApi.existingSecret=rush-bootstrap
 assert_rejected 'the old Query API authentication path' --set queryApi.ssoReplayStore=local
@@ -50,9 +51,6 @@ assert_rejected 'an invalid Ingress path type' --set queryApi.ingress.frontend.p
 assert_rejected 'a malformed image pull secret' --set-json 'queryApi.imagePullSecrets=[{}]'
 assert_rejected 'a malformed extra volume mount' --set-json 'frontend.extraVolumeMounts=[{"name":"data"}]'
 assert_rejected 'a negative Helm test deadline' --set helmTests.activeDeadlineSeconds=-1
-assert_rejected 'a short Kubernetes access token' --set enterprise.kubernetesAccess.internalToken=short
-assert_rejected 'an undersized Kubernetes result limit' --set enterprise.kubernetesAccess.maxResultBytes=512
-assert_rejected 'an oversized Kubernetes session limit' --set enterprise.kubernetesAccess.maxSessionBytes=2147483648
 
 retention="$(helm template schema "$chart_dir" \
   --show-only templates/rush-config-configmap.yaml \

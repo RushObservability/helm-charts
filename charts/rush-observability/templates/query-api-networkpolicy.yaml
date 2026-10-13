@@ -25,11 +25,6 @@ spec:
             matchLabels:
               {{- include "rush.selectorLabels" (dict "root" $ "component" .) | nindent 14 }}
         {{- end }}
-        {{- if .Values.enterprise.kubernetesAccess.enabled }}
-        - podSelector:
-            matchLabels:
-              {{- include "rush.selectorLabels" (dict "root" . "component" "kubernetes-access-gateway") | nindent 14 }}
-        {{- end }}
       ports:
         - protocol: TCP
           port: http

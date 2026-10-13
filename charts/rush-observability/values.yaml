@@ -573,10 +573,6 @@ queryApi:
     allowSmtpEgress: false
     extraIngress: []
     extraEgress: []
-# -- ══ Enterprise (commercial, license-gated) ══════════════════════════════
-# Commercial license configuration used by Query API. Add-on workloads are
-# installed by the rush-observability-stack chart.
-
 # ========================================================================
 # frontend  —  changed: Sometimes
 #  The Rush web UI.
@@ -675,105 +671,6 @@ frontend:
 # tiering with just this block — the chart auto-generates the ClickHouse S3 disk
 # + cold volume (see clickhouse.clickhouse.extraConfig). No hand-written XML.
 
-# ========================================================================
-# enterprise  —  changed: Sometimes
-#  Licensed features. Leave disabled for the community build.
-# ========================================================================
-# -- ══ Enterprise (commercial, license-gated) ══════════════════════════════
-# Commercial license configuration used by Query API. Add-on workloads are
-# installed by the rush-observability-stack chart.
-enterprise:
-  # ── Commercial license ──
-  # -- When enabled, query-api reads RUSH_LICENSE_KEY from the named Secret and
-  # verifies it offline. Create the secret with your minted license token:
-  #   kubectl create secret generic rush-license --from-literal=license-key='<token>'
-  license:
-    enabled: false
-    secret:
-      name: rush-license
-      key: license-key
-  # -- Licensed Kubernetes access recording. One switch enables the Query API
-  # endpoints and deploys the gateway used by kubectl clients.
-  kubernetesAccess:
-    enabled: false
-    internalToken: ""
-    maxResultBytes: 262144
-    maxSessionBytes: 67108864
-    retentionDays: 30
-    retainRawIp: false
-    collectPrivateIp: false
-    credentialTtlSeconds: 3600
-    # -- The gateway proxies Kubernetes API requests and sends bounded records to
-    # Query API. Configure a commercial license and cluster identity first.
-    inheritGlobalScheduling: true
-    scheduling: {}
-    podAnnotations: {}
-    podLabels: {}
-    imagePullSecrets: []
-    priorityClassName: ""
-    runtimeClassName: ""
-    extraEnvFrom: []
-    extraVolumes: []
-    extraVolumeMounts: []
-    serviceAccount:
-      create: true
-      name: ""
-      annotations: {}
-    # -- Creating the ClusterRole grants this service account permission to
-    # impersonate Kubernetes users and groups. Leave it false when platform
-    # administrators provide a narrower existing role binding.
-    rbac:
-      createImpersonationRole: false
-      # -- Reconcile saved group-to-role grants into native Kubernetes RBAC. The
-      # controller needs bind and escalate privileges, so use a dedicated account.
-      manageRoles: false
-    image:
-      repository: ghcr.io/rushobservability/kubernetes-access-gateway
-      tag: "0.1.0"
-      digest: ""
-      pullPolicy: Always
-    replicas: 2
-    port: 8443
-    # -- Leave blank to use the Query API Service installed by this chart.
-    queryApiUrl: ""
-    gatewayId: ""
-    clusterId: ""
-    # -- Tenants permitted to exchange their Rush credentials for this cluster.
-    tenantIds: []
-    failurePolicy: fail_open
-    # -- Trust only known proxy networks. Never use 0.0.0.0/0.
-    trustedProxyCidrs: []
-    upstream:
-      url: https://kubernetes.default.svc
-      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-      insecure: false
-      # -- Narrow this to the Kubernetes API endpoint CIDR when possible.
-      egressCidrs: [0.0.0.0/0]
-    tls:
-      # -- The Secret must contain tls.crt and tls.key.
-      existingSecret: ""
-    service:
-      type: ClusterIP
-      port: 443
-      # -- Leave blank to let Kubernetes choose a NodePort.
-      nodePort: null
-    networkPolicy:
-      enabled: true
-      allowSameNamespaceIngress: true
-      allowExternalIngress: false
-      extraIngress: []
-      extraEgress: []
-    podDisruptionBudget:
-      enabled: true
-      type: maxUnavailable
-      value: 1
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: "1"
-        memory: 512Mi
 # ========================================================================
 # imageSecurity  —  changed: Sometimes
 #  Refuse tag-only first-party images. Recommended in production.

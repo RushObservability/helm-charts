@@ -2,14 +2,6 @@
 {{ include "rush.podDisruptionBudget" (dict "root" . "component" "sre-agent" "pdb" .Values.rush.queryApi.integrations.sreAgent.podDisruptionBudget) }}
 ---
 {{- end }}
-{{- if and .Values.enterprise.mysqlCollector.enabled .Values.enterprise.mysqlCollector.podDisruptionBudget.enabled }}
-{{ include "rush.podDisruptionBudget" (dict "root" . "component" "mysql-collector" "pdb" .Values.enterprise.mysqlCollector.podDisruptionBudget) }}
----
-{{- end }}
-{{- if and .Values.enterprise.postgresCollector.enabled .Values.enterprise.postgresCollector.podDisruptionBudget.enabled }}
-{{ include "rush.podDisruptionBudget" (dict "root" . "component" "postgres-collector" "pdb" .Values.enterprise.postgresCollector.podDisruptionBudget) }}
----
-{{- end }}
 {{- if and (include "rush.stackOtelEnabled" .) .Values.collectors.otel.podDisruptionBudget.enabled }}
 {{ include "rush.podDisruptionBudget" (dict "root" . "component" "otel-collector" "pdb" .Values.collectors.otel.podDisruptionBudget) }}
 ---

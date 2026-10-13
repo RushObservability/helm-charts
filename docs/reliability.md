@@ -62,8 +62,7 @@ optional `podDisruptionBudget`.
 
 Stateless serving paths default to zero-unavailable rolling updates. Singleton
 core consumers such as the anomaly engine and ingest drain worker default to
-`Recreate` to avoid duplicate work. The stack applies the same rule to the
-PostgreSQL collector.
+`Recreate` to avoid duplicate work.
 
 ```yaml
 queryApi:

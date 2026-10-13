@@ -105,7 +105,7 @@ repository.
 | Run multiple replicas | [Reliability and high availability](docs/reliability.md) |
 
 Do not start by reading the full `values.yaml` files. They include every
-advanced scheduling, security, and add-on setting. Use the guides above, then
+advanced scheduling and security setting. Use the guides above, then
 look up an individual value when you need it.
 
 ## Documentation

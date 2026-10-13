@@ -147,14 +147,6 @@ spec:
               value: {{ $integrations.sreAgent.githubApp.tenantRepositories | toJson | quote }}
             {{- end }}
             {{- end }}
-            {{- if .Values.enterprise.license.enabled }}
-            # Commercial license (Ed25519-signed token), verified offline by the API.
-            - name: RUSH_LICENSE_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.enterprise.license.secret.name }}
-                  key: {{ .Values.enterprise.license.secret.key }}
-            {{- end }}
             {{- $bootstrapSecret := .Values.queryApi.config.secrets.existingSecret | default (printf "%s-bootstrap" (include "rush.fullname" .)) }}
             # First-boot admin seed plus API-key/audit/session HMAC keys. Auto-generated and
             # preserved across upgrades by query-api-secret.yaml (or supply your
@@ -200,39 +192,6 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: config-encryption-key
-            {{- if .Values.enterprise.kubernetesAccess.enabled }}
-            - name: KUBERNETES_ACCESS_ENABLED
-              value: "true"
-            - name: KUBERNETES_ACCESS_INTERNAL_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $bootstrapSecret }}
-                  key: kubernetes-access-internal-token
-            - name: KUBERNETES_ACCESS_MAX_RESULT_BYTES
-              value: {{ .Values.enterprise.kubernetesAccess.maxResultBytes | quote }}
-            - name: KUBERNETES_ACCESS_MAX_SESSION_BYTES
-              value: {{ .Values.enterprise.kubernetesAccess.maxSessionBytes | quote }}
-            - name: KUBERNETES_ACCESS_RETENTION_DAYS
-              value: {{ .Values.enterprise.kubernetesAccess.retentionDays | quote }}
-            - name: KUBERNETES_ACCESS_RETAIN_RAW_IP
-              value: {{ .Values.enterprise.kubernetesAccess.retainRawIp | quote }}
-            - name: KUBERNETES_ACCESS_COLLECT_PRIVATE_IP
-              value: {{ .Values.enterprise.kubernetesAccess.collectPrivateIp | quote }}
-            - name: KUBERNETES_ACCESS_CREDENTIAL_TTL_SECONDS
-              value: {{ .Values.enterprise.kubernetesAccess.credentialTtlSeconds | quote }}
-            - name: KUBERNETES_ACCESS_GATEWAY_ID
-              value: {{ .Values.enterprise.kubernetesAccess.gatewayId | quote }}
-            - name: KUBERNETES_ACCESS_GATEWAY_TENANT_IDS
-              value: {{ join "," .Values.enterprise.kubernetesAccess.tenantIds | quote }}
-            - name: KUBERNETES_ACCESS_GATEWAY_CLUSTER_ID
-              value: {{ .Values.enterprise.kubernetesAccess.clusterId | quote }}
-            {{- $tenantClusters := dict }}
-            {{- range .Values.enterprise.kubernetesAccess.tenantIds }}
-            {{- $_ := set $tenantClusters . (list $.Values.enterprise.kubernetesAccess.clusterId) }}
-            {{- end }}
-            - name: KUBERNETES_ACCESS_TENANT_CLUSTERS
-              value: {{ $tenantClusters | toJson | quote }}
-            {{- end }}
             {{- $ingestSecret := include "rush.bootstrapIngestApiKeySecretName" . }}
             {{- if $ingestSecret }}
             # The plaintext is used only to idempotently register its HMAC in

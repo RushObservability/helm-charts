@@ -19,17 +19,14 @@ from this reference page.
 | metrics-agent | On | Discover Prometheus/VictoriaMetrics targets and remote-write metrics |
 | OTel Collector | On | Receive OTLP traces and metrics |
 | Vector | On | Collect Kubernetes container logs |
-| PostgreSQL collector | Off | Paid PostgreSQL monitoring add-on |
-| MySQL collector | Off | Paid MySQL query and database diagnostics add-on |
 
-The SRE agent and licensed database add-ons are off initially because they need
-an LLM provider, database credentials, or a license. The collection path and
-shared ingest key work without extra configuration.
+The SRE agent is off initially because it needs an LLM provider. The collection
+path and shared ingest key work without extra configuration. The PostgreSQL,
+MySQL, and Kubernetes access add-ons are coming soon and are not in the charts yet.
 
 ## Values layout
 
-Core settings live under `rush`. Collectors and database add-ons remain at the
-top level. `global` is reserved for settings shared across components, such as
+Core settings live under `rush`. Collectors remain at the top level. `global` is reserved for settings shared across components, such as
 scheduling, pod labels, image pull Secrets, and the generated ingest key.
 Query API integrations live together under `rush.queryApi.integrations`.
 Application behavior is grouped under `rush.queryApi.config`; Kubernetes
@@ -89,7 +86,6 @@ The chart groups Query API behavior, free integrations, and paid features separa
 | `config.retention` | Default retention windows, signal-specific rules, and the retention enforcer |
 | `config.ingest` | Protocol limits and durable ingest-buffer behavior |
 | `integrations` | Kubernetes browsing, Argo CD, Flux, CloudWatch, and the SRE agent |
-| `enterprise` | License settings and licensed Kubernetes access recording |
 
 For the core chart, remove only the leading `rush.` from these paths.
 
@@ -144,16 +140,13 @@ Install `rush-observability-stack` with the same release name, then move values:
 | Core settings such as `queryApi` and `clickhouse` | `rush.queryApi`, `rush.clickhouse` |
 | `sreAgent` | `rush.queryApi.integrations.sreAgent` |
 | `infrastructure`, `argocd`, `fluxcd`, `kubernetes`, `cloudwatch` | `rush.queryApi.integrations.*` |
-| `queryApi.kubernetesAccess`, `queryApi.integrations.kubernetesAccess` | `rush.enterprise.kubernetesAccess` |
-| `kubernetesAccessGateway`, `enterprise.kubernetesAccessGateway` | `rush.enterprise.kubernetesAccess` |
+| `queryApi.kubernetesAccess`, `kubernetesAccessGateway`, `enterprise` | Removed. Licensed add-ons are coming soon |
 | `ingress` | `rush.queryApi.ingress` |
 | `statsEngine` | `rush.queryApi.config.statsEngine` |
 | `promql` | `rush.queryApi.config.promql` |
 | `collectors` | `collectors` |
 | `collectors.ingestApiKeySecret` | `global.rush.ingestApiKeySecret` |
-| `enterprise.license.integrations.postgresCollector` | `enterprise.postgresCollector` |
-| `postgresCollector`, `mysqlCollector` | `enterprise.postgresCollector`, `enterprise.mysqlCollector` |
-| `enterprise.license` | `rush.enterprise.license` |
+| `postgresCollector`, `mysqlCollector`, `enterprise.license` | Removed. Licensed add-ons are coming soon |
 
 The core chart now rejects the removed top-level collector and SRE-agent keys
 so upgrades do not silently ignore old values.
@@ -210,30 +203,3 @@ the SRE agent receives neither the credential nor direct provider access.
 
 See [access and integrations](access-and-integrations.md) before granting the
 agent Kubernetes or GitHub access.
-
-## Enable PostgreSQL monitoring
-
-The PostgreSQL collector requires a license with the PostgreSQL entitlement,
-the Rush license Secret, and a Secret containing `dsn` and `api-key`. It also
-requires an explicit NetworkPolicy egress rule for the database.
-
-See the defaults under [`enterprise.postgresCollector`](../charts/rush-observability-stack/values.yaml)
-for the complete configuration.
-
-## Enable MySQL monitoring
-
-Create a Secret with a read-only MySQL DSN and Rush ingest key, then enable the collector. When NetworkPolicy is on, add a narrow TCP 3306 egress rule for the database.
-
-```bash
-kubectl -n observability create secret generic rush-mysql-collector \
-  --from-literal=dsn='mysql://rush_monitor:…@mysql.example:3306/app' \
-  --from-literal=api-key='rush_ing_…'
-
-helm upgrade rush \
-  oci://ghcr.io/rushobservability/helm-charts/rush-observability-stack \
-  -n observability \
-  --set enterprise.mysqlCollector.enabled=true \
-  --set-json 'enterprise.mysqlCollector.networkPolicy.extraEgress=[{"to":[{"ipBlock":{"cidr":"10.40.0.8/32"}}],"ports":[{"protocol":"TCP","port":3306}]}]'
-```
-
-The license must include the `mysql` entitlement. Error message text remains off unless `enterprise.mysqlCollector.env.COLLECTOR_INCLUDE_ERROR_TEXT=true` is set explicitly.

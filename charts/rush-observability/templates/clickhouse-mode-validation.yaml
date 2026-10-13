@@ -5,7 +5,14 @@
 {{- fail "global.sreAgent moved to queryApi.integrations.sreAgent" -}}
 {{- end -}}
 {{- if hasKey .Values.queryApi "kubernetesAccess" -}}
-{{- fail "queryApi.kubernetesAccess moved to enterprise.kubernetesAccess" -}}
+{{- fail "queryApi.kubernetesAccess was removed; licensed add-ons are coming soon" -}}
+{{- end -}}
+{{- /* Licensed add-ons were removed from the chart until they ship. Old values
+files that only carry the disabled defaults still install; enabling one fails. */ -}}
+{{- with .Values.enterprise -}}
+{{- if or (dig "license" "enabled" false .) (dig "kubernetesAccess" "enabled" false .) -}}
+{{- fail "enterprise.license and enterprise.kubernetesAccess were removed; licensed add-ons are coming soon. Delete the enterprise block from your values." -}}
+{{- end -}}
 {{- end -}}
 {{- if and (eq .Values.clickhouse.mode "external") .Values.clickhouse.enabled -}}
 {{- fail "clickhouse.enabled must be false when clickhouse.mode=external; the external mode does not deploy the bundled ClickHouse chart" -}}
