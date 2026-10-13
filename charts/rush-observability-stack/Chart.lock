@@ -1,9 +1,9 @@
 dependencies:
 - name: rush-observability
   repository: file://../rush-observability
-  version: 0.3.4
+  version: 0.4.0
 - name: metrics-agent
   repository: file://../metrics-agent
   version: 0.1.4
-digest: sha256:6f8ff7254f978878b5eb3b22e12bb69ba0d491a9e2355f94addce0f0e61a788b
-generated: "2026-09-26T19:32:38.202738-07:00"
+digest: sha256:8a7f6defdfe321a1a5fa00a8f3f3bba11ccf1486388965c200b4781635ad996a
+generated: "2026-10-12T20:49:20.246694-07:00"

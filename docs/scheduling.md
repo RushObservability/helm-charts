@@ -4,7 +4,7 @@
 
 In the core chart, `global.scheduling` applies to Query API, frontend, and the
 anomaly engine. In `rush-observability-stack`, the same global block also
-applies to SRE agent, OpenTelemetry Collector, Vector, and licensed collectors.
+applies to SRE agent, OpenTelemetry Collector, and Vector.
 
 ClickHouse does not inherit these defaults, so its storage pods can use a
 separate node group:

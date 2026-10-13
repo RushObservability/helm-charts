@@ -16,17 +16,12 @@
 {{- if and (or (and $collectorEnabled (not .Values.collectors.allowAnonymousIngest)) $metricsNeedsKey) (not $ingestSecretName) -}}
 {{- fail "enable global.rush.ingestApiKeySecret.autoGenerate or set name/value for authenticated collectors or metrics-agent remote write" -}}
 {{- end -}}
-{{- if and .Values.enterprise.postgresCollector.enabled (not .Values.rush.enterprise.license.enabled) -}}
-{{- fail "enterprise.postgresCollector.enabled=true requires rush.enterprise.license.enabled=true" -}}
+{{- /* The PostgreSQL and MySQL add-ons were removed until they ship. Old values
+files that only carry the disabled defaults still install; enabling one fails. */ -}}
+{{- with .Values.enterprise -}}
+{{- if or (dig "postgresCollector" "enabled" false .) (dig "mysqlCollector" "enabled" false .) -}}
+{{- fail "enterprise.postgresCollector and enterprise.mysqlCollector were removed; licensed add-ons are coming soon. Delete the enterprise block from your values." -}}
 {{- end -}}
-{{- if and .Values.enterprise.postgresCollector.enabled .Values.enterprise.postgresCollector.networkPolicy.enabled (empty .Values.enterprise.postgresCollector.networkPolicy.extraEgress) -}}
-{{- fail "enterprise.postgresCollector.networkPolicy requires an explicit extraEgress rule for the Postgres server" -}}
-{{- end -}}
-{{- if and .Values.enterprise.mysqlCollector.enabled (not .Values.rush.enterprise.license.enabled) -}}
-{{- fail "enterprise.mysqlCollector.enabled=true requires rush.enterprise.license.enabled=true" -}}
-{{- end -}}
-{{- if and .Values.enterprise.mysqlCollector.enabled .Values.enterprise.mysqlCollector.networkPolicy.enabled (empty .Values.enterprise.mysqlCollector.networkPolicy.extraEgress) -}}
-{{- fail "enterprise.mysqlCollector.networkPolicy requires an explicit extraEgress rule for the MySQL server" -}}
 {{- end -}}
 {{- if .Values.rush.imageSecurity.requireDigests -}}
 {{- if and .Values.rush.queryApi.integrations.sreAgent.enabled (not .Values.rush.queryApi.integrations.sreAgent.image.digest) -}}{{- fail "rush.imageSecurity.requireDigests=true requires rush.queryApi.integrations.sreAgent.image.digest" -}}{{- end -}}
