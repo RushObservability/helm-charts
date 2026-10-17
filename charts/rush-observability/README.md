@@ -1,6 +1,6 @@
 # rush-observability
 
-![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.25](https://img.shields.io/badge/AppVersion-0.1.25-informational?style=flat-square)
+![Version: 0.4.1](https://img.shields.io/badge/Version-0.4.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.7](https://img.shields.io/badge/AppVersion-0.1.7-informational?style=flat-square)
 
 The core Rush platform: Query API, frontend, anomaly processing, and ClickHouse.
 
@@ -79,7 +79,7 @@ Kubernetes: `>=1.25.0-0`
 | frontend.image.digest | string | `""` |  |
 | frontend.image.pullPolicy | string | `"IfNotPresent"` |  |
 | frontend.image.repository | string | `"ghcr.io/rushobservability/frontend"` |  |
-| frontend.image.tag | string | `"0.1.6"` |  |
+| frontend.image.tag | string | `"0.1.13"` |  |
 | frontend.imagePullSecrets | list | `[]` |  |
 | frontend.inheritGlobalScheduling | bool | `true` | ------------------------------------------------------------------- |
 | frontend.networkPolicy.allowSameNamespaceIngress | bool | `true` | Allows same-namespace ingress controllers and port-forward helpers. |
@@ -165,8 +165,8 @@ Kubernetes: `>=1.25.0-0`
 | queryApi.extraVolumes | list | `[]` |  |
 | queryApi.image.digest | string | `""` |  |
 | queryApi.image.pullPolicy | string | `"IfNotPresent"` |  |
-| queryApi.image.repository | string | `"mzupan/rush-api"` |  |
-| queryApi.image.tag | string | `"0.1.25"` |  |
+| queryApi.image.repository | string | `"ghcr.io/rushobservability/query-api"` |  |
+| queryApi.image.tag | string | `"0.1.7"` |  |
 | queryApi.imagePullSecrets | list | `[]` |  |
 | queryApi.ingress | object | `{"annotations":{},"api":{"annotations":{},"enabled":false,"host":"","path":"/","pathType":"Prefix","tls":{"enabled":true,"secretName":""}},"className":"","enabled":false,"frontend":{"enabled":true,"host":"","path":"/","pathType":"Prefix","tls":{"enabled":true,"secretName":""}},"trustedProxyCidrs":[]}` | Optional public entry points. The frontend host also proxies /api, /auth, /prom, and /metrics. Enable the API host only when a separate direct API origin is required. trustedProxyCidrs are merged into the Query API trust list so forwarded client addresses are accepted only from known proxies. |
 | queryApi.inheritGlobalScheduling | bool | `true` | ------------------------------------------------------------------- |

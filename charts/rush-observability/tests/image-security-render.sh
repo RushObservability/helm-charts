@@ -21,7 +21,7 @@ digest_render="$(helm template image-policy "$chart_dir" \
   --show-only templates/query-api-deployment.yaml \
   --set queryApi.config.runtime.environment=development \
   --set queryApi.image.digest="$digest")"
-if ! grep -Fq "image: \"mzupan/rush-api@$digest\"" <<<"$digest_render"; then
+if ! grep -Fq "image: \"ghcr.io/rushobservability/query-api@$digest\"" <<<"$digest_render"; then
   echo 'query-api digest did not take precedence over its tag' >&2
   exit 1
 fi
@@ -32,8 +32,8 @@ mirror_render="$(helm template image-policy "$chart_dir" \
   --set clickhouse.enabled=false \
   --set anomalyEngine.enabled=true)"
 for expected in \
-  'image: "mirror.example.com/cache/mzupan/rush-api:0.1.25"' \
-  'image: "mirror.example.com/cache/rushobservability/frontend:0.1.6"' \
+  'image: "mirror.example.com/cache/rushobservability/query-api:0.1.7"' \
+  'image: "mirror.example.com/cache/rushobservability/frontend:0.1.13"' \
   'image: "mirror.example.com/cache/clickhouse/clickhouse-server:26.6.1.1193"'; do
   grep -Fq "$expected" <<<"$mirror_render" || {
     echo "global image registry render is missing: $expected" >&2
