@@ -464,8 +464,8 @@ queryApi:
     name: ""
     annotations: {}
   image:
-    repository: mzupan/rush-api
-    tag: "0.1.25"
+    repository: ghcr.io/rushobservability/query-api
+    tag: "0.1.7"
     digest: "" # sha256:<64 hex chars>; takes precedence over tag
     pullPolicy: IfNotPresent
   replicas: 1
@@ -599,7 +599,7 @@ frontend:
     annotations: {}
   image:
     repository: ghcr.io/rushobservability/frontend
-    tag: "0.1.6"
+    tag: "0.1.13"
     digest: ""
     pullPolicy: IfNotPresent
   # -- Public base URL (scheme + host, no trailing slash) of the Rush API as seen from

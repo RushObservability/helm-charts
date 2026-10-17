@@ -77,11 +77,11 @@ mirrored="$(helm template stack "$chart_dir" "${common[@]}" \
   --set global.image.registry=mirror.example.com/cache \
   --set rush.queryApi.integrations.sreAgent.enabled=true)"
 for expected in \
-  'image: "mirror.example.com/cache/mzupan/rush-api:0.1.25"' \
-  'image: "mirror.example.com/cache/rushobservability/frontend:0.1.6"' \
+  'image: "mirror.example.com/cache/rushobservability/query-api:0.1.7"' \
+  'image: "mirror.example.com/cache/rushobservability/frontend:0.1.13"' \
   'image: "mirror.example.com/cache/clickhouse/clickhouse-server:26.6.1.1193"' \
-  'image: "mirror.example.com/cache/rushobservability/sre-agent:0.1.2"' \
-  'image: "mirror.example.com/cache/rushobservability/metrics-agent:0.1.0"' \
+  'image: "mirror.example.com/cache/rushobservability/sre-agent:0.1.4"' \
+  'image: "mirror.example.com/cache/rushobservability/metrics-agent:0.1.2"' \
   'image: "mirror.example.com/cache/otel/opentelemetry-collector-contrib:0.118.0"' \
   'image: "mirror.example.com/cache/timberio/vector:0.56.0-distroless-libc"'; do
   grep -Fq "$expected" <<<"$mirrored" || {
