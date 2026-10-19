@@ -1,18 +1,8 @@
 apiVersion: v2
 name: rush-observability-stack
 description: Rush Observability with optional cluster agents and telemetry collectors
-<<<<<<< Updated upstream
-version: 0.3.1
-appVersion: "0.1.7"
-=======
-<<<<<<< Updated upstream
-version: 0.3.0
-appVersion: "0.1.25"
-=======
 version: 0.4.0
 appVersion: "0.1.7"
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 type: application
 kubeVersion: ">=1.27.0-0"
 home: https://rushobservability.com
@@ -36,15 +26,7 @@ annotations:
 dependencies:
   - name: rush-observability
     alias: rush
-<<<<<<< Updated upstream
-    version: "0.4.1"
-=======
-<<<<<<< Updated upstream
-    version: "0.4.0"
-=======
     version: "0.5.0"
->>>>>>> Stashed changes
->>>>>>> Stashed changes
     repository: "file://../rush-observability"
   - name: metrics-agent
     alias: metricsAgent

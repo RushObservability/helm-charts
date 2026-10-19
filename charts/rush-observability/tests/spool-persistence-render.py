@@ -171,7 +171,8 @@ render({**HA, 'queryApi.drainWorker.auditSpoolPersistence.existingClaim': 'audit
 render({'queryApi.workloadKind': 'StatefulSet',
         'queryApi.ingestSpoolPersistence.existingClaim': 'audit-spool-spool-query-api-0'},
        rejected='must use different existingClaim')
-render({'queryApi.workloadKind': 'DaemonSet'}, rejected='queryApi.workloadKind')
+# Helm 3 uses dotted schema paths; Helm 4 uses JSON Pointer paths.
+render({'queryApi.workloadKind': 'DaemonSet'}, rejected='workloadKind')
 render({'queryApi.ingestSpoolPersistence.accessModes[0]': 'ReadOnlyMany'}, rejected='accessModes')
 
 # Keep the headless service distinct from the client service at Helm's name limit.
