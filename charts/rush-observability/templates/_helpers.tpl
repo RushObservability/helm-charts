@@ -500,6 +500,13 @@ through `tpl`. Reads `.Values.global.storage` (shared with subcharts via global)
 */}}
 {{- define "rush.clickhouseExtraConfig" -}}
 {{- $s3 := .Values.global.storage.s3 -}}
+{{- /* Operator mode renders this inside the Altinity subchart, where
+.Values.clickhouse is already the server block. Standalone mode renders it from
+this chart, where the same settings live one level down in clickhouse.clickhouse. */ -}}
+{{- $ch := .Values.clickhouse -}}
+{{- if kindIs "map" (get $ch "clickhouse") -}}
+{{- $ch = get $ch "clickhouse" -}}
+{{- end -}}
 <clickhouse>
   <!-- Required for the per-query rush_tenant_id row-policy setting. This helper
        is rendered into config.d in both operator and standalone modes. -->
@@ -515,17 +522,17 @@ through `tpl`. Reads `.Values.global.storage` (shared with subcharts via global)
        keeps warnings/errors but drops the per-query debug spam. Override via
        clickhouse.clickhouse.logLevel. -->
   <logger>
-    <level>{{ .Values.clickhouse.logLevel | default "information" }}</level>
+    <level>{{ $ch.logLevel | default "information" }}</level>
   </logger>
-  <mark_cache_size>{{ .Values.clickhouse.markCacheSize | int64 }}</mark_cache_size>
-  <uncompressed_cache_size>{{ .Values.clickhouse.uncompressedCacheSize | int64 }}</uncompressed_cache_size>
+  <mark_cache_size>{{ $ch.markCacheSize | int64 }}</mark_cache_size>
+  <uncompressed_cache_size>{{ $ch.uncompressedCacheSize | int64 }}</uncompressed_cache_size>
   <!-- Text-index cache budgets (26.6+). ClickHouse defaults are 1+1+2 GiB — too
        large next to the 2 GiB mark cache inside the 8Gi memory baseline. Queries
        only use these global caches because the default profile (extraUsers) sets
        use_text_index_{tokens,header,postings,dictionary}_cache=1. -->
-  <text_index_tokens_cache_size>{{ .Values.clickhouse.textIndexTokensCacheSize | int64 }}</text_index_tokens_cache_size>
-  <text_index_header_cache_size>{{ .Values.clickhouse.textIndexHeaderCacheSize | int64 }}</text_index_header_cache_size>
-  <text_index_postings_cache_size>{{ .Values.clickhouse.textIndexPostingsCacheSize | int64 }}</text_index_postings_cache_size>
+  <text_index_tokens_cache_size>{{ $ch.textIndexTokensCacheSize | int64 }}</text_index_tokens_cache_size>
+  <text_index_header_cache_size>{{ $ch.textIndexHeaderCacheSize | int64 }}</text_index_header_cache_size>
+  <text_index_postings_cache_size>{{ $ch.textIndexPostingsCacheSize | int64 }}</text_index_postings_cache_size>
   <storage_configuration>
     {{- if $s3.enabled }}
     <disks>
@@ -550,7 +557,7 @@ through `tpl`. Reads `.Values.global.storage` (shared with subcharts via global)
         <type>cache</type>
         <disk>s3</disk>
         <path>/var/lib/clickhouse/s3_cache/</path>
-        <max_size>{{ .Values.clickhouse.s3CacheSize | int64 }}</max_size>
+        <max_size>{{ $ch.s3CacheSize | int64 }}</max_size>
       </s3_cache>
     </disks>
     {{- end }}

@@ -326,4 +326,16 @@ if helm template stack "$chart_dir" "${common[@]}" \
   exit 1
 fi
 
+# The default standalone ClickHouse gets the stack's 4Gi sizing and caches scaled to fit it.
+clickhouse="$(helm template stack "$chart_dir" "${common[@]}" \
+  --show-only charts/rush/templates/clickhouse-standalone-statefulset.yaml \
+  --show-only charts/rush/templates/clickhouse-standalone-configmap.yaml)"
+for expected in 'memory: 4Gi' 'memory: 2Gi' '<mark_cache_size>536870912</mark_cache_size>' \
+  '<text_index_postings_cache_size>536870912</text_index_postings_cache_size>'; do
+  grep -Fq "$expected" <<<"$clickhouse" || {
+    echo "stack ClickHouse is missing: $expected" >&2
+    exit 1
+  }
+done
+
 echo 'rush-observability-stack renders passed'
