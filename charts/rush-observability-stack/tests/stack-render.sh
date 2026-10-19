@@ -75,6 +75,15 @@ grep -A1 -F 'name: METRICS_AGENT_SCRAPE_ENABLED' <<<"$scrape_off" | grep -Fq 'va
   exit 1
 }
 
+# metrics-agent exits unless the VictoriaMetrics scrape CRDs exist, so the stack ships them.
+crds="$(helm show crds "$chart_dir")"
+for crd in vmservicescrapes vmpodscrapes vmprobes vmscrapeconfigs; do
+  grep -Fq "name: ${crd}.operator.victoriametrics.com" <<<"$crds" || {
+    echo "stack chart is missing the ${crd} CRD that metrics-agent requires" >&2
+    exit 1
+  }
+done
+
 retention="$(helm template stack "$chart_dir" "${common[@]}" \
   --set rush.queryApi.config.retention.defaults.logsDays=45)"
 grep -Fq 'logs_days = 45' <<<"$retention" || {
