@@ -52,6 +52,29 @@ for expected in 'value: "development"' 'value: "http://localhost:8080"' 'value: 
   }
 done
 
+# The collector probes hit port 13133, so the generated config must serve it.
+for expected in 'health_check:' 'endpoint: 0.0.0.0:13133' 'extensions: [health_check]'; do
+  grep -Fq "$expected" <<<"$defaults" || {
+    echo "otel collector config is missing its health check: $expected" >&2
+    exit 1
+  }
+done
+
+# metrics-agent's --scrape-enabled is a value-less flag; true/false must use the env var.
+if grep -Eq -- '^ *- --scrape-enabled' <<<"$defaults"; then
+  echo 'metrics-agent must not receive --scrape-enabled as an argument' >&2
+  exit 1
+fi
+grep -A1 -F 'name: METRICS_AGENT_SCRAPE_ENABLED' <<<"$defaults" | grep -Fq 'value: "true"' || {
+  echo 'metrics-agent scrape setting is not passed through METRICS_AGENT_SCRAPE_ENABLED' >&2
+  exit 1
+}
+scrape_off="$(helm template stack "$chart_dir" "${common[@]}" --set metricsAgent.scrape.enabled=false)"
+grep -A1 -F 'name: METRICS_AGENT_SCRAPE_ENABLED' <<<"$scrape_off" | grep -Fq 'value: "false"' || {
+  echo 'metricsAgent.scrape.enabled=false did not reach METRICS_AGENT_SCRAPE_ENABLED' >&2
+  exit 1
+}
+
 retention="$(helm template stack "$chart_dir" "${common[@]}" \
   --set rush.queryApi.config.retention.defaults.logsDays=45)"
 grep -Fq 'logs_days = 45' <<<"$retention" || {

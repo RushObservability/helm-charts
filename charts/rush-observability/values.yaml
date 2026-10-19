@@ -132,6 +132,11 @@ clickhouse:
           - "GRANT SELECT ON observability.rum_replay"
           - "GRANT SELECT ON observability.signal_usage"
           - "GRANT SELECT ON observability.tenant_usage"
+          - "GRANT SELECT ON observability.profile_samples"
+          - "GRANT SELECT ON observability.signal_query_stats"
+          # Backing tables of the services and spans_by_trace views (.inner_id.<uuid>);
+          # query-api installs strict row policies on them and verifies reads.
+          - "GRANT SELECT ON observability.`.inner_id.`*"
     # -- Custom ClickHouse server configuration files.
     # rush_settings.xml: enables the 'rush_' custom settings prefix so that
     # rush-api can set `rush_tenant_id` per-query for row-level security
