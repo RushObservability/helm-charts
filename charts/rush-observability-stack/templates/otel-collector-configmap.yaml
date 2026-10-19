@@ -11,6 +11,11 @@ data:
     {{- if .Values.collectors.otel.configOverride }}
     {{- .Values.collectors.otel.configOverride | nindent 4 }}
     {{- else }}
+    extensions:
+      # Serves the startup, readiness and liveness probes (port 13133, path /).
+      health_check:
+        endpoint: 0.0.0.0:13133
+
     receivers:
       otlp:
         protocols:
@@ -65,6 +70,7 @@ data:
           queue_size: 5000
 
     service:
+      extensions: [health_check]
       telemetry:
         logs:
           level: info

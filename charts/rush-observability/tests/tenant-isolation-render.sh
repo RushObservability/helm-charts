@@ -27,6 +27,20 @@ assert_render "$standalone" '<custom_settings_prefixes>rush_</custom_settings_pr
 assert_render "$standalone" '<rushquery>' 'standalone read-only principal'
 assert_render "$standalone" 'RUSH_CLICKHOUSE_READ_PASSWORD' 'standalone read credential injection'
 
+# query-api verifies every row-policy table, including the views' .inner_id.* backing
+# tables, by reading it as rushquery, so each one needs a SELECT grant in both modes.
+for rendered_mode in operator standalone; do
+  rendered="${!rendered_mode}"
+  for table in logs spans spans_by_trace services profile_samples signal_query_stats '`.inner_id.`*'; do
+    assert_render "$rendered" "GRANT SELECT ON observability.${table}" "${rendered_mode} rushquery grant"
+  done
+  # The read identity must never reach configuration or audit data.
+  if grep -Eq 'GRANT SELECT ON observability\.(\*|config_|audit_events)' <<<"$rendered"; then
+    echo "${rendered_mode} rushquery grant reaches config or audit tables" >&2
+    exit 1
+  fi
+done
+
 external="$(helm template tenant-policy "$chart_dir" \
   --set clickhouse.enabled=false \
   --set clickhouse.mode=external \

@@ -314,6 +314,8 @@ collectors:
       type: ClusterIP
       grpcPort: 4317
       httpPort: 4318
+    # -- Full collector config to use instead of the generated one. Include the
+    # health_check extension on 0.0.0.0:13133; the pod probes depend on it.
     configOverride: ""
   vector:
     inheritGlobalScheduling: true

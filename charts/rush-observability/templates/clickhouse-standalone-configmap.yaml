@@ -56,6 +56,12 @@ data:
             <query>GRANT SELECT ON observability.rum_replay</query>
             <query>GRANT SELECT ON observability.signal_usage</query>
             <query>GRANT SELECT ON observability.tenant_usage</query>
+            <query>GRANT SELECT ON observability.profile_samples</query>
+            <query>GRANT SELECT ON observability.signal_query_stats</query>
+            <!-- Backing tables of the services and spans_by_trace views. ClickHouse
+                 names them .inner_id.<uuid> at runtime; query-api installs strict
+                 row policies on them and verifies reads through this user. -->
+            <query>GRANT SELECT ON observability.`.inner_id.`*</query>
           </grants>
         </rushquery>
       </users>
