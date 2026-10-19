@@ -97,6 +97,7 @@ jobs:
 
       - name: Run render tests
         run: |
+          python3 -m pip install 'PyYAML==6.0.2'
           for test_dir in charts/*/tests; do
             [ -d "$test_dir" ] || continue
             for test in "$test_dir"/*.sh; do

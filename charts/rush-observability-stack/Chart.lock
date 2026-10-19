@@ -1,9 +1,27 @@
 dependencies:
 - name: rush-observability
   repository: file://../rush-observability
+<<<<<<< Updated upstream
   version: 0.4.1
 - name: metrics-agent
   repository: file://../metrics-agent
   version: 0.1.5
 digest: sha256:9dcb62a3f38b804b5d0b4b59f7ddb458c008461efb2beee6dd244b41c3ef7dda
 generated: "2026-10-17T12:03:15.809099-07:00"
+=======
+<<<<<<< Updated upstream
+  version: 0.4.0
+- name: metrics-agent
+  repository: file://../metrics-agent
+  version: 0.1.4
+digest: sha256:8a7f6defdfe321a1a5fa00a8f3f3bba11ccf1486388965c200b4781635ad996a
+generated: "2026-10-12T20:49:20.246694-07:00"
+=======
+  version: 0.5.0
+- name: metrics-agent
+  repository: file://../metrics-agent
+  version: 0.1.5
+digest: sha256:4d3ec6a65f094f14f97b7da318bf53c58d23a9ccd2a21a187376f51706a6de4d
+generated: "2026-10-18T23:18:52.832424-07:00"
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes

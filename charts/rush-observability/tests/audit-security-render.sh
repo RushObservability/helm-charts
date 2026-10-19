@@ -22,6 +22,7 @@ done
 
 ephemeral="$(helm template audit-test "$chart_dir" \
   --set queryApi.config.runtime.baseUrl=https://rush.example.com \
+  --set queryApi.ingestSpoolPersistence.enabled=false \
   --set queryApi.auditSpoolPersistence.enabled=false)"
 if grep -Fq 'kind: PersistentVolumeClaim' <<<"$ephemeral"; then
   echo "audit PVC rendered while persistence was disabled" >&2

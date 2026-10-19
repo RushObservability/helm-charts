@@ -370,7 +370,7 @@ queryApi:
         maxLabelNameBytes: 256
         maxLabelValueBytes: 4096
         decodeConcurrency: 4
-      # -- The local disk queue is safe for one API pod. HA API replicas must share
+      # -- The persistent disk queue is for one API pod. HA API replicas must share
       # an object-store queue and use exactly one dedicated drain worker.
       buffer:
         backend: disk # disk | object_store
@@ -468,10 +468,15 @@ queryApi:
     tag: "0.1.7"
     digest: "" # sha256:<64 hex chars>; takes precedence over tag
     pullPolicy: IfNotPresent
+  # -- Deployment keeps the existing single-pod claim names. Use StatefulSet for
+  # HA: each ordinal owns its audit PVC. See docs/reliability.md before migrating.
+  workloadKind: Deployment
   replicas: 1
   port: 8080
   rollout:
-    strategy: RollingUpdate
+    # -- Deployments with persistent spools require Recreate. StatefulSets use
+    # ordered rolling updates and only inherit minReadySeconds/revisionHistoryLimit.
+    strategy: Recreate
     maxUnavailable: 0
     maxSurge: 1
     minReadySeconds: 0
@@ -534,6 +539,13 @@ queryApi:
       type: maxUnavailable
       value: 1
     terminationGracePeriodSeconds: 120
+    # -- Dedicated audit outbox for the singleton worker; never shares API claims.
+    auditSpoolPersistence:
+      enabled: true
+      existingClaim: ""
+      storageClass: ""
+      accessModes: ["ReadWriteOnce"]
+      size: 1Gi
     resources:
       requests:
         cpu: 100m
@@ -541,13 +553,39 @@ queryApi:
       limits:
         cpu: "1"
         memory: 512Mi
-  # -- Storage for the Query API audit spool. Disable it to use an emptyDir.
+  # -- Durable disk ingest backlog. Used only with backend=disk. Leave room above
+  # buffer.maxBytes for filesystem overhead. Disable only for disposable testing.
+  # storageClass="" uses the cluster default; "-" selects no StorageClass.
+  ingestSpoolPersistence:
+    enabled: true
+    existingClaim: ""
+    storageClass: ""
+    accessModes: ["ReadWriteOnce"]
+    size: 4Gi
+  # -- Storage for the Query API audit spool. StatefulSets create one claim per
+  # ordinal. existingClaim is only supported with one replica. Disable only for
+  # disposable testing. storageClass="-" selects no StorageClass.
   auditSpoolPersistence:
     enabled: true
     existingClaim: ""
     storageClass: ""
     accessModes: ["ReadWriteOnce"]
     size: 1Gi
+  # -- Non-root helper creates private spool directories and moves legacy pending
+  # records into it before startup. Mirror this image for disconnected clusters.
+  spoolInit:
+    image:
+      repository: docker.io/library/busybox
+      tag: "1.37.0"
+      digest: sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        cpu: 100m
+        memory: 256Mi
   # -- On SIGTERM, query-api fails readiness, flushes in-memory batches, and
   # drains its durable ingest queue before exiting. Increase this for large
   # backlogs or a ClickHouse recovery window.

@@ -70,6 +70,7 @@ files that only carry the disabled defaults still install; enabling one fails. *
 {{- end -}}
 {{- $anomalyImage := mergeOverwrite (deepCopy .Values.queryApi.image) (deepCopy (.Values.anomalyEngine.image | default dict)) -}}
 {{- if .Values.imageSecurity.requireDigests -}}
+{{- if not .Values.queryApi.spoolInit.image.digest -}}{{- fail "imageSecurity.requireDigests=true requires queryApi.spoolInit.image.digest" -}}{{- end -}}
 {{- if not .Values.queryApi.image.digest -}}{{- fail "imageSecurity.requireDigests=true requires queryApi.image.digest" -}}{{- end -}}
 {{- if not .Values.frontend.image.digest -}}{{- fail "imageSecurity.requireDigests=true requires frontend.image.digest" -}}{{- end -}}
 {{- if and .Values.anomalyEngine.enabled (not $anomalyImage.digest) -}}{{- fail "imageSecurity.requireDigests=true requires a digest for the anomaly engine (inherited from queryApi.image.digest or set in anomalyEngine.image.digest)" -}}{{- end -}}

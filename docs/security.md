@@ -237,12 +237,16 @@ and historical verification selects the key by ID.
 
 ## Audit durability
 
-The audit outbox uses a retained 1 GiB PVC by default. It fsyncs every event
+The audit outbox uses a retained 1 GiB PVC by default. StatefulSet API replicas
+each get their own claim, and the drain worker has a separate claim. It fsyncs every event
 before ordered ClickHouse delivery. `/readyz` fails and audit queue metrics rise
 while delivery is degraded.
 
-Use `queryApi.auditSpoolPersistence.existingClaim` for an operator-owned PVC.
-Disable persistence only for local testing.
+Use `queryApi.auditSpoolPersistence.existingClaim` for an operator-owned PVC with
+one API replica. Disable persistence only for local testing. The non-root init
+container prepares the private outbox directory and migrates pending records
+from the old flat layout. See [storage and upgrade procedures](reliability.md)
+before changing controller kinds, scaling down, or rolling back.
 
 ## Multi-replica SSO replay protection
 
@@ -251,6 +255,7 @@ IDs, OIDC transactions, and delegated SSO setup links are consumed atomically:
 
 ```yaml
 queryApi:
+  workloadKind: StatefulSet
   replicas: 2
   config:
     authentication:
@@ -261,6 +266,7 @@ clickhouse:
     enabled: true
 ```
 
+Combine these settings with the [HA ingest buffer configuration](reliability.md#high-availability-ingest-buffering).
 External ClickHouse must configure Keeper and `keeper_map_path_prefix`. Query
 API fails startup instead of using a process-local replay cache with multiple
 replicas.

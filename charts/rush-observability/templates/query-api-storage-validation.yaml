@@ -1,0 +1,48 @@
+{{- $api := .Values.queryApi -}}
+{{- $stateful := eq $api.workloadKind "StatefulSet" -}}
+{{- $disk := eq $api.config.ingest.buffer.backend "disk" -}}
+{{- $ingest := $api.ingestSpoolPersistence -}}
+{{- $audit := $api.auditSpoolPersistence -}}
+{{- $worker := $api.drainWorker -}}
+{{- if and (not $stateful) (gt (int $api.replicas) 1) $audit.enabled -}}
+{{- fail "persistent audit outboxes with multiple API replicas require queryApi.workloadKind=StatefulSet and a separate claim per replica; see docs/reliability.md" -}}
+{{- end -}}
+{{- if and (gt (int $api.replicas) 1) $audit.enabled $audit.existingClaim -}}
+{{- fail "queryApi.auditSpoolPersistence.existingClaim requires one replica; HA StatefulSets must use per-replica claim templates" -}}
+{{- end -}}
+{{- if and (not $stateful) (or $disk $audit.enabled) (ne $api.rollout.strategy "Recreate") -}}
+{{- fail "Query API Deployments with disk ingest or persistent audit storage require queryApi.rollout.strategy=Recreate to avoid overlapping writers and RWO attachment deadlocks" -}}
+{{- end -}}
+{{- if and $worker.enabled (ne $worker.rollout.strategy "Recreate") -}}
+{{- fail "queryApi.drainWorker.rollout.strategy must be Recreate; only one object-store drainer may run" -}}
+{{- end -}}
+{{- if and (eq $api.config.runtime.environment "production") $disk (not $ingest.enabled) -}}
+{{- fail "production disk ingest requires queryApi.ingestSpoolPersistence.enabled=true; emptyDir loses acknowledged telemetry on pod replacement" -}}
+{{- end -}}
+{{- $auditClaim := $audit.existingClaim | default (printf "%s-query-api-audit" (include "rush.fullname" .)) -}}
+{{- $ingestClaim := $ingest.existingClaim | default (include "rush.componentName" (dict "root" . "component" "query-api-ingest")) -}}
+{{- $workerClaim := $worker.auditSpoolPersistence.existingClaim | default (include "rush.componentName" (dict "root" . "component" "drain-worker-audit")) -}}
+{{- if and $stateful (not $audit.existingClaim) -}}
+{{- $auditClaim = printf "audit-spool-%s-0" (include "rush.queryApiServiceName" .) -}}
+{{- end -}}
+{{- if and $stateful (not $ingest.existingClaim) -}}
+{{- $ingestClaim = printf "rush-spool-%s-0" (include "rush.queryApiServiceName" .) -}}
+{{- end -}}
+{{- if and $disk $ingest.enabled $audit.enabled (eq $ingestClaim $auditClaim) -}}
+{{- fail "ingestSpoolPersistence and auditSpoolPersistence must use different existingClaim values" -}}
+{{- end -}}
+{{- if and $worker.enabled $worker.auditSpoolPersistence.enabled $audit.enabled (eq $workerClaim $auditClaim) -}}
+{{- fail "the drain worker must have its own audit claim; do not reuse queryApi.auditSpoolPersistence.existingClaim" -}}
+{{- end -}}
+{{- if and $stateful $audit.enabled (not $audit.existingClaim) $worker.enabled $worker.auditSpoolPersistence.enabled (regexMatch (printf "^audit-spool-%s-[0-9]+$" (include "rush.queryApiServiceName" . | regexQuoteMeta)) $workerClaim) -}}
+{{- fail "the drain worker must have its own audit claim; do not reuse a StatefulSet ordinal's claim" -}}
+{{- end -}}
+{{- /* A controller change cannot safely migrate an old outbox automatically.
+Reject it while the old controller exists. helm template/GitOps renders cannot
+perform lookup; those operators must follow the same manual migration steps. */ -}}
+{{- if .Release.IsUpgrade -}}
+{{- $oldKind := ternary "Deployment" "StatefulSet" $stateful -}}
+{{- if lookup "apps/v1" $oldKind .Release.Namespace (include "rush.queryApiServiceName" .) -}}
+{{- fail (printf "changing queryApi.workloadKind from %s requires draining or preserving both outboxes and removing the old controller first; follow docs/reliability.md" $oldKind) -}}
+{{- end -}}
+{{- end -}}

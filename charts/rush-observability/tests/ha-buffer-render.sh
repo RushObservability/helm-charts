@@ -24,6 +24,7 @@ if helm template ha-buffer "$chart_dir" \
 fi
 
 rendered="$(helm template ha-buffer "$chart_dir" \
+  --set queryApi.workloadKind=StatefulSet \
   --set queryApi.replicas=3 \
   --set clickhouse.keeper.enabled=true \
   --set queryApi.config.ingest.buffer.backend=object_store \
@@ -46,6 +47,7 @@ for expected in \
 done
 
 worker="$(helm template ha-buffer "$chart_dir" \
+  --set queryApi.workloadKind=StatefulSet \
   --show-only templates/query-api-drain-worker-deployment.yaml \
   --set queryApi.replicas=3 \
   --set clickhouse.keeper.enabled=true \
@@ -62,6 +64,7 @@ for expected in 'replicas: 1' 'type: Recreate' 'value: "true"'; do
 done
 
 api="$(helm template ha-buffer "$chart_dir" \
+  --set queryApi.workloadKind=StatefulSet \
   --show-only templates/query-api-deployment.yaml \
   --set queryApi.replicas=3 \
   --set clickhouse.keeper.enabled=true \

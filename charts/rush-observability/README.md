@@ -1,6 +1,14 @@
 # rush-observability
 
+<<<<<<< Updated upstream
 ![Version: 0.4.1](https://img.shields.io/badge/Version-0.4.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.7](https://img.shields.io/badge/AppVersion-0.1.7-informational?style=flat-square)
+=======
+<<<<<<< Updated upstream
+![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.25](https://img.shields.io/badge/AppVersion-0.1.25-informational?style=flat-square)
+=======
+![Version: 0.5.0](https://img.shields.io/badge/Version-0.5.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.7](https://img.shields.io/badge/AppVersion-0.1.7-informational?style=flat-square)
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
 The core Rush platform: Query API, frontend, anomaly processing, and ClickHouse.
 
@@ -139,13 +147,13 @@ Kubernetes: `>=1.25.0-0`
 | global.scheduling | object | `{"affinity":{},"nodeSelector":{},"tolerations":[],"topologySpreadConstraints":[]}` | Shared scheduling defaults for core Rush workloads: Query API, frontend, and anomaly engine. ClickHouse is intentionally independent; use clickhouse.clickhouse/keeper scheduling (or clickhouseStandalone scheduling) for storage-optimized node groups. Component scheduling maps deep-merge over these defaults. Component lists replace these lists. Set a component's inheritGlobalScheduling=false to opt out. |
 | helmTests | object | `{"activeDeadlineSeconds":180,"backoffLimit":1,"clickhouseConnectivity":true,"enabled":true,"resources":{"limits":{"cpu":"100m","memory":"64Mi"},"requests":{"cpu":"10m","memory":"16Mi"}}}` | Native `helm test` connectivity checks. Jobs are created only as Helm test hooks and use the query-api image, which already contains curl. |
 | imageSecurity.requireDigests | bool | `false` | Recommended for every production values file. When enabled, the chart refuses tag-only first-party Rush workloads. |
-| queryApi.auditSpoolPersistence | object | `{"accessModes":["ReadWriteOnce"],"enabled":true,"existingClaim":"","size":"1Gi","storageClass":""}` | Storage for the Query API audit spool. Disable it to use an emptyDir. |
+| queryApi.auditSpoolPersistence | object | `{"accessModes":["ReadWriteOnce"],"enabled":true,"existingClaim":"","size":"1Gi","storageClass":""}` | Storage for the Query API audit spool. StatefulSets create one claim per ordinal. existingClaim is only supported with one replica. Disable only for disposable testing. storageClass="-" selects no StorageClass. |
 | queryApi.config | object | `{"audit":{"keyId":"primary","previousKeysJson":"","spoolMaxBytes":268435456},"authentication":{"allowAnonymousDefault":false,"loginRateLimit":{"accountPerMinute":10,"ipPerMinute":50},"session":{"absoluteTimeoutSeconds":86400,"idleTimeoutSeconds":7200,"renewalIntervalSeconds":300},"ssoReplayStore":"auto"},"ingest":{"buffer":{"backend":"disk","maxBytes":2147483648,"objectStore":{"bucket":"","credentialsSecret":{"accessKeyKey":"access-key","name":"","secretKeyKey":"secret-key"},"endpoint":"","prefix":"ingest/","region":"us-east-1"}},"limits":{"decodeConcurrency":4,"maxCompressedBytes":8388608,"maxDecompressedBytes":33554432,"maxEntities":200000,"maxLabelNameBytes":256,"maxLabelValueBytes":4096,"maxLabelsPerSeries":128,"maxMetadata":10000,"maxSamples":200000,"maxSeries":20000}},"leaderElection":{"leaseTtlSeconds":15},"promql":{"lookbackSecs":300},"retention":{"defaults":{"logsDays":30,"metricsDays":30,"tracesDays":30},"enforcer":{"dryRun":false,"enabled":true,"intervalSeconds":3600},"metrics":[],"traces":[]},"runtime":{"baseUrl":"","environment":"development","extraEnv":{"CLICKHOUSE_DATABASE":"observability","RUST_LOG":"rush_api=info,tower_http=info"},"trustedProxyCidrs":[]},"secrets":{"adminPassword":"","apiKeyHmacSecret":"","auditHmacSecret":"","configEncryptionKey":"","existingSecret":"","sessionHmacSecret":"","ssoTransactionSecret":""},"statsEngine":{"intervalSecs":15}}` | Query API application behavior. Kubernetes workload controls remain at the queryApi level below this block. |
 | queryApi.config.audit.keyId | string | `"primary"` | Change keyId whenever auditHmacSecret is deliberately rotated. Supply old keys as a JSON object so historical segments remain verifiable. |
 | queryApi.config.authentication.allowAnonymousDefault | bool | `false` | Authentication is fail-closed by default. Anonymous-default is only for local development and leaves /readyz unhealthy in production. |
 | queryApi.config.authentication.session | object | `{"absoluteTimeoutSeconds":86400,"idleTimeoutSeconds":7200,"renewalIntervalSeconds":300}` | Browser sessions use a renewable idle deadline plus a hard maximum age. Settings > Users > Idle logout overrides the initial idle timeout. |
 | queryApi.config.authentication.ssoReplayStore | string | `"auto"` | One-time OIDC/SAML/setup claims. "auto" uses an in-process store for one replica and ClickHouse KeeperMap for two or more replicas. |
-| queryApi.config.ingest.buffer | object | `{"backend":"disk","maxBytes":2147483648,"objectStore":{"bucket":"","credentialsSecret":{"accessKeyKey":"access-key","name":"","secretKeyKey":"secret-key"},"endpoint":"","prefix":"ingest/","region":"us-east-1"}}` | The local disk queue is safe for one API pod. HA API replicas must share an object-store queue and use exactly one dedicated drain worker. |
+| queryApi.config.ingest.buffer | object | `{"backend":"disk","maxBytes":2147483648,"objectStore":{"bucket":"","credentialsSecret":{"accessKeyKey":"access-key","name":"","secretKeyKey":"secret-key"},"endpoint":"","prefix":"ingest/","region":"us-east-1"}}` | The persistent disk queue is for one API pod. HA API replicas must share an object-store queue and use exactly one dedicated drain worker. |
 | queryApi.config.ingest.limits | object | `{"decodeConcurrency":4,"maxCompressedBytes":8388608,"maxDecompressedBytes":33554432,"maxEntities":200000,"maxLabelNameBytes":256,"maxLabelValueBytes":4096,"maxLabelsPerSeries":128,"maxMetadata":10000,"maxSamples":200000,"maxSeries":20000}` | Shared request/decompression/entity budgets for every telemetry protocol. |
 | queryApi.config.leaderElection.leaseTtlSeconds | int | `15` | Every query-api replica runs the alert, SLO, anomaly, detection, and retention engines, and each engine only acts on the replica holding its ClickHouse Keeper lease. A shorter TTL fails over faster after a crash and renews more often; a clean shutdown hands over immediately either way. |
 | queryApi.config.promql.lookbackSecs | int | `300` | Staleness/lookback window for carrying the last metric value through a range query. Keep it at least as long as the slowest scrape interval. |
@@ -158,7 +166,8 @@ Kubernetes: `>=1.25.0-0`
 | queryApi.config.runtime.trustedProxyCidrs | list | `[]` | Forwarded client addresses are ignored unless the direct peer belongs to one of these proxy networks. Use pod/ingress CIDRs, never 0.0.0.0/0. |
 | queryApi.config.secrets | object | `{"adminPassword":"","apiKeyHmacSecret":"","auditHmacSecret":"","configEncryptionKey":"","existingSecret":"","sessionHmacSecret":"","ssoTransactionSecret":""}` | Leave generated secrets blank to create them on first install and preserve them across upgrades. Use existingSecret to bring your own Secret. |
 | queryApi.config.statsEngine.intervalSecs | int | `15` | Cadence for the internal rush_stats_* gauges. Increase it to reduce the sample volume, while keeping it short enough for rate-based queries. |
-| queryApi.drainWorker | object | `{"enabled":false,"extraEnvFrom":[],"extraVolumeMounts":[],"extraVolumes":[],"imagePullSecrets":[],"inheritGlobalScheduling":true,"podAnnotations":{},"podDisruptionBudget":{"enabled":false,"type":"maxUnavailable","value":1},"podLabels":{},"priorityClassName":"","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}},"rollout":{"minReadySeconds":0,"progressDeadlineSeconds":600,"revisionHistoryLimit":10,"strategy":"Recreate"},"runtimeClassName":"","scheduling":{},"serviceAccount":{"annotations":{},"create":false,"name":""},"terminationGracePeriodSeconds":120}` | Optional singleton workload that drains a shared object-store ingest queue. |
+| queryApi.drainWorker | object | `{"auditSpoolPersistence":{"accessModes":["ReadWriteOnce"],"enabled":true,"existingClaim":"","size":"1Gi","storageClass":""},"enabled":false,"extraEnvFrom":[],"extraVolumeMounts":[],"extraVolumes":[],"imagePullSecrets":[],"inheritGlobalScheduling":true,"podAnnotations":{},"podDisruptionBudget":{"enabled":false,"type":"maxUnavailable","value":1},"podLabels":{},"priorityClassName":"","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}},"rollout":{"minReadySeconds":0,"progressDeadlineSeconds":600,"revisionHistoryLimit":10,"strategy":"Recreate"},"runtimeClassName":"","scheduling":{},"serviceAccount":{"annotations":{},"create":false,"name":""},"terminationGracePeriodSeconds":120}` | Optional singleton workload that drains a shared object-store ingest queue. |
+| queryApi.drainWorker.auditSpoolPersistence | object | `{"accessModes":["ReadWriteOnce"],"enabled":true,"existingClaim":"","size":"1Gi","storageClass":""}` | Dedicated audit outbox for the singleton worker; never shares API claims. |
 | queryApi.drainWorker.rollout | object | `{"minReadySeconds":0,"progressDeadlineSeconds":600,"revisionHistoryLimit":10,"strategy":"Recreate"}` | Recreate is deliberate: the queue contract allows exactly one drainer. |
 | queryApi.extraEnvFrom | list | `[]` |  |
 | queryApi.extraVolumeMounts | list | `[]` |  |
@@ -168,6 +177,7 @@ Kubernetes: `>=1.25.0-0`
 | queryApi.image.repository | string | `"ghcr.io/rushobservability/query-api"` |  |
 | queryApi.image.tag | string | `"0.1.7"` |  |
 | queryApi.imagePullSecrets | list | `[]` |  |
+| queryApi.ingestSpoolPersistence | object | `{"accessModes":["ReadWriteOnce"],"enabled":true,"existingClaim":"","size":"4Gi","storageClass":""}` | Durable disk ingest backlog. Used only with backend=disk. Leave room above buffer.maxBytes for filesystem overhead. Disable only for disposable testing. storageClass="" uses the cluster default; "-" selects no StorageClass. |
 | queryApi.ingress | object | `{"annotations":{},"api":{"annotations":{},"enabled":false,"host":"","path":"/","pathType":"Prefix","tls":{"enabled":true,"secretName":""}},"className":"","enabled":false,"frontend":{"enabled":true,"host":"","path":"/","pathType":"Prefix","tls":{"enabled":true,"secretName":""}},"trustedProxyCidrs":[]}` | Optional public entry points. The frontend host also proxies /api, /auth, /prom, and /metrics. Enable the API host only when a separate direct API origin is required. trustedProxyCidrs are merged into the Query API trust list so forwarded client addresses are accepted only from known proxies. |
 | queryApi.inheritGlobalScheduling | bool | `true` | ------------------------------------------------------------------- |
 | queryApi.integrations | object | `{"argocd":{"enabled":false,"namespace":"argocd"},"cloudwatch":{"enabled":false},"fluxcd":{"enabled":false,"namespace":"flux-system"},"infrastructure":{"tenantNamespaces":{}},"kubernetes":{"clusterWide":false,"enabled":false,"namespaces":[]},"sreAgent":{"enabled":false,"githubApp":{"enabled":false,"tenantRepositories":{}},"internalAuthToken":"","port":8081,"service":{"port":8081}}}` | Query API integrations and their access boundaries. |
@@ -217,7 +227,7 @@ Kubernetes: `>=1.25.0-0`
 | queryApi.rollout.minReadySeconds | int | `0` |  |
 | queryApi.rollout.progressDeadlineSeconds | int | `600` |  |
 | queryApi.rollout.revisionHistoryLimit | int | `10` |  |
-| queryApi.rollout.strategy | string | `"RollingUpdate"` |  |
+| queryApi.rollout.strategy | string | `"Recreate"` | Deployments with persistent spools require Recreate. StatefulSets use ordered rolling updates and only inherit minReadySeconds/revisionHistoryLimit. |
 | queryApi.runtimeClassName | string | `""` |  |
 | queryApi.scheduling | object | `{}` |  |
 | queryApi.service.port | int | `8080` |  |
@@ -225,7 +235,9 @@ Kubernetes: `>=1.25.0-0`
 | queryApi.serviceAccount.annotations | object | `{}` |  |
 | queryApi.serviceAccount.create | bool | `true` |  |
 | queryApi.serviceAccount.name | string | `""` |  |
+| queryApi.spoolInit | object | `{"image":{"digest":"sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e","pullPolicy":"IfNotPresent","repository":"docker.io/library/busybox","tag":"1.37.0"},"resources":{"limits":{"cpu":"100m","memory":"256Mi"},"requests":{"cpu":"10m","memory":"16Mi"}}}` | Non-root helper creates private spool directories and moves legacy pending records into it before startup. Mirror this image for disconnected clusters. |
 | queryApi.terminationGracePeriodSeconds | int | `120` | On SIGTERM, query-api fails readiness, flushes in-memory batches, and drains its durable ingest queue before exiting. Increase this for large backlogs or a ClickHouse recovery window. |
+| queryApi.workloadKind | string | `"Deployment"` | Deployment keeps the existing single-pod claim names. Use StatefulSet for HA: each ordinal owns its audit PVC. See docs/reliability.md before migrating. |
 
 ## Maintainers
 

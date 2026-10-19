@@ -1,0 +1,16 @@
+{{- if eq .Values.queryApi.workloadKind "StatefulSet" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rush.queryApiHeadlessServiceName" . }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "query-api") | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - name: http
+      port: {{ .Values.queryApi.service.port }}
+      targetPort: http
+  selector:
+    {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 4 }}
+{{- end }}

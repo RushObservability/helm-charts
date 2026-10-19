@@ -41,6 +41,21 @@
         { "type": "string", "pattern": "^(100|[0-9]{1,2})%$" }
       ]
     },
+    "spoolPersistence": {
+      "type": "object",
+      "required": ["enabled", "existingClaim", "storageClass", "accessModes", "size"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "existingClaim": { "type": "string" },
+        "storageClass": { "type": "string" },
+        "accessModes": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": { "type": "string", "enum": ["ReadWriteOnce", "ReadWriteOncePod", "ReadWriteMany"] }
+        },
+        "size": { "type": "string", "minLength": 1 }
+      }
+    },
     "rollout": {
       "type": "object",
       "required": ["strategy", "minReadySeconds", "progressDeadlineSeconds", "revisionHistoryLimit"],
@@ -261,7 +276,7 @@
     },
     "queryApi": {
       "type": "object",
-      "required": ["config", "integrations", "ingress", "image", "replicas", "port", "rollout", "podDisruptionBudget", "probes", "drainWorker", "auditSpoolPersistence"],
+      "required": ["config", "integrations", "ingress", "image", "workloadKind", "replicas", "port", "rollout", "podDisruptionBudget", "probes", "drainWorker", "auditSpoolPersistence", "ingestSpoolPersistence", "spoolInit"],
       "additionalProperties": true,
       "properties": {
         "ingress": { "$ref": "#/definitions/ingress" },
@@ -568,6 +583,16 @@
           }
         },
         "image": { "$ref": "#/definitions/image" },
+        "workloadKind": { "type": "string", "enum": ["Deployment", "StatefulSet"] },
+        "spoolInit": {
+          "type": "object",
+          "required": ["image", "resources"],
+          "additionalProperties": false,
+          "properties": {
+            "image": { "$ref": "#/definitions/image" },
+            "resources": { "type": "object" }
+          }
+        },
         "replicas": { "type": "integer", "minimum": 1 },
         "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
         "inheritGlobalScheduling": { "type": "boolean" },
@@ -578,11 +603,12 @@
         "networkPolicy": { "$ref": "#/definitions/networkPolicy" },
         "drainWorker": {
           "type": "object",
-          "required": ["enabled", "rollout", "podDisruptionBudget", "terminationGracePeriodSeconds"],
+          "required": ["enabled", "rollout", "podDisruptionBudget", "terminationGracePeriodSeconds", "auditSpoolPersistence"],
           "additionalProperties": true,
           "allOf": [{ "$ref": "#/definitions/podOptions" }],
           "properties": {
             "enabled": { "type": "boolean" },
+            "auditSpoolPersistence": { "$ref": "#/definitions/spoolPersistence" },
             "inheritGlobalScheduling": { "type": "boolean" },
             "scheduling": { "$ref": "#/definitions/scheduling" },
             "rollout": { "$ref": "#/definitions/rollout" },
@@ -590,18 +616,8 @@
             "terminationGracePeriodSeconds": { "type": "integer", "minimum": 1 }
           }
         },
-        "auditSpoolPersistence": {
-          "type": "object",
-          "required": ["enabled", "existingClaim", "storageClass", "accessModes", "size"],
-          "additionalProperties": false,
-          "properties": {
-            "enabled": { "type": "boolean" },
-            "existingClaim": { "type": "string" },
-            "storageClass": { "type": "string" },
-            "accessModes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-            "size": { "type": "string", "minLength": 1 }
-          }
-        },
+        "auditSpoolPersistence": { "$ref": "#/definitions/spoolPersistence" },
+        "ingestSpoolPersistence": { "$ref": "#/definitions/spoolPersistence" },
         "adminPassword": { "not": {} },
         "apiKeyHmacSecret": { "not": {} },
         "auditHmacSecret": { "not": {} },

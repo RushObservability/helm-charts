@@ -5,6 +5,7 @@ chart_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 rendered="$(helm template controls "$chart_dir" \
   --set queryApi.replicas=2 \
+  --set queryApi.workloadKind=StatefulSet \
   --set clickhouse.keeper.enabled=true \
   --set queryApi.config.ingest.buffer.backend=object_store \
   --set queryApi.networkPolicy.allowExternalHttpsEgress=true \
@@ -14,14 +15,14 @@ rendered="$(helm template controls "$chart_dir" \
   --set queryApi.podDisruptionBudget.enabled=true \
   --set queryApi.podDisruptionBudget.type=minAvailable \
   --set queryApi.podDisruptionBudget.value=1 \
-  --set queryApi.rollout.maxSurge=25% \
+  --set queryApi.rollout.minReadySeconds=7 \
   --set queryApi.probes.startup.failureThreshold=42)"
 
 for expected in \
   'kind: PodDisruptionBudget' \
   'name: controls-query-api-pdb' \
   'minAvailable: 1' \
-  'maxSurge: 25%' \
+  'minReadySeconds: 7' \
   'startupProbe:' \
   'failureThreshold: 42'; do
   grep -Fq "$expected" <<<"$rendered" || {

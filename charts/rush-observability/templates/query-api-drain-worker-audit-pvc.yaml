@@ -1,0 +1,13 @@
+{{- $persistence := .Values.queryApi.drainWorker.auditSpoolPersistence -}}
+{{- if and .Values.queryApi.drainWorker.enabled $persistence.enabled (not $persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "drain-worker-audit") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "query-api-drain-worker") | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  {{- include "rush.spoolClaimSpec" $persistence | nindent 2 }}
+{{- end }}

@@ -26,6 +26,7 @@
 
 # ── Rush components ───────────────────────────────────────────────────────────
 queryApi:
+  workloadKind: StatefulSet # one retained audit PVC per API ordinal
   replicas: 2   # run 2 query-api pods for HA; sit behind a ClusterIP load balancer
   # Every API replica writes failed ingest to one shared object-store queue. A
   # dedicated single-replica worker drains it; API pods never replay entries.

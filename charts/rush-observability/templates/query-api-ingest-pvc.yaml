@@ -1,0 +1,14 @@
+{{- $persistence := .Values.queryApi.ingestSpoolPersistence -}}
+{{- if and (eq .Values.queryApi.workloadKind "Deployment") (eq .Values.queryApi.config.ingest.buffer.backend "disk") $persistence.enabled (not $persistence.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "rush.componentName" (dict "root" . "component" "query-api-ingest") }}
+  labels:
+    {{- include "rush.componentLabels" (dict "root" . "component" "query-api") | nindent 4 }}
+  annotations:
+    # Acknowledged telemetry can still be waiting for ClickHouse.
+    "helm.sh/resource-policy": keep
+spec:
+  {{- include "rush.spoolClaimSpec" $persistence | nindent 2 }}
+{{- end }}

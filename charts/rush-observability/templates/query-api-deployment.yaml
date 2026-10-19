@@ -1,13 +1,27 @@
 {{- $integrations := .Values.queryApi.integrations -}}
+{{- $stateful := eq .Values.queryApi.workloadKind "StatefulSet" -}}
+{{- $disk := eq .Values.queryApi.config.ingest.buffer.backend "disk" -}}
+{{- $ingest := .Values.queryApi.ingestSpoolPersistence -}}
+{{- $audit := .Values.queryApi.auditSpoolPersistence -}}
 apiVersion: apps/v1
-kind: Deployment
+kind: {{ .Values.queryApi.workloadKind }}
 metadata:
   name: {{ include "rush.queryApiServiceName" . }}
   labels:
     {{- include "rush.componentLabels" (dict "root" . "component" "query-api") | nindent 4 }}
 spec:
   replicas: {{ .Values.queryApi.replicas }}
+  {{- if $stateful }}
+  serviceName: {{ include "rush.queryApiHeadlessServiceName" . }}
+  # An unavailable outbox must not prevent other replicas from starting.
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  minReadySeconds: {{ .Values.queryApi.rollout.minReadySeconds }}
+  revisionHistoryLimit: {{ .Values.queryApi.rollout.revisionHistoryLimit }}
+  {{- else }}
   {{- include "rush.deploymentRollout" (dict "rollout" .Values.queryApi.rollout) | nindent 2 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 6 }}
@@ -36,6 +50,8 @@ spec:
         fsGroup: 999
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        {{- include "rush.spoolInitContainers" . | nindent 8 }}
       containers:
         - name: query-api
           image: {{ include "rush.image" (dict "root" . "image" .Values.queryApi.image "defaultTag" .Chart.AppVersion) | quote }}
@@ -91,10 +107,10 @@ spec:
             - name: RUSH_ALLOW_ANONYMOUS_DEFAULT
               value: {{ .Values.queryApi.config.authentication.allowAnonymousDefault | quote }}
             - name: RUSH_SPOOL_DIR
-              value: /var/lib/rush/spool
+              value: /var/lib/rush/spool/queue
             {{- include "rush.queryApiBufferEnv" (dict "root" . "drainOnly" false) | nindent 12 }}
             - name: RUSH_AUDIT_SPOOL_DIR
-              value: /var/lib/rush/audit-spool
+              value: /var/lib/rush/audit-spool/outbox
             - name: RUSH_AUDIT_SPOOL_MAX_BYTES
               value: {{ .Values.queryApi.config.audit.spoolMaxBytes | int64 | quote }}
             - name: RUSH_AUDIT_HMAC_KEY_ID
@@ -245,15 +261,42 @@ spec:
         - name: rush-config
           configMap:
             name: {{ include "rush.fullname" . }}-rush-config
+        {{- if not (and $stateful $disk $ingest.enabled (not $ingest.existingClaim)) }}
         - name: rush-spool
-          emptyDir: {}
-        - name: audit-spool
-          {{- if .Values.queryApi.auditSpoolPersistence.enabled }}
+          {{- if and $disk $ingest.enabled }}
           persistentVolumeClaim:
-            claimName: {{ .Values.queryApi.auditSpoolPersistence.existingClaim | default (printf "%s-query-api-audit" (include "rush.fullname" .)) }}
+            claimName: {{ $ingest.existingClaim | default (include "rush.componentName" (dict "root" . "component" "query-api-ingest")) }}
+          {{- else }}
+          # Object-store mode fails closed and never falls back to this directory.
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
+        {{- if not (and $stateful $audit.enabled (not $audit.existingClaim)) }}
+        - name: audit-spool
+          {{- if $audit.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ $audit.existingClaim | default (printf "%s-query-api-audit" (include "rush.fullname" .)) }}
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- end }}
         {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.queryApi)) }}
         {{- . | nindent 8 }}
         {{- end }}
+  {{- if and $stateful (or (and $disk $ingest.enabled (not $ingest.existingClaim)) (and $audit.enabled (not $audit.existingClaim))) }}
+  # StatefulSet PVCs default to Retain on scale-down and controller deletion.
+  # Do not attach Helm ownership or deletion policies to these claims.
+  volumeClaimTemplates:
+    {{- if and $disk $ingest.enabled (not $ingest.existingClaim) }}
+    - metadata:
+        name: rush-spool
+      spec:
+        {{- include "rush.spoolClaimSpec" $ingest | nindent 8 }}
+    {{- end }}
+    {{- if and $audit.enabled (not $audit.existingClaim) }}
+    - metadata:
+        name: audit-spool
+      spec:
+        {{- include "rush.spoolClaimSpec" $audit | nindent 8 }}
+    {{- end }}
+  {{- end }}

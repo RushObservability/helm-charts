@@ -1,6 +1,14 @@
 # rush-observability-stack
 
+<<<<<<< Updated upstream
 ![Version: 0.3.1](https://img.shields.io/badge/Version-0.3.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.7](https://img.shields.io/badge/AppVersion-0.1.7-informational?style=flat-square)
+=======
+<<<<<<< Updated upstream
+![Version: 0.3.0](https://img.shields.io/badge/Version-0.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.25](https://img.shields.io/badge/AppVersion-0.1.25-informational?style=flat-square)
+=======
+![Version: 0.4.0](https://img.shields.io/badge/Version-0.4.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.7](https://img.shields.io/badge/AppVersion-0.1.7-informational?style=flat-square)
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
 **Start here.** This is the chart most people want: it installs Rush plus a
 single-node ClickHouse, Kubernetes log collection, an OTLP endpoint, and metric
@@ -50,8 +58,18 @@ Kubernetes: `>=1.27.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
+<<<<<<< Updated upstream
 | file://../metrics-agent | metricsAgent(metrics-agent) | 0.1.5 |
 | file://../rush-observability | rush(rush-observability) | 0.4.1 |
+=======
+<<<<<<< Updated upstream
+| file://../metrics-agent | metricsAgent(metrics-agent) | 0.1.4 |
+| file://../rush-observability | rush(rush-observability) | 0.4.0 |
+=======
+| file://../metrics-agent | metricsAgent(metrics-agent) | 0.1.5 |
+| file://../rush-observability | rush(rush-observability) | 0.5.0 |
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
 ## Values
 

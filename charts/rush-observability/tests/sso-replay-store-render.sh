@@ -25,6 +25,7 @@ if helm template sso-replay "$chart_dir" --set queryApi.replicas=2 >/dev/null 2>
 fi
 
 ha="$(helm template sso-replay "$chart_dir" \
+  --set queryApi.workloadKind=StatefulSet \
   --set queryApi.replicas=2 \
   --set clickhouse.keeper.enabled=true \
   --set queryApi.config.ingest.buffer.backend=object_store \
@@ -36,6 +37,7 @@ assert_render "$ha" 'replicas: 2' 'HA query-api deployment'
 assert_render "$ha" 'name: RUSH_SSO_REPLAY_STORE' 'HA replay-store variable'
 
 if helm template sso-replay "$chart_dir" \
+  --set queryApi.workloadKind=StatefulSet \
   --set queryApi.replicas=2 \
   --set clickhouse.keeper.enabled=true \
   --set queryApi.config.ingest.buffer.backend=object_store \

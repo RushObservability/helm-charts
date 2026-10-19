@@ -36,6 +36,8 @@ spec:
         fsGroup: 999
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        {{- include "rush.spoolInitContainers" . | nindent 8 }}
       containers:
         - name: drain-worker
           image: {{ include "rush.image" (dict "root" . "image" .Values.queryApi.image "defaultTag" .Chart.AppVersion) | quote }}
@@ -58,10 +60,10 @@ spec:
             - name: RUSH_RUN_ANOMALY_ENGINE
               value: "false"
             - name: RUSH_SPOOL_DIR
-              value: /var/lib/rush/spool
+              value: /var/lib/rush/spool/queue
             {{- include "rush.queryApiBufferEnv" (dict "root" . "drainOnly" true) | nindent 12 }}
             - name: RUSH_AUDIT_SPOOL_DIR
-              value: /var/lib/rush/audit-spool
+              value: /var/lib/rush/audit-spool/outbox
             - name: RUSH_AUDIT_SPOOL_MAX_BYTES
               value: {{ .Values.queryApi.config.audit.spoolMaxBytes | int64 | quote }}
             - name: RUSH_AUDIT_HMAC_KEY_ID
@@ -126,7 +128,12 @@ spec:
         - name: rush-spool
           emptyDir: {}
         - name: audit-spool
+          {{- if .Values.queryApi.drainWorker.auditSpoolPersistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.queryApi.drainWorker.auditSpoolPersistence.existingClaim | default (include "rush.componentName" (dict "root" . "component" "drain-worker-audit")) }}
+          {{- else }}
           emptyDir: {}
+          {{- end }}
         {{- with (include "rush.extraVolumes" (dict "root" $ "workload" $.Values.queryApi.drainWorker)) }}
         {{- . | nindent 8 }}
         {{- end }}

@@ -1,4 +1,4 @@
-{{- if and .Values.queryApi.auditSpoolPersistence.enabled (not .Values.queryApi.auditSpoolPersistence.existingClaim) }}
+{{- if and (eq .Values.queryApi.workloadKind "Deployment") .Values.queryApi.auditSpoolPersistence.enabled (not .Values.queryApi.auditSpoolPersistence.existingClaim) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -11,12 +11,5 @@ metadata:
     # it through a chart uninstall/reinstall unless an operator deletes it.
     "helm.sh/resource-policy": keep
 spec:
-  accessModes:
-    {{- toYaml .Values.queryApi.auditSpoolPersistence.accessModes | nindent 4 }}
-  {{- with .Values.queryApi.auditSpoolPersistence.storageClass }}
-  storageClassName: {{ . | quote }}
-  {{- end }}
-  resources:
-    requests:
-      storage: {{ .Values.queryApi.auditSpoolPersistence.size | quote }}
+  {{- include "rush.spoolClaimSpec" .Values.queryApi.auditSpoolPersistence | nindent 2 }}
 {{- end }}
