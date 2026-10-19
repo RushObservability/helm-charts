@@ -26,18 +26,21 @@ spec:
           type: RuntimeDefault
       containers:
         - name: connectivity
-          image: {{ include "rush.image" (dict "root" . "image" .Values.queryApi.image "defaultTag" .Chart.AppVersion) | quote }}
-          imagePullPolicy: {{ .Values.queryApi.image.pullPolicy }}
+          # The query-api image is distroless (no shell or curl), so the test runs in
+          # the chart's pinned busybox helper image and uses busybox wget.
+          image: {{ include "rush.image" (dict "root" . "image" .Values.queryApi.spoolInit.image "defaultTag" .Values.queryApi.spoolInit.image.tag) | quote }}
+          imagePullPolicy: {{ .Values.queryApi.spoolInit.image.pullPolicy }}
           command: ["/bin/sh", "-ec"]
           args:
             - |
-              curl --fail --silent --show-error --max-time 10 "${QUERY_API_URL}/healthz"
-              curl --fail --silent --show-error --max-time 10 "${QUERY_API_URL}/readyz"
-              curl --fail --silent --show-error --max-time 10 "${FRONTEND_URL}/"
-              curl --fail --silent --show-error --max-time 10 "${FRONTEND_URL}/metrics"
+              wget -q -T 10 -O /dev/null "${QUERY_API_URL}/healthz"
+              wget -q -T 10 -O /dev/null "${QUERY_API_URL}/readyz"
+              wget -q -T 10 -O /dev/null "${FRONTEND_URL}/"
+              wget -q -T 10 -O /dev/null "${FRONTEND_URL}/metrics"
               {{- if .Values.helmTests.clickhouseConnectivity }}
-              curl --fail --silent --show-error --max-time 10 \
-                --user "${CLICKHOUSE_USER}:${CLICKHOUSE_PASSWORD}" \
+              wget -q -T 10 -O - \
+                --header "X-ClickHouse-User: ${CLICKHOUSE_USER}" \
+                --header "X-ClickHouse-Key: ${CLICKHOUSE_PASSWORD}" \
                 "${CLICKHOUSE_URL}/ping" | grep -q '^Ok'
               {{- end }}
           env:
@@ -63,4 +66,7 @@ spec:
             {{- toYaml .Values.helmTests.resources | nindent 12 }}
           securityContext:
             {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
+            # busybox defaults to root; run as the same unprivileged user as the spool init.
+            runAsUser: 999
+            runAsGroup: 999
 {{- end }}

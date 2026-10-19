@@ -114,6 +114,9 @@ spec:
               mountPath: /var/lib/rush/spool
             - name: audit-spool
               mountPath: /var/lib/rush/audit-spool
+            # query-api writes temporary files; the root filesystem stays read-only.
+            - name: runtime-tmp
+              mountPath: /tmp
             {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.queryApi.drainWorker)) }}
             {{- . | nindent 12 }}
             {{- end }}
@@ -122,6 +125,9 @@ spec:
           securityContext:
             {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}
       volumes:
+        - name: runtime-tmp
+          emptyDir:
+            sizeLimit: 256Mi
         - name: rush-config
           configMap:
             name: {{ include "rush.fullname" . }}-rush-config

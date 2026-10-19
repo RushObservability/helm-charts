@@ -73,6 +73,20 @@ metricsAgent:
 The stack derives the in-cluster Query API URL and reuses the ingest Secret for
 OTel Collector, Vector, and metrics-agent.
 
+### VictoriaMetrics scrape CRDs
+
+metrics-agent reads VictoriaMetrics scrape resources and will not start without
+their CRDs, so the stack chart ships four of them in `crds/`:
+`VMServiceScrape`, `VMPodScrape`, `VMProbe`, and `VMScrapeConfig`
+(`operator.victoriametrics.com/v1beta1`, from VictoriaMetrics operator v0.75.0).
+You do not need the VictoriaMetrics operator itself.
+
+Helm creates these CRDs before the rest of the chart and skips any that already
+exist, so a cluster that runs the VictoriaMetrics operator keeps its own copies.
+Helm does not upgrade or delete files in `crds/`: newer operator CRDs are left
+alone, and `helm uninstall` keeps them. To manage the CRDs yourself, install with
+`--skip-crds`.
+
 The chart groups Query API behavior, free integrations, and paid features separately:
 
 | Group | Settings |
