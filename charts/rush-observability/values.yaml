@@ -156,7 +156,7 @@ clickhouse:
       repository: clickhouse/clickhouse-server
       tag: "26.6.1.1193"
       pullPolicy: IfNotPresent
-    # -- Bound ClickHouse memory. With NO limit the server sizes max_server_memory_usage to
+    # -- Bound ClickHouse memory, in both operator and standalone mode. With NO limit the server sizes max_server_memory_usage to
     # ~90% of the whole node and the cgroup working-set grows unbounded. A hard limit caps
     # it and makes CH self-throttle instead of being OOM-killed. 8Gi is a conservative
     # baseline — SCALE WITH YOUR NODE and scale the cache sizes + memory profile below

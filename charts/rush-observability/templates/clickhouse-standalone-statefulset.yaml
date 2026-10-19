@@ -143,8 +143,12 @@ spec:
             {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.clickhouseStandalone)) }}
             {{- . | nindent 12 }}
             {{- end }}
+          {{- /* Same sizing as operator mode. clickhouse.resources is the key this
+          template used to read; it still wins when set so existing overrides keep working. */}}
+          {{- with (.Values.clickhouse.resources | default .Values.clickhouse.clickhouse.resources) }}
           resources:
-            {{- toYaml .Values.clickhouse.resources | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

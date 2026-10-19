@@ -167,12 +167,20 @@ rush:
       credentialsSecret: ""
       userKey: user
       passwordKey: password
+    # -- ClickHouse server sizing, used in standalone and operator mode. Raise the
+    # memory limit and the caches together; the caches below total about 1.4 GiB,
+    # leaving the rest of the 4Gi limit for queries and merges.
     clickhouse:
       resources:
         requests:
           memory: 2Gi
         limits:
           memory: 4Gi
+      markCacheSize: 536870912 # 512 MiB
+      uncompressedCacheSize: 67108864 # 64 MiB
+      textIndexTokensCacheSize: 134217728 # 128 MiB
+      textIndexHeaderCacheSize: 268435456 # 256 MiB
+      textIndexPostingsCacheSize: 536870912 # 512 MiB
   clickhouseStandalone:
     persistence:
       enabled: true
