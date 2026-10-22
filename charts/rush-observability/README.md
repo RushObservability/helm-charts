@@ -1,6 +1,6 @@
 # rush-observability
 
-![Version: 0.5.3](https://img.shields.io/badge/Version-0.5.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.7](https://img.shields.io/badge/AppVersion-0.1.7-informational?style=flat-square)
+![Version: 0.5.4](https://img.shields.io/badge/Version-0.5.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.7](https://img.shields.io/badge/AppVersion-0.1.7-informational?style=flat-square)
 
 The core Rush platform: Query API, frontend, anomaly processing, and ClickHouse.
 
@@ -79,7 +79,7 @@ Kubernetes: `>=1.25.0-0`
 | frontend.image.digest | string | `""` |  |
 | frontend.image.pullPolicy | string | `"IfNotPresent"` |  |
 | frontend.image.repository | string | `"ghcr.io/rushobservability/frontend"` |  |
-| frontend.image.tag | string | `"0.1.13"` |  |
+| frontend.image.tag | string | `"0.1.14"` |  |
 | frontend.imagePullSecrets | list | `[]` |  |
 | frontend.inheritGlobalScheduling | bool | `true` | ------------------------------------------------------------------- |
 | frontend.networkPolicy.allowSameNamespaceIngress | bool | `true` | Allows same-namespace ingress controllers and port-forward helpers. |

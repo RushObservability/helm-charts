@@ -110,12 +110,12 @@ mirrored="$(helm template stack "$chart_dir" "${common[@]}" \
   --set rush.queryApi.integrations.sreAgent.enabled=true)"
 for expected in \
   'image: "mirror.example.com/cache/rushobservability/query-api:0.1.7"' \
-  'image: "mirror.example.com/cache/rushobservability/frontend:0.1.13"' \
+  'image: "mirror.example.com/cache/rushobservability/frontend:0.1.14"' \
   'image: "mirror.example.com/cache/clickhouse/clickhouse-server:26.6.1.1193"' \
   'image: "mirror.example.com/cache/rushobservability/sre-agent:0.1.4"' \
   'image: "mirror.example.com/cache/rushobservability/metrics-agent:0.1.2"' \
-  'image: "mirror.example.com/cache/otel/opentelemetry-collector-contrib:0.118.0"' \
-  'image: "mirror.example.com/cache/timberio/vector:0.56.0-distroless-libc"'; do
+  'image: "mirror.example.com/cache/otel/opentelemetry-collector-contrib:0.163.1"' \
+  'image: "mirror.example.com/cache/timberio/vector:0.59.0-distroless-libc"'; do
   grep -Fq "$expected" <<<"$mirrored" || {
     echo "stack global image registry render is missing: $expected" >&2
     exit 1
@@ -337,5 +337,13 @@ for expected in 'memory: 4Gi' 'memory: 2Gi' '<mark_cache_size>536870912</mark_ca
     exit 1
   }
 done
+
+# Collector 0.123+ rejects service.telemetry.metrics.address; the config must use readers.
+collector="$(helm template stack "$chart_dir" "${common[@]}" --show-only templates/otel-collector-configmap.yaml)"
+grep -Fq 'readers:' <<<"$collector" || { echo 'collector metrics config does not use readers' >&2; exit 1; }
+if grep -Eq '^\s+address: 0\.0\.0\.0:8888' <<<"$collector"; then
+  echo 'collector metrics config still uses the removed address key' >&2
+  exit 1
+fi
 
 echo 'rush-observability-stack renders passed'
