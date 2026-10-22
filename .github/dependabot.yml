@@ -16,6 +16,10 @@ updates:
       time: "09:00"
       timezone: America/Los_Angeles
     open-pull-requests-limit: 5
+    # Wait before proposing a new release, so a compromised or quickly
+    # withdrawn version is less likely to land here.
+    cooldown:
+      default-days: 7
 
   # Actions in .github/workflows. These are SHA-pinned; Dependabot bumps the
   # SHA and keeps the trailing "# vX.Y.Z" comment in sync.
@@ -27,6 +31,8 @@ updates:
       time: "09:00"
       timezone: America/Los_Angeles
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns:
