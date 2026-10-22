@@ -75,7 +75,14 @@ data:
         logs:
           level: info
         metrics:
-          address: 0.0.0.0:8888
+          # The collector's own metrics on :8888. The older `address:` key was removed
+          # in collector 0.123; `readers` is the replacement.
+          readers:
+            - pull:
+                exporter:
+                  prometheus:
+                    host: 0.0.0.0
+                    port: 8888
       pipelines:
         {{- if .Values.collectors.otel.signals.traces }}
         traces:

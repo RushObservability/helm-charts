@@ -297,7 +297,7 @@ collectors:
         successThreshold: 1
     image:
       repository: otel/opentelemetry-collector-contrib
-      tag: "0.163.1.386"
+      tag: "0.163.1"
       digest: ""
       pullPolicy: IfNotPresent
     kind: deployment
@@ -358,7 +358,7 @@ collectors:
       extraEgress: []
     image:
       repository: timberio/vector
-      tag: "0.59.0"
+      tag: "0.59.0-distroless-libc"
       digest: ""
       pullPolicy: IfNotPresent
     mode: logs # logs | full-otel

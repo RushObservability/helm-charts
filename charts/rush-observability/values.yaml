@@ -642,7 +642,7 @@ frontend:
     annotations: {}
   image:
     repository: ghcr.io/rushobservability/frontend
-    tag: "0.1.13"
+    tag: "0.1.14"
     digest: ""
     pullPolicy: IfNotPresent
   # -- Public base URL (scheme + host, no trailing slash) of the Rush API as seen from
