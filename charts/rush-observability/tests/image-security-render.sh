@@ -33,7 +33,7 @@ mirror_render="$(helm template image-policy "$chart_dir" \
   --set anomalyEngine.enabled=true)"
 for expected in \
   'image: "mirror.example.com/cache/rushobservability/query-api:0.1.7"' \
-  'image: "mirror.example.com/cache/rushobservability/frontend:0.1.13"' \
+  'image: "mirror.example.com/cache/rushobservability/frontend:0.1.14"' \
   'image: "mirror.example.com/cache/clickhouse/clickhouse-server:26.6.1.1193"'; do
   grep -Fq "$expected" <<<"$mirror_render" || {
     echo "global image registry render is missing: $expected" >&2
