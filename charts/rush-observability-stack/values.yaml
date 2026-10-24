@@ -6,6 +6,7 @@
 # Most installations only change:
 #   rush.queryApi, rush.clickhouse,
 #   global.scheduling, collectors, and metricsAgent.extraLabels.
+# @default -- see values.yaml
 rush:
   queryApi:
     replicas: 1
@@ -236,6 +237,7 @@ global:
       value: ""
 # -- Telemetry collection. Hybrid means OTel receives traces and metrics while
 # Vector tails Kubernetes logs. Set mode to none to use external collectors.
+# @default -- see values.yaml
 collectors:
   mode: hybrid # none | otel | vector | hybrid
   allowAnonymousIngest: false

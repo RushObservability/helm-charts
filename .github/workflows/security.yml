@@ -6,16 +6,20 @@ on:
       - "charts/**"
       - "examples/**"
       - "docs/**"
+      - "compose/**"
       - "README.md"
       - ".github/workflows/**"
+      - ".github/scripts/**"
   push:
     branches: [main]
     paths:
       - "charts/**"
       - "examples/**"
       - "docs/**"
+      - "compose/**"
       - "README.md"
       - ".github/workflows/**"
+      - ".github/scripts/**"
 
 permissions:
   contents: read
@@ -67,6 +71,11 @@ jobs:
             echo "::error::Chart READMEs are stale. Run: helm-docs --chart-search-root=charts"
             exit 1
           fi
+
+      - name: Check images exist
+        # Render tests can't tell whether a tag exists; Dependabot has proposed
+        # tags that don't. This pulls each image's manifest from its registry.
+        run: .github/scripts/check-images.sh
 
       - name: Lint charts
         run: |
