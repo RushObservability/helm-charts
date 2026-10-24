@@ -133,7 +133,7 @@ services:
     restart: "no"
 
   frontend:
-    image: ghcr.io/rushobservability/frontend:0.1.14
+    image: ghcr.io/rushobservability/frontend:0.1.15
     environment:
       QUERY_API_HOST: query-api:8080
       API_PUBLIC_URL: http://localhost:${RUSH_API_PORT:-8080}

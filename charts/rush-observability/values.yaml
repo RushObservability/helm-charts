@@ -652,7 +652,7 @@ frontend:
     repository: ghcr.io/rushobservability/frontend
     # -- Frontend release.
     # @default -- see values.yaml
-    tag: "0.1.14"
+    tag: "0.1.15"
     digest: ""
     pullPolicy: IfNotPresent
   # -- Public base URL (scheme + host, no trailing slash) of the Rush API as seen from
