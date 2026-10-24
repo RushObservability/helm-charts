@@ -21,16 +21,15 @@ rendered="$(
   cat "$root/compose/docker-compose.yml"
 )"
 
-images="$(python3 - "$rendered" <<'PY'
+# Read the render from stdin: it is larger than Linux allows for one argument.
+images="$(python3 -c '
 import re, sys
 found = set()
-for line in sys.argv[1].splitlines():
-    m = re.match(r'\s*(?:-\s*)?image:\s*"?([^"\s]+)"?\s*$', line)
+for line in sys.stdin:
+    m = re.match(r"\s*(?:-\s*)?image:\s*\"?([^\"\s]+)\"?\s*$", line)
     if m and not m.group(1).startswith("{{"):
         found.add(m.group(1))
-print("\n".join(sorted(found)))
-PY
-)"
+print("\n".join(sorted(found)))' <<<"$rendered")"
 
 failed=0
 while read -r image; do
