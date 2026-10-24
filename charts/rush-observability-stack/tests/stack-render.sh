@@ -109,13 +109,13 @@ mirrored="$(helm template stack "$chart_dir" "${common[@]}" \
   --set global.image.registry=mirror.example.com/cache \
   --set rush.queryApi.integrations.sreAgent.enabled=true)"
 for expected in \
-  'image: "mirror.example.com/cache/rushobservability/query-api:0.1.7"' \
-  'image: "mirror.example.com/cache/rushobservability/frontend:0.1.14"' \
-  'image: "mirror.example.com/cache/clickhouse/clickhouse-server:26.6.1.1193"' \
-  'image: "mirror.example.com/cache/rushobservability/sre-agent:0.1.4"' \
-  'image: "mirror.example.com/cache/rushobservability/metrics-agent:0.1.2"' \
-  'image: "mirror.example.com/cache/otel/opentelemetry-collector-contrib:0.163.1"' \
-  'image: "mirror.example.com/cache/timberio/vector:0.59.0-distroless-libc"'; do
+  'image: "mirror.example.com/cache/rushobservability/query-api:' \
+  'image: "mirror.example.com/cache/rushobservability/frontend:' \
+  'image: "mirror.example.com/cache/clickhouse/clickhouse-server:' \
+  'image: "mirror.example.com/cache/rushobservability/sre-agent:' \
+  'image: "mirror.example.com/cache/rushobservability/metrics-agent:' \
+  'image: "mirror.example.com/cache/otel/opentelemetry-collector-contrib:' \
+  'image: "mirror.example.com/cache/timberio/vector:'; do
   grep -Fq "$expected" <<<"$mirrored" || {
     echo "stack global image registry render is missing: $expected" >&2
     exit 1

@@ -86,6 +86,7 @@ global:
 #  Where Rush stores telemetry. The first decision you make.
 # ========================================================================
 # -- Full options: https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse
+# @default -- see values.yaml
 clickhouse:
   # -- `enabled` controls the bundled Altinity chart dependency. Keep it true for
   # operator mode. Set it false for standalone or external mode so the
@@ -152,6 +153,7 @@ clickhouse:
     # -- ClickHouse server image. The 26.6 line adds the direct-read and dictionary-assisted
     # LIKE capabilities used by log search. The Altinity operator runs upstream server
     # images fine. Pin a patch for reproducibility.
+    # @default -- see values.yaml
     image:
       repository: clickhouse/clickhouse-server
       tag: "26.6.1.1193"
@@ -255,13 +257,16 @@ clickhouse:
     tolerations: []
     affinity: {}
     topologySpreadConstraints: []
-    # -- Override the upstream chart's floating kubectl:latest CRD hook.
+    # -- Override the upstream chart's floating kubectl:latest CRD hook. The hook runs a
+    # shell script around kubectl, so the image needs /bin/sh; registry.k8s.io/kubectl has
+    # none, and bitnami/kubectl was removed from Docker Hub.
+    # @default -- see values.yaml
     crdHook:
       nodeSelector: {}
       tolerations: []
       affinity: {}
       image:
-        repository: bitnami/kubectl
+        repository: alpine/k8s
         tag: "1.33.4"
         pullPolicy: IfNotPresent
     # -- Name applied to the operator's resources (Deployment/pod, RBAC, Secret,
@@ -470,6 +475,8 @@ queryApi:
     annotations: {}
   image:
     repository: ghcr.io/rushobservability/query-api
+    # -- Query API release.
+    # @default -- see values.yaml
     tag: "0.1.7"
     digest: "" # sha256:<64 hex chars>; takes precedence over tag
     pullPolicy: IfNotPresent
@@ -578,6 +585,7 @@ queryApi:
     size: 1Gi
   # -- Non-root helper creates private spool directories and moves legacy pending
   # records into it before startup. Mirror this image for disconnected clusters.
+  # @default -- see values.yaml
   spoolInit:
     image:
       repository: docker.io/library/busybox
@@ -642,6 +650,8 @@ frontend:
     annotations: {}
   image:
     repository: ghcr.io/rushobservability/frontend
+    # -- Frontend release.
+    # @default -- see values.yaml
     tag: "0.1.14"
     digest: ""
     pullPolicy: IfNotPresent
