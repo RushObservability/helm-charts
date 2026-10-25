@@ -84,6 +84,18 @@ for crd in vmservicescrapes vmpodscrapes vmprobes vmscrapeconfigs; do
   }
 done
 
+# Vector 0.59 does not expand ${ENV} in config, so the ingest key comes from a mounted Secret.
+for expected in 'Authorization: "Bearer SECRET[rush.ingest_api_key]"' 'type: directory' 'path: /var/run/secrets/rush' 'path: ingest_api_key'; do
+  grep -Fq "$expected" <<<"$defaults" || {
+    echo "vector ingest key is not read through the secret backend: $expected" >&2
+    exit 1
+  }
+done
+if grep -Fq '${RUSH_INGEST_API_KEY}' <<<"$defaults"; then
+  echo 'vector config still relies on ${RUSH_INGEST_API_KEY} interpolation' >&2
+  exit 1
+fi
+
 retention="$(helm template stack "$chart_dir" "${common[@]}" \
   --set rush.queryApi.config.retention.defaults.logsDays=45)"
 grep -Fq 'logs_days = 45' <<<"$retention" || {
@@ -190,7 +202,7 @@ vector="$(helm template stack "$chart_dir" "${common[@]}" \
   --set collectors.mode=vector \
   --set collectors.vector.mode=full-otel \
   --set global.rush.ingestApiKeySecret.name=rush-ingest)"
-for expected in 'kind: DaemonSet' 'name: stack-vector' 'Authorization: "Bearer ${RUSH_INGEST_API_KEY}"' 'containerPort: 4317'; do
+for expected in 'kind: DaemonSet' 'name: stack-vector' 'Authorization: "Bearer SECRET[rush.ingest_api_key]"' 'secretName: rush-ingest' 'containerPort: 4317'; do
   grep -Fq "$expected" <<<"$vector" || {
     echo "Vector stack render is missing: $expected" >&2
     exit 1

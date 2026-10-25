@@ -15,6 +15,15 @@ data:
     api:
       enabled: true
       address: 0.0.0.0:8686
+    {{- if (include "rush.stackIngestApiKeySecretName" .) }}
+
+    # Vector 0.59 no longer expands ${ENV} in config; read the key from the mounted Secret.
+    secret:
+      rush:
+        type: directory
+        path: /var/run/secrets/rush
+        remove_trailing_whitespace: true
+    {{- end }}
 
     sources:
       kubernetes_logs:
@@ -122,7 +131,7 @@ data:
         request:
           {{- if (include "rush.stackIngestApiKeySecretName" .) }}
           headers:
-            Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
+            Authorization: "Bearer SECRET[rush.ingest_api_key]"
           {{- end }}
           # Retry on query-api 429 backpressure so nothing is lost while the spool drains.
           retry_attempts: 10
@@ -145,7 +154,7 @@ data:
         request:
           {{- if (include "rush.stackIngestApiKeySecretName" .) }}
           headers:
-            Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
+            Authorization: "Bearer SECRET[rush.ingest_api_key]"
           {{- end }}
           retry_attempts: 10
         healthcheck:
@@ -162,7 +171,7 @@ data:
         request:
           {{- if (include "rush.stackIngestApiKeySecretName" .) }}
           headers:
-            Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
+            Authorization: "Bearer SECRET[rush.ingest_api_key]"
           {{- end }}
           retry_attempts: 10
         healthcheck:
@@ -179,7 +188,7 @@ data:
         request:
           {{- if (include "rush.stackIngestApiKeySecretName" .) }}
           headers:
-            Authorization: "Bearer ${RUSH_INGEST_API_KEY}"
+            Authorization: "Bearer SECRET[rush.ingest_api_key]"
           {{- end }}
           retry_attempts: 10
         healthcheck:

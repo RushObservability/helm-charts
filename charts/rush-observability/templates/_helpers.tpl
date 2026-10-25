@@ -410,8 +410,8 @@ policy validation can distinguish immutable production configuration.
 {{- end -}}
 
 {{/*
-ClickHouse service DNS name inside the cluster. The Altinity subchart and the
-standalone StatefulSet intentionally use the same service name.
+ClickHouse service DNS name inside the cluster. The Altinity operator names the
+CHI service clickhouse-<CHI name>; the standalone StatefulSet uses the same name.
 */}}
 {{- define "rush.clickhouseService" -}}
 {{- if eq .Values.clickhouse.mode "operator" -}}
@@ -423,7 +423,7 @@ standalone StatefulSet intentionally use the same service name.
 {{- $name = printf "%s-clickhouse" .Release.Name -}}
 {{- end -}}
 {{- end -}}
-{{- printf "%s-service" $name | trunc 63 | trimSuffix "-" -}}
+{{- printf "clickhouse-%s" $name | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
 {{- printf "clickhouse-%s-clickhouse" .Release.Name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
