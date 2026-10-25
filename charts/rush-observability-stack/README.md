@@ -51,7 +51,7 @@ Kubernetes: `>=1.27.0-0`
 | Repository | Name | Version |
 |------------|------|---------|
 | file://../metrics-agent | metricsAgent(metrics-agent) | 0.1.6 |
-| file://../rush-observability | rush(rush-observability) | 0.5.7 |
+| file://../rush-observability | rush(rush-observability) | 0.5.8 |
 
 ## Values
 
