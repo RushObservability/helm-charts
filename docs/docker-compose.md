@@ -76,7 +76,7 @@ services send profiles directly to query-api at
 `http://query-api:8080/v1development/profiles`, in the `default` tenant. The
 bundled OpenTelemetry Collector does not forward profiles.
 
-The bundled `query-api:0.1.7` image includes the profiling endpoints and applies
+The bundled `query-api:0.1.8` image includes the profiling endpoints and applies
 the required database migrations at startup.
 
 Allow about 30 seconds of demo traffic, then open **Observe > Profiles** and
