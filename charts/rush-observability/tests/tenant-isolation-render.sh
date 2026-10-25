@@ -20,6 +20,11 @@ assert_render "$operator" 'GRANT SELECT ON observability.logs' 'operator telemet
 assert_render "$operator" 'name: CLICKHOUSE_READ_USER' 'query-api read identity'
 assert_render "$operator" 'path: /readyz' 'fail-closed readiness endpoint'
 
+# The Altinity operator names the CHI service clickhouse-<CHI name>; query-api must use it.
+chi_name="$(awk '/^kind: ClickHouseInstallation/{f=1} f&&/^  name:/{print $2; exit}' <<<"$operator" | tr -d '"')"
+[[ -n "$chi_name" ]] || { echo 'operator render has no ClickHouseInstallation' >&2; exit 1; }
+assert_render "$operator" "value: \"http://clickhouse-${chi_name}:8123\"" 'operator ClickHouse service URL'
+
 standalone="$(helm template tenant-policy "$chart_dir" \
   --set clickhouse.enabled=false \
   --set clickhouse.mode=standalone)"

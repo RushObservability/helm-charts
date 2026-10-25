@@ -36,16 +36,10 @@ spec:
           image: {{ include "rush.image" (dict "root" . "image" .Values.collectors.vector.image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ .Values.collectors.vector.image.pullPolicy }}
           args: ["--config", "/etc/vector/vector.yaml"]
+          {{- if and (not (include "rush.stackIngestApiKeySecretName" .)) (not .Values.collectors.allowAnonymousIngest) }}
+          {{- fail "global.rush.ingestApiKeySecret.name or value is required when an in-cluster collector is enabled" }}
+          {{- end }}
           env:
-            {{- if (include "rush.stackIngestApiKeySecretName" .) }}
-            - name: RUSH_INGEST_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "rush.stackIngestApiKeySecretName" . }}
-                  key: {{ .Values.global.rush.ingestApiKeySecret.key }}
-            {{- else if not .Values.collectors.allowAnonymousIngest }}
-            {{- fail "global.rush.ingestApiKeySecret.name or value is required when an in-cluster collector is enabled" }}
-            {{- end }}
             - name: VECTOR_SELF_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -83,12 +77,26 @@ spec:
               readOnly: true
             - name: data
               mountPath: /vector-data-dir
+            {{- if (include "rush.stackIngestApiKeySecretName" .) }}
+            - name: ingest-key
+              mountPath: /var/run/secrets/rush
+              readOnly: true
+            {{- end }}
             {{- with (include "rush.extraVolumeMounts" (dict "root" $ "workload" $.Values.collectors.vector)) }}
             {{- . | nindent 12 }}
             {{- end }}
           resources:
             {{- toYaml .Values.collectors.vector.resources | nindent 12 }}
       volumes:
+        {{- if (include "rush.stackIngestApiKeySecretName" .) }}
+        - name: ingest-key
+          secret:
+            secretName: {{ include "rush.stackIngestApiKeySecretName" . }}
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.global.rush.ingestApiKeySecret.key }}
+                path: ingest_api_key
+        {{- end }}
         - name: config
           configMap:
             name: {{ $fullName }}-vector
