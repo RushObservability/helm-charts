@@ -1,8 +1,8 @@
 apiVersion: v2
 name: rush-observability-stack
 description: Rush Observability with optional cluster agents and telemetry collectors
-version: 0.4.8
-appVersion: "0.1.8"
+version: 0.4.9
+appVersion: "0.1.9"
 type: application
 kubeVersion: ">=1.27.0-0"
 home: https://rushobservability.com
@@ -26,7 +26,7 @@ annotations:
 dependencies:
   - name: rush-observability
     alias: rush
-    version: "0.5.8"
+    version: "0.5.9"
     repository: "file://../rush-observability"
   - name: metrics-agent
     alias: metricsAgent
