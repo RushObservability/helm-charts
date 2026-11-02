@@ -79,10 +79,8 @@ transforms:
       .Body = body
 
       # Timestamp as nanoseconds (DateTime64(9))
-      ts, err = to_unix_timestamp(.timestamp, unit: "nanoseconds")
-      if err != null {
-        ts = to_unix_timestamp(now(), unit: "nanoseconds")
-      }
+      # Vector 0.61+ treats nanosecond conversion as fallible (overflow), hence the final ?? 0.
+      ts = to_unix_timestamp(.timestamp, unit: "nanoseconds") ?? to_unix_timestamp(now(), unit: "nanoseconds") ?? 0
       .Timestamp = ts
 
       # Resource attributes from Docker metadata

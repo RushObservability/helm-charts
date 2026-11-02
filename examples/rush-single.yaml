@@ -50,7 +50,7 @@ clickhouse:
 
   image:
     repository: clickhouse/clickhouse-server
-    tag: "26.6.1.1193"
+    tag: "26.10.3.7"
     pullPolicy: IfNotPresent
 
   clickhouse:

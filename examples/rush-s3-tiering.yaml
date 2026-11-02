@@ -41,7 +41,7 @@
 #   replicasCount: 1
 #   image:
 #     repository: clickhouse/clickhouse-server
-#     tag: "26.6.1.1193"
+#     tag: "26.10.3.7"
 #     pullPolicy: IfNotPresent
 #   clickhouse:
 #     defaultUser:
@@ -158,7 +158,7 @@
 #   replicasCount: 1
 #   image:
 #     repository: clickhouse/clickhouse-server
-#     tag: "26.6.1.1193"
+#     tag: "26.10.3.7"
 #     pullPolicy: IfNotPresent
 #   clickhouse:
 #     defaultUser:
@@ -261,7 +261,7 @@ clickhouse:
   replicasCount: 1
   image:
     repository: clickhouse/clickhouse-server
-    tag: "26.6.1.1193"
+    tag: "26.10.3.7"
     pullPolicy: IfNotPresent
   clickhouse:
     defaultUser:
@@ -386,7 +386,7 @@ queryApi:
 #   replicasCount: 1
 #   image:
 #     repository: clickhouse/clickhouse-server
-#     tag: "26.6.1.1193"
+#     tag: "26.10.3.7"
 #     pullPolicy: IfNotPresent
 #   clickhouse:
 #     defaultUser:
