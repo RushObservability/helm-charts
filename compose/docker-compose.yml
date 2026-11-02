@@ -24,7 +24,7 @@ x-demo-profiling: &demo-profiling
 
 services:
   clickhouse:
-    image: clickhouse/clickhouse-server:26.6.1.1193
+    image: clickhouse/clickhouse-server:26.10.3.7
     environment:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-rushdev}
@@ -53,7 +53,7 @@ services:
     restart: unless-stopped
 
   spool-init:
-    image: busybox:1.36.1
+    image: busybox:1.38.0
     user: "0:0"
     command:
       - sh
@@ -67,7 +67,7 @@ services:
     restart: "no"
 
   query-api:
-    image: ghcr.io/rushobservability/query-api:0.1.9
+    image: ghcr.io/rushobservability/query-api:0.1.11
     environment:
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_DATABASE: observability
@@ -116,7 +116,7 @@ services:
   # own healthcheck. This one-shot service polls /readyz from outside and exits
   # once query-api is ready; services that need the API wait for it.
   query-api-ready:
-    image: busybox:1.36.1
+    image: busybox:1.38.0
     command:
       - sh
       - -c
@@ -133,7 +133,7 @@ services:
     restart: "no"
 
   frontend:
-    image: ghcr.io/rushobservability/frontend:0.1.15
+    image: ghcr.io/rushobservability/frontend:0.1.16
     environment:
       QUERY_API_HOST: query-api:8080
       API_PUBLIC_URL: http://localhost:${RUSH_API_PORT:-8080}
@@ -149,7 +149,7 @@ services:
   # Receives OTLP traces, metrics, and logs. The demo applications use gRPC;
   # other local applications can use the published gRPC or HTTP ports.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.118.0
+    image: otel/opentelemetry-collector-contrib:0.164.0
     profiles: [telemetry, demo, all]
     environment:
       RUSH_API_ENDPOINT: http://query-api:8080
@@ -166,10 +166,12 @@ services:
   # Sends container stdout/stderr as Rush logs and reports Vector's own
   # internal metrics through Prometheus remote write.
   vector:
-    image: timberio/vector:0.56.0-distroless-libc
+    image: timberio/vector:0.61.0-distroless-libc
     profiles: [telemetry, demo, all]
     environment:
       RUSH_API_ENDPOINT: http://query-api:8080
+      # Vector 0.57+ no longer expands ${VAR} in config unless told to; config/vector.yaml uses it.
+      VECTOR_DANGEROUSLY_ALLOW_ENV_VAR_INTERPOLATION: "true"
     volumes:
       - ./config/vector.yaml:/etc/vector/vector.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro

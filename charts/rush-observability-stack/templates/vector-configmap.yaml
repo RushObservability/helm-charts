@@ -81,10 +81,8 @@ data:
             .SeverityNumber = 5
           }
           .Body = body
-          ts, err = to_unix_timestamp(.timestamp, unit: "nanoseconds")
-          if err != null {
-            ts = to_unix_timestamp(now(), unit: "nanoseconds")
-          }
+          # Vector 0.61+ treats nanosecond conversion as fallible (overflow), hence the final ?? 0.
+          ts = to_unix_timestamp(.timestamp, unit: "nanoseconds") ?? to_unix_timestamp(now(), unit: "nanoseconds") ?? 0
           .Timestamp = ts
           .ResourceAttributes = {}
           .ResourceAttributes."k8s.namespace.name" = to_string(del(.pod_namespace)) ?? ""

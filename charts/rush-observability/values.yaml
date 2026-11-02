@@ -156,7 +156,7 @@ clickhouse:
     # @default -- see values.yaml
     image:
       repository: clickhouse/clickhouse-server
-      tag: "26.9.19.9"
+      tag: "26.10.3.7"
       pullPolicy: IfNotPresent
     # -- Bound ClickHouse memory, in both operator and standalone mode. With NO limit the server sizes max_server_memory_usage to
     # ~90% of the whole node and the cgroup working-set grows unbounded. A hard limit caps
@@ -230,7 +230,7 @@ clickhouse:
   replicasCount: 1
   image:
     repository: clickhouse/clickhouse-server
-    tag: "26.9.19.9"
+    tag: "26.10.3.7"
     digest: ""
     pullPolicy: IfNotPresent
   persistence:
@@ -267,7 +267,7 @@ clickhouse:
       affinity: {}
       image:
         repository: alpine/k8s
-        tag: "1.33.4"
+        tag: "1.37.2"
         pullPolicy: IfNotPresent
     # -- Name applied to the operator's resources (Deployment/pod, RBAC, Secret,
     # ServiceMonitor, dashboards). Without this, the Altinity subchart names them
@@ -477,7 +477,7 @@ queryApi:
     repository: ghcr.io/rushobservability/query-api
     # -- Query API release.
     # @default -- see values.yaml
-    tag: "0.1.9"
+    tag: "0.1.11"
     digest: "" # sha256:<64 hex chars>; takes precedence over tag
     pullPolicy: IfNotPresent
   # -- Deployment keeps the existing single-pod claim names. Use StatefulSet for
@@ -589,8 +589,8 @@ queryApi:
   spoolInit:
     image:
       repository: docker.io/library/busybox
-      tag: "1.37.0"
-      digest: sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e
+      tag: "1.38.0"
+      digest: sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
       pullPolicy: IfNotPresent
     resources:
       requests:
@@ -652,7 +652,7 @@ frontend:
     repository: ghcr.io/rushobservability/frontend
     # -- Frontend release.
     # @default -- see values.yaml
-    tag: "0.1.15"
+    tag: "0.1.16"
     digest: ""
     pullPolicy: IfNotPresent
   # -- Public base URL (scheme + host, no trailing slash) of the Rush API as seen from
