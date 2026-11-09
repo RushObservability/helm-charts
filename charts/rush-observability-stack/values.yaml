@@ -299,7 +299,7 @@ collectors:
         successThreshold: 1
     image:
       repository: otel/opentelemetry-collector-contrib
-      tag: "0.164.0"
+      tag: "0.164.0-386"
       digest: ""
       pullPolicy: IfNotPresent
     kind: deployment
