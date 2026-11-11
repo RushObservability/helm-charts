@@ -52,7 +52,7 @@ rush:
           annotations: {}
         image:
           repository: ghcr.io/rushobservability/sre-agent
-          tag: "0.1.4"
+          tag: "0.2.1"
           digest: ""
           pullPolicy: IfNotPresent
         replicas: 1
