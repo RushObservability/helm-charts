@@ -275,7 +275,7 @@ ClickHouse, and in operator mode without `clickhouse.keeper.enabled=true`.
 
 ## Browser sessions
 
-Sessions default to a 30-minute idle timeout and a 24-hour absolute limit.
+Sessions default to a two-hour idle timeout and a 24-hour absolute limit.
 Authenticated activity rotates the HttpOnly bearer at most every five minutes.
 Rotation renews only the idle deadline.
 
@@ -284,7 +284,7 @@ queryApi:
   config:
     authentication:
       session:
-        idleTimeoutSeconds: 1800
+        idleTimeoutSeconds: 7200
         absoluteTimeoutSeconds: 86400
         renewalIntervalSeconds: 300
 ```
