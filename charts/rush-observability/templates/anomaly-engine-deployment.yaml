@@ -38,7 +38,14 @@ spec:
           image: {{ include "rush.image" (dict "root" . "image" $image "defaultTag" .Chart.AppVersion) | quote }}
           imagePullPolicy: {{ $image.pullPolicy }}
           command: ["anomaly_engine"]
+          {{- if .Values.workerMetrics.enabled }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.workerMetrics.port }}
+          {{- end }}
           env:
+            - name: RUSH_WORKER_METRICS_ADDR
+              value: {{ ternary (printf "0.0.0.0:%v" .Values.workerMetrics.port) "" .Values.workerMetrics.enabled | quote }}
             {{- include "rush.clickhouseWriteEnv" . | nindent 12 }}
             {{- include "rush.clickhouseReadEnv" . | nindent 12 }}
             - name: RUSH_CONFIG

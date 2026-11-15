@@ -52,6 +52,12 @@ spec:
               value: "{{ .Values.frontend.apiBaseUrl | default "" }}"
             - name: RUSH_ENVIRONMENT
               value: "{{ .Values.queryApi.config.runtime.environment }}"
+            - name: RUM_ENABLED
+              value: {{ .Values.frontend.rum.enabled | quote }}
+            - name: RUM_ENDPOINT
+              value: {{ .Values.frontend.rum.endpoint | quote }}
+            - name: RUM_APP_NAME
+              value: {{ .Values.frontend.rum.appName | quote }}
           {{- include "rush.extraEnvFrom" (dict "root" . "workload" .Values.frontend) | nindent 10 }}
           securityContext:
             {{- include "rush.hardenedContainerSecurityContext" . | nindent 12 }}

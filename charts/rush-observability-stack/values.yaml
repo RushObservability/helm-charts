@@ -377,10 +377,18 @@ collectors:
       varLog: /var/log
       varLibDockerContainers: /var/lib/docker/containers
     configOverride: ""
+selfMonitoring:
+  # -- Discover worker /metrics endpoints using the bundled VictoriaMetrics CRD.
+  workerScrapes: true
+  interval: 30s
+
 # -- Prometheus-compatible target discovery and remote write.
 metricsAgent:
   enabled: true
   nameOverride: metrics-agent
+  sreMetrics:
+    discovery:
+      enabled: true
   rushRemoteWrite:
     enabled: true
     url: ""

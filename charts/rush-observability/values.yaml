@@ -671,6 +671,12 @@ frontend:
   # to. Set this when the public API host differs from where admins load the UI
   # (e.g. internal UI + public ingest endpoint). Empty → the UI uses its own origin.
   apiBaseUrl: ""
+  # -- Optional browser health telemetry. Requires a frontend image with runtime
+  # RUM configuration support; no credentials are exposed in browser config.
+  rum:
+    enabled: false
+    endpoint: /api/v1/frontend/telemetry
+    appName: rush-ui
   # -- Proxy query-api's Prometheus /metrics through the frontend. query-api serves
   # it without authentication, so anyone who can reach the UI can read it. The
   # admin Capacity page reads /metrics from the browser and shows an error while
@@ -757,6 +763,13 @@ imageSecurity:
 # keeps it to one replica at a time, so any queryApi.replicas count is safe.
 # Enable this Deployment to move anomaly evaluation off the API pods; the chart
 # then sets RUSH_RUN_ANOMALY_ENGINE=false on them.
+workerMetrics:
+  # -- Scrape listener on drain-only API and standalone anomaly workers.
+  enabled: true
+  port: 9090
+  # -- Same-release, same-namespace components allowed through worker policies.
+  scraperComponents: [metrics-agent]
+
 anomalyEngine:
   enabled: false # optional; moves anomaly evaluation off the API pods
 

@@ -1,6 +1,6 @@
 # rush-observability-stack
 
-![Version: 0.5.0](https://img.shields.io/badge/Version-0.5.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.13](https://img.shields.io/badge/AppVersion-0.1.13-informational?style=flat-square)
+![Version: 0.5.3](https://img.shields.io/badge/Version-0.5.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.13](https://img.shields.io/badge/AppVersion-0.1.13-informational?style=flat-square)
 
 **Start here.** This is the chart most people want: it installs Rush plus a
 single-node ClickHouse, Kubernetes log collection, an OTLP endpoint, and metric
@@ -50,8 +50,8 @@ Kubernetes: `>=1.27.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://../metrics-agent | metricsAgent(metrics-agent) | 0.1.7 |
-| file://../rush-observability | rush(rush-observability) | 0.6.0 |
+| file://../metrics-agent | metricsAgent(metrics-agent) | 0.1.8 |
+| file://../rush-observability | rush(rush-observability) | 0.6.2 |
 
 ## Values
 
@@ -67,11 +67,13 @@ Kubernetes: `>=1.27.0-0`
 | global.rush.ingestApiKeySecret.name | string | `""` | Set a name to use an externally managed Secret instead. |
 | global.rush.ingestApiKeySecret.value | string | `""` | Optional explicit key. This creates the chart-managed Secret and takes precedence over automatic generation. It is stored in release history. |
 | global.rush.queryApi.serviceName | string | `""` | Blank resolves to <release>-query-api. |
-| metricsAgent | object | `{"enabled":true,"extraLabels":{"env":"dev"},"nameOverride":"metrics-agent","rushRemoteWrite":{"allowAnonymous":false,"enabled":true,"url":""}}` | Prometheus-compatible target discovery and remote write. |
+| metricsAgent | object | `{"enabled":true,"extraLabels":{"env":"dev"},"nameOverride":"metrics-agent","rushRemoteWrite":{"allowAnonymous":false,"enabled":true,"url":""},"sreMetrics":{"discovery":{"enabled":true}}}` | Prometheus-compatible target discovery and remote write. |
 | rush | object | see values.yaml | Start here. `rush` contains the API, UI, ClickHouse, ingress, and integration settings. The stack defaults are sized for a development or evaluation cluster: standalone ClickHouse, a 20 GiB volume, and localhost access. Production examples are documented in docs/getting-started.md.  Most installations only change:   rush.queryApi, rush.clickhouse,   global.scheduling, collectors, and metricsAgent.extraLabels. |
 | rush.clickhouse.clickhouse | object | `{"markCacheSize":536870912,"resources":{"limits":{"memory":"4Gi"},"requests":{"memory":"2Gi"}},"textIndexHeaderCacheSize":268435456,"textIndexPostingsCacheSize":536870912,"textIndexTokensCacheSize":134217728,"uncompressedCacheSize":67108864}` | ClickHouse server sizing, used in standalone and operator mode. Raise the memory limit and the caches together; the caches below total about 1.4 GiB, leaving the rest of the 4Gi limit for queries and merges. |
 | rush.clickhouse.enabled | bool | `false` | Helm dependency gate. Keep false for standalone/external and set true with mode=operator. |
 | rush.queryApi.integrations.sreAgent.enabled | bool | `false` | Optional investigation service. Provider credentials remain in Query API; the agent receives only short-lived requests and its internal token. |
+| selfMonitoring.interval | string | `"30s"` |  |
+| selfMonitoring.workerScrapes | bool | `true` | Discover worker /metrics endpoints using the bundled VictoriaMetrics CRD. |
 
 ## Maintainers
 
