@@ -153,7 +153,7 @@ Kubernetes: `>=1.25.0-0`
 | frontend.rollout.progressDeadlineSeconds | int | `600` |  |
 | frontend.rollout.revisionHistoryLimit | int | `10` |  |
 | frontend.rollout.strategy | string | `"RollingUpdate"` |  |
-| frontend.rum | object | `{"appName":"rush-ui","enabled":false,"endpoint":"/api/v1/rum/ingest"}` | Optional browser health telemetry. Requires a frontend image with runtime RUM configuration support; no credentials are exposed in browser config. |
+| frontend.rum | object | `{"appName":"rush-ui","enabled":false,"endpoint":"/api/v1/frontend/telemetry"}` | Optional browser health telemetry. Requires a frontend image with runtime RUM configuration support; no credentials are exposed in browser config. |
 | frontend.runtimeClassName | string | `""` |  |
 | frontend.scheduling | object | `{}` |  |
 | frontend.service.port | int | `80` |  |
