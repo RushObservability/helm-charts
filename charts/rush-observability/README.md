@@ -1,6 +1,6 @@
 # rush-observability
 
-![Version: 0.6.0](https://img.shields.io/badge/Version-0.6.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.13](https://img.shields.io/badge/AppVersion-0.1.13-informational?style=flat-square)
+![Version: 0.6.1](https://img.shields.io/badge/Version-0.6.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.13](https://img.shields.io/badge/AppVersion-0.1.13-informational?style=flat-square)
 
 The core Rush platform: Query API, frontend, anomaly processing, and ClickHouse.
 
@@ -127,6 +127,7 @@ Kubernetes: `>=1.25.0-0`
 | frontend.rollout.progressDeadlineSeconds | int | `600` |  |
 | frontend.rollout.revisionHistoryLimit | int | `10` |  |
 | frontend.rollout.strategy | string | `"RollingUpdate"` |  |
+| frontend.rum | object | `{"appName":"rush-ui","enabled":false,"endpoint":"/api/v1/rum/ingest"}` | Optional browser health telemetry. Requires a frontend image with runtime RUM configuration support; no credentials are exposed in browser config. |
 | frontend.runtimeClassName | string | `""` |  |
 | frontend.scheduling | object | `{}` |  |
 | frontend.service.port | int | `80` |  |
