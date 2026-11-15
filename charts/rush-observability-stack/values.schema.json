@@ -14,6 +14,15 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "selfMonitoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workerScrapes", "interval"],
+      "properties": {
+        "workerScrapes": { "type": "boolean" },
+        "interval": { "type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$" }
+      }
+    },
     "rush": {
       "type": "object",
       "required": ["queryApi"],

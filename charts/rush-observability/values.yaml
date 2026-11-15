@@ -763,6 +763,13 @@ imageSecurity:
 # keeps it to one replica at a time, so any queryApi.replicas count is safe.
 # Enable this Deployment to move anomaly evaluation off the API pods; the chart
 # then sets RUSH_RUN_ANOMALY_ENGINE=false on them.
+workerMetrics:
+  # -- Scrape listener on drain-only API and standalone anomaly workers.
+  enabled: true
+  port: 9090
+  # -- Same-release, same-namespace components allowed through worker policies.
+  scraperComponents: [metrics-agent]
+
 anomalyEngine:
   enabled: false # optional; moves anomaly evaluation off the API pods
 

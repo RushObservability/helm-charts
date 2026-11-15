@@ -1,0 +1,23 @@
+{{- if .Values.workerMetrics.enabled }}
+{{- $workers := list (dict "component" "query-api-drain-worker" "enabled" .Values.queryApi.drainWorker.enabled) (dict "component" "anomaly-engine" "enabled" .Values.anomalyEngine.enabled) }}
+{{- range $workers }}
+{{- if .enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ printf "%s-metrics" (include "rush.componentName" (dict "root" $ "component" .component)) | trunc 63 | trimSuffix "-" }}
+  labels:
+    rushobservability.com/worker-metrics: "true"
+    {{- include "rush.componentLabels" (dict "root" $ "component" .component) | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "rush.selectorLabels" (dict "root" $ "component" .component) | nindent 4 }}
+  ports:
+    - name: metrics
+      port: {{ $.Values.workerMetrics.port }}
+      targetPort: metrics
+{{- end }}
+{{- end }}
+{{- end }}
