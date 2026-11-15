@@ -66,6 +66,12 @@ spec:
               value: {{ .Values.ui.path | quote }}
             - name: METRICS_AGENT_EXTRA_LABELS
               value: {{ .Values.extraLabels | toJson | quote }}
+            {{- if and .Values.sreMetrics.enabled .Values.scrape.enabled }}
+            - name: METRICS_AGENT_SRE_METRICS_URL
+              value: {{ include "metrics-agent.sreMetricsUrl" . | quote }}
+            - name: METRICS_AGENT_SRE_METRICS_TOKEN_FILE
+              value: /var/run/rush-sre-metrics/token
+            {{- end }}
             {{- if .Values.rushRemoteWrite.enabled }}
             {{- if and (not (include "metrics-agent.rushRemoteWriteSecretName" .)) (not .Values.rushRemoteWrite.allowAnonymous) }}
             {{- fail "rushRemoteWrite.bearerTokenSecret.name is required when Rush remote write is enabled" }}
@@ -112,6 +118,22 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if and .Values.sreMetrics.enabled .Values.scrape.enabled }}
+          volumeMounts:
+            - name: sre-metrics-token
+              mountPath: /var/run/rush-sre-metrics
+              readOnly: true
+          {{- end }}
+      {{- if and .Values.sreMetrics.enabled .Values.scrape.enabled }}
+      volumes:
+        - name: sre-metrics-token
+          secret:
+            secretName: {{ include "metrics-agent.sreMetricsSecretName" . | quote }}
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.sreMetrics.tokenSecret.key | quote }}
+                path: token
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

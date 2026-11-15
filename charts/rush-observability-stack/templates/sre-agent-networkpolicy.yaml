@@ -15,6 +15,12 @@ spec:
         - podSelector:
             matchLabels:
               {{- include "rush.selectorLabels" (dict "root" . "component" "query-api") | nindent 14 }}
+        {{- if and .Values.metricsAgent.enabled .Values.metricsAgent.precedence.enabled .Values.metricsAgent.scrape.enabled .Values.metricsAgent.sreMetrics.enabled }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: metrics-agent
+              app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- end }}
       ports:
         - protocol: TCP
           port: http

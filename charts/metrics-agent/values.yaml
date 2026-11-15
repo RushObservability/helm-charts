@@ -130,6 +130,16 @@ status:
 selfMetrics:
   enabled: false
 
+sreMetrics:
+  # -- Explicitly enable authenticated collection from the optional SRE agent.
+  enabled: false
+  # -- Stack installs default to http://<release>-sre-agent:8081/metrics.
+  url: ""
+  tokenSecret:
+    # -- Stack installs default to <release>-bootstrap. Override for external Secrets.
+    name: ""
+    key: sre-agent-internal-token
+
 # -- Additional non-secret environment variables for the metrics-agent container.
 env: []
 
