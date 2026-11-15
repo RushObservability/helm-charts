@@ -139,6 +139,9 @@ services:
       API_PUBLIC_URL: http://localhost:${RUSH_API_PORT:-8080}
       DEFAULT_THEME: ${DEFAULT_THEME:-light}
       RUSH_ENVIRONMENT: development
+      RUM_ENABLED: ${RUM_ENABLED:-false}
+      RUM_ENDPOINT: ${RUM_ENDPOINT:-/api/v1/rum/ingest}
+      RUM_APP_NAME: ${RUM_APP_NAME:-rush-ui}
     ports:
       - "127.0.0.1:${RUSH_FRONTEND_PORT:-5173}:8080"
     depends_on:
