@@ -1,6 +1,6 @@
 # rush-observability
 
-![Version: 0.6.1](https://img.shields.io/badge/Version-0.6.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.13](https://img.shields.io/badge/AppVersion-0.1.13-informational?style=flat-square)
+![Version: 0.6.2](https://img.shields.io/badge/Version-0.6.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.13](https://img.shields.io/badge/AppVersion-0.1.13-informational?style=flat-square)
 
 The core Rush platform: Query API, frontend, anomaly processing, and ClickHouse.
 
@@ -46,10 +46,36 @@ Kubernetes: `>=1.25.0-0`
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| anomalyEngine | object | `{"enabled":false,"env":{"CLICKHOUSE_DATABASE":"observability","RUST_LOG":"rush_api=info"},"extraEnvFrom":[],"extraVolumeMounts":[],"extraVolumes":[],"image":{},"imagePullSecrets":[],"inheritGlobalScheduling":true,"networkPolicy":{"allowExternalHttpsEgress":false,"allowSmtpEgress":false,"enabled":true,"extraEgress":[],"extraIngress":[]},"podAnnotations":{},"podDisruptionBudget":{"enabled":false,"type":"maxUnavailable","value":1},"podLabels":{},"priorityClassName":"","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"100m","memory":"128Mi"}},"rollout":{"minReadySeconds":0,"progressDeadlineSeconds":600,"revisionHistoryLimit":10,"strategy":"Recreate"},"runtimeClassName":"","scheduling":{},"serviceAccount":{"annotations":{},"create":false,"name":""}}` | The anomaly engine evaluates anomaly detectors and sends their notifications. query-api runs it in-process by default, and a Keeper lease keeps it to one replica at a time, so any queryApi.replicas count is safe. Enable this Deployment to move anomaly evaluation off the API pods; the chart then sets RUSH_RUN_ANOMALY_ENGINE=false on them. |
+| anomalyEngine.enabled | bool | `false` |  |
+| anomalyEngine.env.CLICKHOUSE_DATABASE | string | `"observability"` |  |
+| anomalyEngine.env.RUST_LOG | string | `"rush_api=info"` |  |
+| anomalyEngine.extraEnvFrom | list | `[]` |  |
+| anomalyEngine.extraVolumeMounts | list | `[]` |  |
+| anomalyEngine.extraVolumes | list | `[]` |  |
 | anomalyEngine.image | object | `{}` | Inherits queryApi.image by default because both workloads run the same Rush API binary. Set only the fields that need to differ for an independent image. |
+| anomalyEngine.imagePullSecrets | list | `[]` |  |
 | anomalyEngine.inheritGlobalScheduling | bool | `true` | ------------------------------------------------------------------- |
+| anomalyEngine.networkPolicy.allowExternalHttpsEgress | bool | `false` |  |
+| anomalyEngine.networkPolicy.allowSmtpEgress | bool | `false` |  |
+| anomalyEngine.networkPolicy.enabled | bool | `true` |  |
+| anomalyEngine.networkPolicy.extraEgress | list | `[]` |  |
+| anomalyEngine.networkPolicy.extraIngress | list | `[]` |  |
+| anomalyEngine.podAnnotations | object | `{}` |  |
+| anomalyEngine.podDisruptionBudget.enabled | bool | `false` |  |
+| anomalyEngine.podDisruptionBudget.type | string | `"maxUnavailable"` |  |
+| anomalyEngine.podDisruptionBudget.value | int | `1` |  |
+| anomalyEngine.podLabels | object | `{}` |  |
+| anomalyEngine.priorityClassName | string | `""` |  |
+| anomalyEngine.resources.limits.cpu | string | `"1"` |  |
+| anomalyEngine.resources.limits.memory | string | `"512Mi"` |  |
+| anomalyEngine.resources.requests.cpu | string | `"100m"` |  |
+| anomalyEngine.resources.requests.memory | string | `"128Mi"` |  |
 | anomalyEngine.rollout | object | `{"minReadySeconds":0,"progressDeadlineSeconds":600,"revisionHistoryLimit":10,"strategy":"Recreate"}` | Recreate prevents duplicate rule evaluation and notification delivery. |
+| anomalyEngine.runtimeClassName | string | `""` |  |
+| anomalyEngine.scheduling | object | `{}` |  |
+| anomalyEngine.serviceAccount.annotations | object | `{}` |  |
+| anomalyEngine.serviceAccount.create | bool | `false` |  |
+| anomalyEngine.serviceAccount.name | string | `""` |  |
 | clickhouse | object | see values.yaml | Full options: https://github.com/Altinity/helm-charts/tree/main/charts/clickhouse |
 | clickhouse.clickhouse.configurationFiles | object | `{"rush_settings.xml":"<clickhouse>\n  <custom_settings_prefixes>rush_</custom_settings_prefixes>\n</clickhouse>\n"}` | Custom ClickHouse server configuration files. rush_settings.xml: enables the 'rush_' custom settings prefix so that rush-api can set `rush_tenant_id` per-query for row-level security policies. Without this, getSetting('rush_tenant_id') in row policies will fail with an unknown setting error. Standalone also mounts this explicit file. Operator mode receives the same setting through rush.clickhouseExtraConfig below. |
 | clickhouse.clickhouse.extraConfig | string | `"{{- include \"rush.clickhouseExtraConfig\" . }}\n"` | Server config (→ config.d/extra_config.xml) is AUTO-GENERATED from global.storage.s3 by the rush.clickhouseExtraConfig template:   • always emits the `tiered` storage policy (REQUIRED — migrations create     tables with storage_policy='tiered'; without it CREATE TABLE fails);   • when global.storage.s3.enabled, also adds the S3 disk + cache + cold     volume (keyless if no access keys are set). Enable tiering with ONLY the global.storage.s3 block — no hand-written XML. Override this string only for advanced ClickHouse storage customization. |
@@ -234,6 +260,9 @@ Kubernetes: `>=1.25.0-0`
 | queryApi.spoolInit | object | see values.yaml | Non-root helper creates private spool directories and moves legacy pending records into it before startup. Mirror this image for disconnected clusters. |
 | queryApi.terminationGracePeriodSeconds | int | `120` | On SIGTERM, query-api fails readiness, flushes in-memory batches, and drains its durable ingest queue before exiting. Increase this for large backlogs or a ClickHouse recovery window. |
 | queryApi.workloadKind | string | `"Deployment"` | Deployment keeps the existing single-pod claim names. Use StatefulSet for HA: each ordinal owns its audit PVC. See docs/reliability.md before migrating. |
+| workerMetrics | object | `{"enabled":true,"port":9090,"scraperComponents":["metrics-agent"]}` | The anomaly engine evaluates anomaly detectors and sends their notifications. query-api runs it in-process by default, and a Keeper lease keeps it to one replica at a time, so any queryApi.replicas count is safe. Enable this Deployment to move anomaly evaluation off the API pods; the chart then sets RUSH_RUN_ANOMALY_ENGINE=false on them. |
+| workerMetrics.enabled | bool | `true` | Scrape listener on drain-only API and standalone anomaly workers. |
+| workerMetrics.scraperComponents | list | `["metrics-agent"]` | Same-release, same-namespace components allowed through worker policies. |
 
 ## Maintainers
 
