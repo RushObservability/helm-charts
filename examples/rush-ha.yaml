@@ -89,19 +89,16 @@ clickhouse:
   enabled: true
   mode: operator
 
-  # ── Topology ────────────────────────────────────────────────────────────────
-  # shardsCount:   number of independent data shards
-  #                1 = all data on every replica (pure replication, max redundancy)
-  #                2 = data split across 2 shards, each replicated 3×
-  shardsCount: 1
-  replicasCount: 3   # 3 replicas per shard — quorum survives 1 failure
-
-  image:
-    repository: clickhouse/clickhouse-server
-    tag: "26.10.3.7"
-    pullPolicy: IfNotPresent
-
+  # ── Server pods ─────────────────────────────────────────────────────────────
+  # The Altinity dependency reads topology, storage, and resources only under
+  # clickhouse.clickhouse; the chart rejects these keys one level up.
   clickhouse:
+    # shardsCount:   number of independent data shards
+    #                1 = all data on every replica (pure replication, max redundancy)
+    #                2 = data split across 2 shards, each replicated 3×
+    shardsCount: 1
+    replicasCount: 3   # 3 replicas per shard — quorum survives 1 failure
+
     defaultUser:
       # Name of a Kubernetes Secret with key "password" holding the CH password.
       # Create it before installing:
@@ -115,22 +112,32 @@ clickhouse:
           <custom_settings_prefixes>rush_</custom_settings_prefixes>
         </clickhouse>
 
-  # ── Storage ─────────────────────────────────────────────────────────────────
-  # Each replica gets its own PVC. Use a StorageClass backed by fast SSDs
-  # (gp3 on AWS, premium-ssd on Azure, pd-ssd on GCP) for best performance.
-  persistence:
-    enabled: true
-    storageClass: "gp3"   # replace with your fast StorageClass
-    size: 500Gi
+    # Each replica gets its own PVC. Use a StorageClass backed by fast SSDs
+    # (gp3 on AWS, premium-ssd on Azure, pd-ssd on GCP) for best performance.
+    # Size it before the first install; growing it later resizes every PVC.
+    persistence:
+      enabled: true
+      storageClass: "gp3"   # replace with your fast StorageClass
+      size: 500Gi
 
-  # ── Resources per ClickHouse pod ────────────────────────────────────────────
-  resources:
-    requests:
-      cpu: "2"
-      memory: 8Gi
-    limits:
-      cpu: "4"
-      memory: 16Gi
+    # Resources per ClickHouse pod. Scale the cache sizes and memory profile in
+    # the chart values with the memory limit.
+    resources:
+      requests:
+        cpu: "2"
+        memory: 8Gi
+      limits:
+        cpu: "4"
+        memory: 16Gi
+
+    # Uncomment to hard-require CH replicas on different nodes.
+    # affinity:
+    #   podAntiAffinity:
+    #     requiredDuringSchedulingIgnoredDuringExecution:
+    #       - labelSelector:
+    #           matchLabels:
+    #             app: clickhouse
+    #         topologyKey: kubernetes.io/hostname
 
   service:
     type: ClusterIP
@@ -138,32 +145,19 @@ clickhouse:
   # ── ClickHouse Keeper ────────────────────────────────────────────────────────
   # Keeper provides distributed coordination (replaces ZooKeeper).
   # 3 Keeper replicas form a Raft quorum — survives loss of 1 node.
-  # Keeper pods are lightweight (128 Mi RAM each) and can share nodes
-  # with CH replicas or run on dedicated small nodes.
+  # Keeper pods are lightweight and can share nodes with CH replicas or run on
+  # dedicated small nodes.
   keeper:
     enabled: true
-    replicasCount: 3
-    persistence:
-      enabled: true
+    replicaCount: 3
+    localStorage:
       storageClass: "gp3"   # same class as CH data; Keeper writes are small
       size: 10Gi
     resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: "1"
-        memory: 512Mi
-
-  # ── Pod anti-affinity (spread across nodes) ──────────────────────────────────
-  # Uncomment to hard-require CH replicas on different nodes.
-  # affinity:
-  #   podAntiAffinity:
-  #     requiredDuringSchedulingIgnoredDuringExecution:
-  #       - labelSelector:
-  #           matchLabels:
-  #             app: clickhouse
-  #         topologyKey: kubernetes.io/hostname
+      cpuRequestsMs: 100
+      memoryRequestsMiB: 128Mi
+      cpuLimitsMs: 1000
+      memoryLimitsMiB: 512Mi
 
   # operator.enabled — set to false if the Altinity ClickHouse Operator is
   # already installed in your cluster (e.g. shared cluster-wide or managed

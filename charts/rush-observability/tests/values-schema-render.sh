@@ -42,7 +42,27 @@ assert_rejected 'a zero-second PromQL lookback' --set queryApi.config.promql.loo
 assert_rejected 'a zero-second stats interval' --set queryApi.config.statsEngine.intervalSecs=0
 assert_rejected 'standalone ClickHouse with the operator dependency enabled' --set clickhouse.mode=standalone
 assert_rejected 'operator ClickHouse with the dependency disabled' --set clickhouse.mode=operator --set clickhouse.enabled=false
+# The Altinity dependency never reads these; they used to install 10Gi, one replica.
+assert_rejected 'the ignored top-level ClickHouse persistence' --set clickhouse.persistence.size=500Gi
+assert_rejected 'the ignored top-level ClickHouse replica count' --set clickhouse.replicasCount=3
+assert_rejected 'the ignored top-level ClickHouse shard count' --set clickhouse.shardsCount=2
+assert_rejected 'the ignored top-level ClickHouse resources in operator mode' --set clickhouse.resources.limits.memory=16Gi
+assert_rejected 'the misnamed Keeper replica count' --set clickhouse.keeper.replicasCount=3
+assert_rejected 'the misnamed Keeper persistence' --set clickhouse.keeper.persistence.size=10Gi
+chi="$(helm template schema "$chart_dir" --set clickhouse.keeper.enabled=true \
+  --set clickhouse.clickhouse.replicasCount=3 --set clickhouse.clickhouse.persistence.size=500Gi \
+  --show-only charts/clickhouse/templates/chi.yaml)"
+for expected in 'storage: 500Gi' 'replicasCount: 3'; do
+  grep -Fq "$expected" <<<"$chi" || { echo "operator ClickHouse ignored clickhouse.clickhouse value: $expected" >&2; exit 1; }
+done
 assert_rejected 'production mode without a public URL' --set queryApi.config.runtime.environment=production --set queryApi.config.runtime.baseUrl=
+# Production query-api keeps SSO replay claims and engine leases in Keeper.
+production=(--set queryApi.config.runtime.environment=production --set queryApi.config.runtime.baseUrl=https://rush.example.test)
+assert_rejected 'production mode on standalone ClickHouse' "${production[@]}" --set clickhouse.mode=standalone --set clickhouse.enabled=false
+assert_rejected 'production mode without operator Keeper' "${production[@]}"
+assert_rejected 'production mode with the local SSO replay store' "${production[@]}" --set clickhouse.keeper.enabled=true --set queryApi.config.authentication.ssoReplayStore=local
+assert_rejected 'the Keeper SSO replay store without Keeper' --set queryApi.config.authentication.ssoReplayStore=keeper
+helm template schema "$chart_dir" "${production[@]}" --set clickhouse.keeper.enabled=true >/dev/null
 assert_rejected 'an invalid image digest' --set queryApi.image.digest=sha256:nope
 assert_rejected 'a zero probe timeout' --set queryApi.probes.readiness.timeoutSeconds=0
 assert_rejected 'an unknown rollout strategy' --set frontend.rollout.strategy=BlueGreen

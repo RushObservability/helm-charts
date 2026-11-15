@@ -40,9 +40,10 @@ when a required external service would be unreachable.
 
 ## Ingress and TLS
 
-The optional Ingress exposes the frontend, which proxies `/api`, `/auth`,
-`/prom`, and `/metrics`. You can also expose a direct API host for integrations
-that should not use the frontend proxy.
+The optional Ingress exposes the frontend, which proxies `/api`, `/auth`, and
+`/prom`. You can also expose a direct API host for integrations that should not
+use the frontend proxy. The direct API host serves every Query API path,
+including the unauthenticated `/metrics`.
 
 ```yaml
 rush:
@@ -72,3 +73,33 @@ trusted proxy list.
 
 If the ingress controller runs outside the release namespace, add an
 `extraIngress` rule matching its namespace and pod labels.
+
+## Prometheus metrics
+
+Query API serves its Prometheus metrics at `/metrics` without authentication.
+Scrape the Service inside the cluster at
+`http://<release>-query-api.<namespace>.svc:8080/metrics`, and admit the scraper
+through the Query API NetworkPolicy:
+
+```yaml
+rush:
+  queryApi:
+    networkPolicy:
+      extraIngress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: monitoring
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: prometheus
+          ports:
+            - protocol: TCP
+              port: 8080
+```
+
+The frontend no longer proxies `/metrics` by default, because that published
+the endpoint to anyone who could reach the UI. The admin Capacity page reads
+`/metrics` through the frontend and shows an error while the proxy is off. Set
+`frontend.proxyQueryApiMetrics: true` to restore it only when the UI is reachable
+by trusted users alone.

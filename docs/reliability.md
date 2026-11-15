@@ -39,7 +39,7 @@ When `queryApi.replicas` is greater than one, configure an S3-compatible shared
 ingest buffer, a singleton drain worker, ClickHouse Keeper, and
 `queryApi.workloadKind: StatefulSet`. Each API ordinal gets its own audit claim,
 so replicas can run on different nodes without sharing a ReadWriteOnce volume.
-HA needs Query API `0.1.9` or later (the chart ships `0.1.11`): it carries the
+HA needs Query API `0.1.9` or later (the chart ships `0.1.13`): it carries the
 independent audit-writer chain fix from
 [query-api PR 38](https://github.com/RushObservability/query-api/pull/38),
 creates a single bootstrap admin when replicas start together, and reads the

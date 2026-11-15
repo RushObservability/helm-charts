@@ -732,6 +732,7 @@
       "properties": {
         "image": { "$ref": "#/definitions/image" },
         "replicas": { "type": "integer", "minimum": 1 },
+        "proxyQueryApiMetrics": { "type": "boolean" },
         "containerPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
         "rollout": { "$ref": "#/definitions/rollout" },
         "podDisruptionBudget": { "$ref": "#/definitions/pdb" },
@@ -855,8 +856,6 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "mode": { "type": "string", "enum": ["operator", "standalone", "external"] },
-        "shardsCount": { "type": "integer", "minimum": 1 },
-        "replicasCount": { "type": "integer", "minimum": 1 },
         "image": { "$ref": "#/definitions/image" }
       }
     },

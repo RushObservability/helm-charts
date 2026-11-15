@@ -79,7 +79,9 @@ rush:
             successThreshold: 1
           readiness:
             enabled: true
-            path: /healthz
+            # /readyz fails only while query-api is unreachable; it does not
+            # depend on a configured LLM provider.
+            path: /readyz
             initialDelaySeconds: 3
             periodSeconds: 5
             timeoutSeconds: 2

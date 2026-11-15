@@ -236,6 +236,43 @@ if grep -Eq 'OPENAI_API_KEY|CLICKHOUSE_URL' <<<"$(sed -n '/name: stack-sre-agent
   echo "SRE-agent must not receive provider or ClickHouse credentials" >&2
   exit 1
 fi
+# Digest enforcement must render without the retired enterprise block.
+digest="sha256:$(printf '%064d' 0)"
+digest_args=(--set rush.imageSecurity.requireDigests=true
+  --set rush.queryApi.image.digest="$digest" --set rush.queryApi.spoolInit.image.digest="$digest"
+  --set rush.frontend.image.digest="$digest" --set collectors.otel.image.digest="$digest"
+  --set collectors.vector.image.digest="$digest")
+helm template stack "$chart_dir" "${common[@]}" "${digest_args[@]}" >/dev/null
+helm template stack "$chart_dir" "${common[@]}" "${digest_args[@]}" \
+  --set enterprise.postgresCollector.enabled=false >/dev/null
+# Tool calls go agent -> query-api, so query-api's policy must admit the agent.
+query_api_ingress="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.integrations.sreAgent.enabled=true \
+  --show-only charts/rush/templates/query-api-networkpolicy.yaml | sed -n '/ingress:/,/egress:/p')"
+grep -Fq 'app.kubernetes.io/component: sre-agent' <<<"$query_api_ingress" || {
+  echo 'query-api NetworkPolicy does not admit the SRE agent' >&2
+  exit 1
+}
+readiness="$(sed -n '/readinessProbe:/,/Probe:/p' <<<"$(sed -n '/kind: Deployment/,/---/p' <<<"$sre" | sed -n '/name: stack-sre-agent/,$p')")"
+grep -Fq 'path: /readyz' <<<"$readiness" || {
+  echo 'SRE agent readiness must use /readyz' >&2
+  exit 1
+}
+gitops="$(helm template stack "$chart_dir" "${common[@]}" \
+  --set rush.queryApi.integrations.sreAgent.enabled=true \
+  --set rush.queryApi.integrations.argocd.enabled=true \
+  --set rush.queryApi.integrations.fluxcd.enabled=true \
+  --show-only templates/sre-agent-rbac.yaml)"
+for expected in 'name: stack-sre-agent-argocd-reader' 'name: stack-sre-agent-fluxcd-reader' 'argoproj.io' 'helm.toolkit.fluxcd.io' 'name: stack-sre-agent'; do
+  grep -Fq "$expected" <<<"$gitops" || {
+    echo "SRE agent GitOps RBAC is missing: $expected" >&2
+    exit 1
+  }
+done
+if grep -Eq '"(list|watch|create|update|patch|delete)"' <<<"$(sed -n '/-reader$/,/---/p' <<<"$gitops")"; then
+  echo 'SRE agent GitOps Roles must stay get-only' >&2
+  exit 1
+fi
 
 if helm template stack "$chart_dir" "${common[@]}" \
   --set rush.sreAgent.enabled=true >/dev/null 2>&1; then

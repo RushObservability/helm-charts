@@ -226,17 +226,23 @@ clickhouse:
           </default>
         </profiles>
       </clickhouse>
-  shardsCount: 1
-  replicasCount: 1
+    # -- Operator-mode topology and storage. The Altinity dependency reads only
+    # these keys (clickhouse.clickhouse.*); top-level clickhouse.shardsCount,
+    # replicasCount, and persistence are rejected. Replicas above 1 need
+    # clickhouse.keeper.enabled=true.
+    shardsCount: 1
+    replicasCount: 1
+    # -- Size the data volume before the first install. Growing it later resizes
+    # each replica's PVC and needs a StorageClass with allowVolumeExpansion.
+    persistence:
+      enabled: true
+      storageClass: "" # empty = cluster default
+      size: 10Gi
   image:
     repository: clickhouse/clickhouse-server
     tag: "26.10.3.7"
     digest: ""
     pullPolicy: IfNotPresent
-  persistence:
-    enabled: true
-    storageClass: "" # empty = cluster default
-    size: 500Gi
   service:
     type: ClusterIP
   keeper:
@@ -305,8 +311,11 @@ queryApi:
       # -- Authentication is fail-closed by default. Anonymous-default is only for
       # local development and leaves /readyz unhealthy in production.
       allowAnonymousDefault: false
-      # -- One-time OIDC/SAML/setup claims. "auto" uses an in-process store for one
-      # replica and ClickHouse KeeperMap for two or more replicas.
+      # -- One-time OIDC/SAML/setup claims. "auto" uses ClickHouse KeeperMap in
+      # production or with two or more replicas, and an in-process store only for
+      # a single development replica. "local" is rejected in production. Keeper
+      # needs clickhouse.keeper.enabled=true in operator mode, or Keeper on an
+      # external ClickHouse; standalone ClickHouse has none.
       ssoReplayStore: auto
       loginRateLimit:
         accountPerMinute: 10
@@ -425,8 +434,9 @@ queryApi:
         tenantRepositories: {}
 
   # -- Optional public entry points. The frontend host also proxies /api, /auth,
-  # /prom, and /metrics. Enable the API host only when a separate direct API
-  # origin is required. trustedProxyCidrs are merged into the Query API trust
+  # and /prom, plus /metrics when frontend.proxyQueryApiMetrics=true. Enable the
+  # API host only when a separate direct API origin is required. trustedProxyCidrs
+  # are merged into the Query API trust
   # list so forwarded client addresses are accepted only from known proxies.
   ingress:
     enabled: false
@@ -661,6 +671,11 @@ frontend:
   # to. Set this when the public API host differs from where admins load the UI
   # (e.g. internal UI + public ingest endpoint). Empty → the UI uses its own origin.
   apiBaseUrl: ""
+  # -- Proxy query-api's Prometheus /metrics through the frontend. query-api serves
+  # it without authentication, so anyone who can reach the UI can read it. The
+  # admin Capacity page reads /metrics from the browser and shows an error while
+  # this is off. Scrape <release>-query-api:8080/metrics in-cluster instead.
+  proxyQueryApiMetrics: false
   # -- The Rush frontend image runs nginx as uid 65532 and cannot bind below 1024.
   # The Service targetPort follows this via the named "http" port.
   containerPort: 8080

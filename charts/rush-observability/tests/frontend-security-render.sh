@@ -2,7 +2,7 @@
 set -euo pipefail
 
 chart_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-rendered="$(helm template frontend-security "$chart_dir" --set queryApi.config.runtime.environment=production --set queryApi.config.runtime.baseUrl=https://rush.example.com)"
+rendered="$(helm template frontend-security "$chart_dir" --set queryApi.config.runtime.environment=production --set queryApi.config.runtime.baseUrl=https://rush.example.com --set clickhouse.keeper.enabled=true)"
 
 if grep -q 'Content-Security-Policy' <<<"$rendered"; then
   echo 'Helm must not duplicate the CSP policy baked into the frontend image' >&2
@@ -22,6 +22,20 @@ for required in \
     exit 1
   fi
 done
+
+# query-api's /metrics is unauthenticated; the UI must not publish it by default.
+if grep -Fq 'location = /metrics' <<<"$rendered"; then
+  echo 'frontend proxies the unauthenticated query-api /metrics by default' >&2
+  exit 1
+fi
+grep -Fq 'wget -q -T 10 -O /dev/null "${QUERY_API_URL}/metrics"' <<<"$rendered" || {
+  echo 'helm test must scrape query-api /metrics directly' >&2
+  exit 1
+}
+grep -Fq 'location = /metrics' <<<"$(helm template frontend-security "$chart_dir" --set frontend.proxyQueryApiMetrics=true)" || {
+  echo 'frontend.proxyQueryApiMetrics=true did not proxy /metrics' >&2
+  exit 1
+}
 
 notes="$(<"$chart_dir/templates/NOTES.txt")"
 grep -q 'Strict-Transport-Security' <<<"$notes" || {
