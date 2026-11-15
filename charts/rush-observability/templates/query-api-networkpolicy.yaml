@@ -20,6 +20,11 @@ spec:
             matchLabels:
               {{- include "rush.selectorLabels" (dict "root" . "component" "helm-test") | nindent 14 }}
         {{- end }}
+        {{- if .Values.queryApi.integrations.sreAgent.enabled }}
+        - podSelector:
+            matchLabels:
+              {{- include "rush.selectorLabels" (dict "root" . "component" "sre-agent") | nindent 14 }}
+        {{- end }}
         {{- range .Values.global.rush.queryApiIngressComponents }}
         - podSelector:
             matchLabels:

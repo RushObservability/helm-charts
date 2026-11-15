@@ -1,4 +1,58 @@
-{{- if .Values.rush.queryApi.integrations.sreAgent.enabled }}
+{{- /* Objects read by the agent's Argo CD and Flux tools (one exact get each). */ -}}
+{{- define "rush.sreAgentArgocdRules" -}}
+- apiGroups: ["argoproj.io"]
+  resources: ["applications"]
+  verbs: ["get"]
+{{- end -}}
+{{- define "rush.sreAgentFluxRules" -}}
+- apiGroups: ["source.toolkit.fluxcd.io"]
+  resources: ["gitrepositories", "ocirepositories", "helmrepositories", "buckets"]
+  verbs: ["get"]
+- apiGroups: ["kustomize.toolkit.fluxcd.io"]
+  resources: ["kustomizations"]
+  verbs: ["get"]
+- apiGroups: ["helm.toolkit.fluxcd.io"]
+  resources: ["helmreleases"]
+  verbs: ["get"]
+{{- end -}}
+{{- $integrations := .Values.rush.queryApi.integrations }}
+{{- if $integrations.sreAgent.enabled }}
+{{- $serviceAccount := include "rush.serviceAccountName" (dict "root" . "workload" $integrations.sreAgent "component" "sre-agent") }}
+{{- /* The agent uses its own in-cluster client for Argo CD and Flux, so it needs
+its own read-only Roles; the core chart's readers bind only query-api. */ -}}
+{{- range $integration, $rules := dict "argocd" (include "rush.sreAgentArgocdRules" .) "fluxcd" (include "rush.sreAgentFluxRules" .) }}
+{{- $config := index $integrations $integration }}
+{{- if $config.enabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "rush.fullname" $ }}-sre-agent-{{ $integration }}-reader
+  namespace: {{ $config.namespace | quote }}
+  labels:
+    app.kubernetes.io/component: sre-agent
+    {{- include "rush.labels" $ | nindent 4 }}
+rules:
+  {{- $rules | nindent 2 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "rush.fullname" $ }}-sre-agent-{{ $integration }}-reader
+  namespace: {{ $config.namespace | quote }}
+  labels:
+    app.kubernetes.io/component: sre-agent
+    {{- include "rush.labels" $ | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccount }}
+    namespace: {{ $.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "rush.fullname" $ }}-sre-agent-{{ $integration }}-reader
+{{- end }}
+{{- end }}
 {{- if .Values.rush.queryApi.integrations.sreAgent.kube.allowClusterScopedForAdmins }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -63,6 +117,10 @@ rules:
   - apiGroups: ["policy"]
     resources: ["poddisruptionbudgets"]
     verbs: ["get", "list"]
+  {{- if $.Values.rush.queryApi.integrations.fluxcd.enabled }}
+  # Flux objects may live in the app namespaces they manage.
+  {{- include "rush.sreAgentFluxRules" $ | nindent 2 }}
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
