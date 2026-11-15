@@ -87,6 +87,36 @@ app.kubernetes.io/component: metrics-agent
 {{- end -}}
 {{- end -}}
 
+{{- define "metrics-agent.sreMetricsUrl" -}}
+{{- if .Values.sreMetrics.url -}}
+{{- .Values.sreMetrics.url -}}
+{{- else if .Values.global.rush.stack.enabled -}}
+{{- printf "http://%s:8081/metrics" (include "metrics-agent.sreMetricsServiceName" .) -}}
+{{- else -}}
+{{- fail "sreMetrics.url is required for standalone authenticated SRE scraping" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "metrics-agent.sreMetricsServiceName" -}}
+{{- if .Values.sreMetrics.discovery.serviceName -}}
+{{- .Values.sreMetrics.discovery.serviceName -}}
+{{- else if .Values.global.rush.stack.enabled -}}
+{{- printf "%s-sre-agent" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- fail "sreMetrics.discovery.serviceName is required for standalone replica discovery" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "metrics-agent.sreMetricsSecretName" -}}
+{{- if .Values.sreMetrics.tokenSecret.name -}}
+{{- .Values.sreMetrics.tokenSecret.name -}}
+{{- else if .Values.global.rush.stack.enabled -}}
+{{- printf "%s-bootstrap" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- fail "sreMetrics.tokenSecret.name is required for standalone authenticated SRE scraping" -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "metrics-agent.rushRemoteWriteSecretName" -}}
 {{- if .Values.rushRemoteWrite.bearerTokenSecret.name -}}
 {{- .Values.rushRemoteWrite.bearerTokenSecret.name -}}

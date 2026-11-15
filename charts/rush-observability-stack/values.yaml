@@ -386,6 +386,9 @@ selfMonitoring:
 metricsAgent:
   enabled: true
   nameOverride: metrics-agent
+  sreMetrics:
+    discovery:
+      enabled: true
   rushRemoteWrite:
     enabled: true
     url: ""
