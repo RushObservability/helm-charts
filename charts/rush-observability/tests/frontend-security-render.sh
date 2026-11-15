@@ -23,6 +23,20 @@ for required in \
   fi
 done
 
+# query-api's /metrics is unauthenticated; the UI must not publish it by default.
+if grep -Fq 'location = /metrics' <<<"$rendered"; then
+  echo 'frontend proxies the unauthenticated query-api /metrics by default' >&2
+  exit 1
+fi
+grep -Fq 'wget -q -T 10 -O /dev/null "${QUERY_API_URL}/metrics"' <<<"$rendered" || {
+  echo 'helm test must scrape query-api /metrics directly' >&2
+  exit 1
+}
+grep -Fq 'location = /metrics' <<<"$(helm template frontend-security "$chart_dir" --set frontend.proxyQueryApiMetrics=true)" || {
+  echo 'frontend.proxyQueryApiMetrics=true did not proxy /metrics' >&2
+  exit 1
+}
+
 notes="$(<"$chart_dir/templates/NOTES.txt")"
 grep -q 'Strict-Transport-Security' <<<"$notes" || {
   echo 'production install notes must document HSTS at the TLS terminator' >&2

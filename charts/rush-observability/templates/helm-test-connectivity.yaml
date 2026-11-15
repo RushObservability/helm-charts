@@ -36,7 +36,10 @@ spec:
               wget -q -T 10 -O /dev/null "${QUERY_API_URL}/healthz"
               wget -q -T 10 -O /dev/null "${QUERY_API_URL}/readyz"
               wget -q -T 10 -O /dev/null "${FRONTEND_URL}/"
+              wget -q -T 10 -O /dev/null "${QUERY_API_URL}/metrics"
+              {{- if .Values.frontend.proxyQueryApiMetrics }}
               wget -q -T 10 -O /dev/null "${FRONTEND_URL}/metrics"
+              {{- end }}
               {{- if .Values.helmTests.clickhouseConnectivity }}
               wget -q -T 10 -O - \
                 --header "X-ClickHouse-User: ${CLICKHOUSE_USER}" \

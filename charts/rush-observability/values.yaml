@@ -434,8 +434,9 @@ queryApi:
         tenantRepositories: {}
 
   # -- Optional public entry points. The frontend host also proxies /api, /auth,
-  # /prom, and /metrics. Enable the API host only when a separate direct API
-  # origin is required. trustedProxyCidrs are merged into the Query API trust
+  # and /prom, plus /metrics when frontend.proxyQueryApiMetrics=true. Enable the
+  # API host only when a separate direct API origin is required. trustedProxyCidrs
+  # are merged into the Query API trust
   # list so forwarded client addresses are accepted only from known proxies.
   ingress:
     enabled: false
@@ -670,6 +671,11 @@ frontend:
   # to. Set this when the public API host differs from where admins load the UI
   # (e.g. internal UI + public ingest endpoint). Empty → the UI uses its own origin.
   apiBaseUrl: ""
+  # -- Proxy query-api's Prometheus /metrics through the frontend. query-api serves
+  # it without authentication, so anyone who can reach the UI can read it. The
+  # admin Capacity page reads /metrics from the browser and shows an error while
+  # this is off. Scrape <release>-query-api:8080/metrics in-cluster instead.
+  proxyQueryApiMetrics: false
   # -- The Rush frontend image runs nginx as uid 65532 and cannot bind below 1024.
   # The Service targetPort follows this via the named "http" port.
   containerPort: 8080

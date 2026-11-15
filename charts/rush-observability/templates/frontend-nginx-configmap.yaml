@@ -65,7 +65,9 @@ data:
             proxy_set_header X-Forwarded-Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
         }
+        {{- if .Values.frontend.proxyQueryApiMetrics }}
 
+        # query-api serves /metrics without authentication.
         location = /metrics {
             include /etc/nginx/security-headers.conf;
             proxy_pass http://${QUERY_API_HOST}/metrics;
@@ -75,4 +77,5 @@ data:
             proxy_set_header X-Forwarded-Host $host;
             proxy_set_header X-Forwarded-Proto $scheme;
         }
+        {{- end }}
     }

@@ -732,6 +732,7 @@
       "properties": {
         "image": { "$ref": "#/definitions/image" },
         "replicas": { "type": "integer", "minimum": 1 },
+        "proxyQueryApiMetrics": { "type": "boolean" },
         "containerPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
         "rollout": { "$ref": "#/definitions/rollout" },
         "podDisruptionBudget": { "$ref": "#/definitions/pdb" },
