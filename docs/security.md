@@ -248,10 +248,11 @@ container prepares the private outbox directory and migrates pending records
 from the old flat layout. See [storage and upgrade procedures](reliability.md)
 before changing controller kinds, scaling down, or rolling back.
 
-## Multi-replica SSO replay protection
+## SSO replay protection
 
-For more than one Query API replica, enable ClickHouse Keeper so SAML assertion
-IDs, OIDC transactions, and delegated SSO setup links are consumed atomically:
+In production, or with more than one Query API replica, Query API consumes SAML
+assertion IDs, OIDC transactions, and delegated SSO setup links atomically in
+ClickHouse Keeper, and keeps its engine leader leases there. Enable Keeper:
 
 ```yaml
 queryApi:
@@ -268,8 +269,9 @@ clickhouse:
 
 Combine these settings with the [HA ingest buffer configuration](reliability.md#high-availability-ingest-buffering).
 External ClickHouse must configure Keeper and `keeper_map_path_prefix`. Query
-API fails startup instead of using a process-local replay cache with multiple
-replicas.
+API fails startup instead of using a process-local replay cache in production
+or with multiple replicas. The chart rejects production mode on standalone
+ClickHouse, and in operator mode without `clickhouse.keeper.enabled=true`.
 
 ## Browser sessions
 

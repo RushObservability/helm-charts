@@ -56,6 +56,13 @@ for expected in 'storage: 500Gi' 'replicasCount: 3'; do
   grep -Fq "$expected" <<<"$chi" || { echo "operator ClickHouse ignored clickhouse.clickhouse value: $expected" >&2; exit 1; }
 done
 assert_rejected 'production mode without a public URL' --set queryApi.config.runtime.environment=production --set queryApi.config.runtime.baseUrl=
+# Production query-api keeps SSO replay claims and engine leases in Keeper.
+production=(--set queryApi.config.runtime.environment=production --set queryApi.config.runtime.baseUrl=https://rush.example.test)
+assert_rejected 'production mode on standalone ClickHouse' "${production[@]}" --set clickhouse.mode=standalone --set clickhouse.enabled=false
+assert_rejected 'production mode without operator Keeper' "${production[@]}"
+assert_rejected 'production mode with the local SSO replay store' "${production[@]}" --set clickhouse.keeper.enabled=true --set queryApi.config.authentication.ssoReplayStore=local
+assert_rejected 'the Keeper SSO replay store without Keeper' --set queryApi.config.authentication.ssoReplayStore=keeper
+helm template schema "$chart_dir" "${production[@]}" --set clickhouse.keeper.enabled=true >/dev/null
 assert_rejected 'an invalid image digest' --set queryApi.image.digest=sha256:nope
 assert_rejected 'a zero probe timeout' --set queryApi.probes.readiness.timeoutSeconds=0
 assert_rejected 'an unknown rollout strategy' --set frontend.rollout.strategy=BlueGreen

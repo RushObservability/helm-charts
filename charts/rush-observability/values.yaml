@@ -311,8 +311,11 @@ queryApi:
       # -- Authentication is fail-closed by default. Anonymous-default is only for
       # local development and leaves /readyz unhealthy in production.
       allowAnonymousDefault: false
-      # -- One-time OIDC/SAML/setup claims. "auto" uses an in-process store for one
-      # replica and ClickHouse KeeperMap for two or more replicas.
+      # -- One-time OIDC/SAML/setup claims. "auto" uses ClickHouse KeeperMap in
+      # production or with two or more replicas, and an in-process store only for
+      # a single development replica. "local" is rejected in production. Keeper
+      # needs clickhouse.keeper.enabled=true in operator mode, or Keeper on an
+      # external ClickHouse; standalone ClickHouse has none.
       ssoReplayStore: auto
       loginRateLimit:
         accountPerMinute: 10

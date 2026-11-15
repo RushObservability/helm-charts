@@ -47,6 +47,21 @@ silently installing 10Gi, single-replica ClickHouse. */ -}}
 {{- if not (has .Values.queryApi.config.authentication.ssoReplayStore (list "auto" "local" "keeper")) -}}
 {{- fail "queryApi.config.authentication.ssoReplayStore must be one of: auto, local, keeper" -}}
 {{- end -}}
+{{- /* In production (or with ssoReplayStore=keeper) query-api keeps SSO replay
+claims and engine leader leases in ClickHouse KeeperMap and exits at startup
+without Keeper. External ClickHouse is the operator's responsibility. */ -}}
+{{- $production := eq .Values.queryApi.config.runtime.environment "production" -}}
+{{- if and $production (eq .Values.queryApi.config.authentication.ssoReplayStore "local") -}}
+{{- fail "queryApi.config.authentication.ssoReplayStore=local is not allowed in production; query-api requires ClickHouse Keeper there" -}}
+{{- end -}}
+{{- if or $production (eq .Values.queryApi.config.authentication.ssoReplayStore "keeper") -}}
+{{- if eq .Values.clickhouse.mode "standalone" -}}
+{{- fail "production mode (and ssoReplayStore=keeper) requires ClickHouse Keeper, which standalone ClickHouse does not run; use clickhouse.mode=operator with clickhouse.keeper.enabled=true, or external ClickHouse with Keeper" -}}
+{{- end -}}
+{{- if and (eq .Values.clickhouse.mode "operator") (not .Values.clickhouse.keeper.enabled) -}}
+{{- fail "production mode (and ssoReplayStore=keeper) requires clickhouse.keeper.enabled=true; query-api stores SSO replay claims and engine leases in Keeper and does not start without it" -}}
+{{- end -}}
+{{- end -}}
 {{- if and (gt (int .Values.queryApi.replicas) 1) (eq .Values.queryApi.config.authentication.ssoReplayStore "local") -}}
 {{- fail "queryApi.config.authentication.ssoReplayStore=local is unsafe when queryApi.replicas is greater than 1" -}}
 {{- end -}}

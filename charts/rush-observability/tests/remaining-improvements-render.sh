@@ -57,7 +57,7 @@ for expected in \
 done
 
 if helm template remaining "$chart_dir" \
-  --set queryApi.config.runtime.environment=production \
+  --set queryApi.config.runtime.environment=production --set clickhouse.keeper.enabled=true \
   --set queryApi.ingress.enabled=true \
   --set queryApi.ingress.frontend.host=rush.example.test \
   --set queryApi.ingress.api.enabled=true \
@@ -67,7 +67,7 @@ if helm template remaining "$chart_dir" \
 fi
 
 if helm template remaining "$chart_dir" \
-  --set queryApi.config.runtime.environment=production \
+  --set queryApi.config.runtime.environment=production --set clickhouse.keeper.enabled=true \
   --set queryApi.ingress.enabled=true \
   --set queryApi.ingress.frontend.host=rush.example.test \
   --set queryApi.ingress.frontend.tls.enabled=false >/dev/null 2>&1; then
