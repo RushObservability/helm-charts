@@ -71,6 +71,18 @@ spec:
               value: {{ include "metrics-agent.sreMetricsUrl" . | quote }}
             - name: METRICS_AGENT_SRE_METRICS_TOKEN_FILE
               value: /var/run/rush-sre-metrics/token
+            {{- if .Values.sreMetrics.discovery.enabled }}
+            - name: METRICS_AGENT_SRE_METRICS_SERVICE
+              value: {{ include "metrics-agent.sreMetricsServiceName" . | quote }}
+            - name: METRICS_AGENT_SRE_METRICS_NAMESPACE
+              {{- if .Values.sreMetrics.discovery.namespace }}
+              value: {{ .Values.sreMetrics.discovery.namespace | quote }}
+              {{- else }}
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+              {{- end }}
+            {{- end }}
             {{- end }}
             {{- if .Values.rushRemoteWrite.enabled }}
             {{- if and (not (include "metrics-agent.rushRemoteWriteSecretName" .)) (not .Values.rushRemoteWrite.allowAnonymous) }}

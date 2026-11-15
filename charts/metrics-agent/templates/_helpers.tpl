@@ -91,9 +91,19 @@ app.kubernetes.io/component: metrics-agent
 {{- if .Values.sreMetrics.url -}}
 {{- .Values.sreMetrics.url -}}
 {{- else if .Values.global.rush.stack.enabled -}}
-{{- printf "http://%s:8081/metrics" (printf "%s-sre-agent" .Release.Name | trunc 63 | trimSuffix "-") -}}
+{{- printf "http://%s:8081/metrics" (include "metrics-agent.sreMetricsServiceName" .) -}}
 {{- else -}}
 {{- fail "sreMetrics.url is required for standalone authenticated SRE scraping" -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "metrics-agent.sreMetricsServiceName" -}}
+{{- if .Values.sreMetrics.discovery.serviceName -}}
+{{- .Values.sreMetrics.discovery.serviceName -}}
+{{- else if .Values.global.rush.stack.enabled -}}
+{{- printf "%s-sre-agent" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- fail "sreMetrics.discovery.serviceName is required for standalone replica discovery" -}}
 {{- end -}}
 {{- end -}}
 

@@ -28,6 +28,9 @@ for filename, expected_secret, port in [('enabled.yaml', 'health-bootstrap', 808
         continue
     assert env['METRICS_AGENT_SRE_METRICS_URL'] == f'http://health-sre-agent:{port}/metrics'
     assert env['METRICS_AGENT_SRE_METRICS_TOKEN_FILE'] == '/var/run/rush-sre-metrics/token'
+    assert env['METRICS_AGENT_SRE_METRICS_SERVICE'] == 'health-sre-agent'
+    raw_env = {entry['name']: entry for entry in container['env']}
+    assert raw_env['METRICS_AGENT_SRE_METRICS_NAMESPACE']['valueFrom']['fieldRef']['fieldPath'] == 'metadata.namespace'
     assert token_volumes[0]['secret']['secretName'] == expected_secret
     assert token_volumes[0]['secret']['items'] == [{'key': 'sre-agent-internal-token', 'path': 'token'}]
     mounts = [mount for mount in container['volumeMounts'] if mount['name'] == 'sre-metrics-token']

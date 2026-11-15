@@ -100,6 +100,9 @@ Kubernetes: `>=1.27.0-0`
 | serviceMonitor.interval | string | `"30s"` |  |
 | serviceMonitor.labels | object | `{}` |  |
 | shareProcessNamespace | bool | `false` |  |
+| sreMetrics.discovery.enabled | bool | `false` | Scrape each ready Service endpoint with a distinct instance label. |
+| sreMetrics.discovery.namespace | string | `""` |  |
+| sreMetrics.discovery.serviceName | string | `""` |  |
 | sreMetrics.enabled | bool | `false` | Explicitly enable authenticated collection from the optional SRE agent. |
 | sreMetrics.tokenSecret.key | string | `"sre-agent-internal-token"` |  |
 | sreMetrics.tokenSecret.name | string | `""` | Stack installs default to <release>-bootstrap. Override for external Secrets. |
