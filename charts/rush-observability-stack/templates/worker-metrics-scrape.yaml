@@ -1,0 +1,19 @@
+{{- if and .Values.selfMonitoring.workerScrapes .Values.metricsAgent.enabled .Values.rush.workerMetrics.enabled (or .Values.rush.queryApi.drainWorker.enabled .Values.rush.anomalyEngine.enabled) }}
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: {{ include "rush.fullname" . }}-worker-metrics
+  labels:
+    {{- include "rush.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      rushobservability.com/worker-metrics: "true"
+  namespaceSelector:
+    matchNames: [{{ .Release.Namespace | quote }}]
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.selfMonitoring.interval }}
+{{- end }}
