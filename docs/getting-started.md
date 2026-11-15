@@ -155,6 +155,13 @@ rush:
   clickhouse:
     enabled: true
     mode: operator
+    clickhouse:
+      persistence:
+        storageClass: fast-ssd
+        size: 500Gi
+    # Production query-api keeps SSO replay claims and engine leases in Keeper.
+    keeper:
+      enabled: true
 
 collectors:
   mode: hybrid

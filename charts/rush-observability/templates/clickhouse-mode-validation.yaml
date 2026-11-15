@@ -23,6 +23,24 @@ files that only carry the disabled defaults still install; enabling one fails. *
 {{- if and (eq .Values.clickhouse.mode "operator") (not .Values.clickhouse.enabled) -}}
 {{- fail "clickhouse.enabled must be true when clickhouse.mode=operator; operator mode deploys the ClickHouse dependency" -}}
 {{- end -}}
+{{- /* The Altinity dependency reads only clickhouse.clickhouse.* and clickhouse.keeper.*.
+These keys were documented once but never reached it, so reject them instead of
+silently installing 10Gi, single-replica ClickHouse. */ -}}
+{{- $ignored := dict "shardsCount" "clickhouse.clickhouse.shardsCount" "replicasCount" "clickhouse.clickhouse.replicasCount" "persistence" "clickhouse.clickhouse.persistence (operator mode) or clickhouseStandalone.persistence (standalone mode)" -}}
+{{- if eq .Values.clickhouse.mode "operator" -}}
+{{- $_ := set $ignored "resources" "clickhouse.clickhouse.resources" -}}
+{{- end -}}
+{{- range $key, $target := $ignored -}}
+{{- if hasKey $.Values.clickhouse $key -}}
+{{- fail (printf "clickhouse.%s is ignored with clickhouse.mode=%s; set %s instead" $key $.Values.clickhouse.mode $target) -}}
+{{- end -}}
+{{- end -}}
+{{- if hasKey .Values.clickhouse.keeper "replicasCount" -}}
+{{- fail "clickhouse.keeper.replicasCount is not used by the chart; set clickhouse.keeper.replicaCount instead" -}}
+{{- end -}}
+{{- if hasKey .Values.clickhouse.keeper "persistence" -}}
+{{- fail "clickhouse.keeper.persistence is not used by the chart; set clickhouse.keeper.localStorage.size and storageClass instead" -}}
+{{- end -}}
 {{- if and (eq .Values.queryApi.config.runtime.environment "production") (not .Values.queryApi.config.runtime.baseUrl) (not (and .Values.queryApi.ingress.enabled .Values.queryApi.ingress.frontend.enabled .Values.queryApi.ingress.frontend.host .Values.queryApi.ingress.frontend.tls.enabled)) -}}
 {{- fail "production mode requires queryApi.config.runtime.baseUrl or an enabled HTTPS frontend ingress with a host" -}}
 {{- end -}}

@@ -226,17 +226,23 @@ clickhouse:
           </default>
         </profiles>
       </clickhouse>
-  shardsCount: 1
-  replicasCount: 1
+    # -- Operator-mode topology and storage. The Altinity dependency reads only
+    # these keys (clickhouse.clickhouse.*); top-level clickhouse.shardsCount,
+    # replicasCount, and persistence are rejected. Replicas above 1 need
+    # clickhouse.keeper.enabled=true.
+    shardsCount: 1
+    replicasCount: 1
+    # -- Size the data volume before the first install. Growing it later resizes
+    # each replica's PVC and needs a StorageClass with allowVolumeExpansion.
+    persistence:
+      enabled: true
+      storageClass: "" # empty = cluster default
+      size: 10Gi
   image:
     repository: clickhouse/clickhouse-server
     tag: "26.10.3.7"
     digest: ""
     pullPolicy: IfNotPresent
-  persistence:
-    enabled: true
-    storageClass: "" # empty = cluster default
-    size: 500Gi
   service:
     type: ClusterIP
   keeper:

@@ -44,10 +44,6 @@ clickhouse:
   enabled: true
   mode: operator
 
-  # Topology: 1 shard, 1 replica = simple standalone instance
-  shardsCount: 1
-  replicasCount: 1
-
   image:
     repository: clickhouse/clickhouse-server
     tag: "26.10.3.7"
@@ -67,22 +63,21 @@ clickhouse:
           <custom_settings_prefixes>rush_</custom_settings_prefixes>
         </clickhouse>
 
-  # Persistent volume for ClickHouse data
-  persistence:
-    enabled: true
-    storageClass: ""   # "" = cluster default StorageClass
-    size: 50Gi         # increase as your data grows
+    # Topology: 1 shard, 1 replica (the chart default)
+    shardsCount: 1
+    replicasCount: 1
 
-  # Resource requests for the single ClickHouse pod
-  resources:
-    requests:
-      cpu: 500m
-      memory: 2Gi
-    limits:
-      cpu: "2"
-      memory: 4Gi
+    # Persistent volume for ClickHouse data. Size it before the first install;
+    # growing it later resizes the PVC.
+    persistence:
+      enabled: true
+      storageClass: ""   # "" = cluster default StorageClass
+      size: 50Gi
 
-  # Init scripts that create the observability schema on first boot
+    # Resources default to the chart's 8Gi baseline. Change
+    # clickhouse.clickhouse.resources together with the cache sizes and the
+    # per-query memory profile in the chart values.
+
   service:
     type: ClusterIP
 

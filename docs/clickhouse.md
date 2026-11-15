@@ -19,10 +19,25 @@ rush:
   clickhouse:
     mode: operator
     enabled: true
-    replicasCount: 1
-    persistence:
-      size: 500Gi
+    clickhouse:
+      replicasCount: 1
+      persistence:
+        size: 500Gi
+    keeper:
+      enabled: true
 ```
+
+The Altinity dependency reads topology, storage, and resources only under
+`clickhouse.clickhouse`. The chart rejects the top-level `clickhouse.replicasCount`,
+`clickhouse.shardsCount`, and `clickhouse.persistence` keys, which earlier
+examples used but which never took effect: those installs run one replica on a
+10 GiB volume. Size the volume before the first install. Growing it later
+resizes each replica's PVC and needs a StorageClass with `allowVolumeExpansion`.
+
+Production mode needs ClickHouse Keeper. With `queryApi.config.runtime.environment=production`,
+query-api stores SSO replay claims and engine leader leases in Keeper and does
+not start without it, so the chart requires `clickhouse.keeper.enabled=true` in
+operator mode and rejects standalone mode.
 
 ## Standalone
 

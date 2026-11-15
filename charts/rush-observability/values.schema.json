@@ -855,8 +855,6 @@
       "properties": {
         "enabled": { "type": "boolean" },
         "mode": { "type": "string", "enum": ["operator", "standalone", "external"] },
-        "shardsCount": { "type": "integer", "minimum": 1 },
-        "replicasCount": { "type": "integer", "minimum": 1 },
         "image": { "$ref": "#/definitions/image" }
       }
     },

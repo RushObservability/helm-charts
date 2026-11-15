@@ -37,8 +37,6 @@
 # clickhouse:
 #   enabled: true
 #   mode: operator
-#   shardsCount: 1
-#   replicasCount: 1
 #   image:
 #     repository: clickhouse/clickhouse-server
 #     tag: "26.10.3.7"
@@ -99,10 +97,10 @@
 #             </policies>
 #           </storage_configuration>
 #         </clickhouse>
-#   persistence:
-#     enabled: true
-#     storageClass: "gp3"
-#     size: 200Gi   # hot tier only — old data offloads to S3
+#     persistence:
+#       enabled: true
+#       storageClass: "gp3"
+#       size: 200Gi   # hot tier only — old data offloads to S3
 #   keeper:
 #     enabled: false
 #   operator:
@@ -154,8 +152,6 @@
 # clickhouse:
 #   enabled: true
 #   mode: operator
-#   shardsCount: 1
-#   replicasCount: 1
 #   image:
 #     repository: clickhouse/clickhouse-server
 #     tag: "26.10.3.7"
@@ -204,10 +200,10 @@
 #             </policies>
 #           </storage_configuration>
 #         </clickhouse>
-#   persistence:
-#     enabled: true
-#     storageClass: "gp3"
-#     size: 200Gi
+#     persistence:
+#       enabled: true
+#       storageClass: "gp3"
+#       size: 200Gi
 #   keeper:
 #     enabled: false
 #   operator:
@@ -257,8 +253,6 @@
 clickhouse:
   enabled: true
   mode: operator
-  shardsCount: 1
-  replicasCount: 1
   image:
     repository: clickhouse/clickhouse-server
     tag: "26.10.3.7"
@@ -325,10 +319,10 @@ clickhouse:
           </storage_configuration>
         </clickhouse>
 
-  persistence:
-    enabled: true
-    storageClass: ""   # cluster default; use fast SSDs for the hot tier
-    size: 200Gi
+    persistence:
+      enabled: true
+      storageClass: ""   # cluster default; use fast SSDs for the hot tier
+      size: 200Gi
 
   keeper:
     enabled: false
@@ -382,8 +376,6 @@ queryApi:
 # clickhouse:
 #   enabled: true
 #   mode: operator
-#   shardsCount: 1
-#   replicasCount: 1
 #   image:
 #     repository: clickhouse/clickhouse-server
 #     tag: "26.10.3.7"
@@ -435,10 +427,10 @@ queryApi:
 #             </policies>
 #           </storage_configuration>
 #         </clickhouse>
-#   persistence:
-#     enabled: true
-#     storageClass: ""
-#     size: 200Gi
+#     persistence:
+#       enabled: true
+#       storageClass: ""
+#       size: 200Gi
 #   keeper:
 #     enabled: false
 #   operator:
