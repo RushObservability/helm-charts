@@ -236,6 +236,15 @@ if grep -Eq 'OPENAI_API_KEY|CLICKHOUSE_URL' <<<"$(sed -n '/name: stack-sre-agent
   echo "SRE-agent must not receive provider or ClickHouse credentials" >&2
   exit 1
 fi
+# Digest enforcement must render without the retired enterprise block.
+digest="sha256:$(printf '%064d' 0)"
+digest_args=(--set rush.imageSecurity.requireDigests=true
+  --set rush.queryApi.image.digest="$digest" --set rush.queryApi.spoolInit.image.digest="$digest"
+  --set rush.frontend.image.digest="$digest" --set collectors.otel.image.digest="$digest"
+  --set collectors.vector.image.digest="$digest")
+helm template stack "$chart_dir" "${common[@]}" "${digest_args[@]}" >/dev/null
+helm template stack "$chart_dir" "${common[@]}" "${digest_args[@]}" \
+  --set enterprise.postgresCollector.enabled=false >/dev/null
 # Tool calls go agent -> query-api, so query-api's policy must admit the agent.
 query_api_ingress="$(helm template stack "$chart_dir" "${common[@]}" \
   --set rush.queryApi.integrations.sreAgent.enabled=true \

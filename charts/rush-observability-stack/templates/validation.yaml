@@ -25,8 +25,6 @@ files that only carry the disabled defaults still install; enabling one fails. *
 {{- end -}}
 {{- if .Values.rush.imageSecurity.requireDigests -}}
 {{- if and .Values.rush.queryApi.integrations.sreAgent.enabled (not .Values.rush.queryApi.integrations.sreAgent.image.digest) -}}{{- fail "rush.imageSecurity.requireDigests=true requires rush.queryApi.integrations.sreAgent.image.digest" -}}{{- end -}}
-{{- if and .Values.enterprise.postgresCollector.enabled (not .Values.enterprise.postgresCollector.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires enterprise.postgresCollector.image.digest" -}}{{- end -}}
-{{- if and .Values.enterprise.mysqlCollector.enabled (not .Values.enterprise.mysqlCollector.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires enterprise.mysqlCollector.image.digest" -}}{{- end -}}
 {{- if and (include "rush.stackOtelEnabled" .) (not .Values.collectors.otel.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires collectors.otel.image.digest" -}}{{- end -}}
 {{- if and (include "rush.stackVectorEnabled" .) (not .Values.collectors.vector.image.digest) -}}{{- fail "imageSecurity.requireDigests=true requires collectors.vector.image.digest" -}}{{- end -}}
 {{- end -}}
