@@ -1,6 +1,6 @@
 # rush-observability-stack
 
-![Version: 0.5.3](https://img.shields.io/badge/Version-0.5.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.13](https://img.shields.io/badge/AppVersion-0.1.13-informational?style=flat-square)
+![Version: 0.5.4](https://img.shields.io/badge/Version-0.5.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.14](https://img.shields.io/badge/AppVersion-0.1.14-informational?style=flat-square)
 
 **Start here.** This is the chart most people want: it installs Rush plus a
 single-node ClickHouse, Kubernetes log collection, an OTLP endpoint, and metric
@@ -50,8 +50,8 @@ Kubernetes: `>=1.27.0-0`
 
 | Repository | Name | Version |
 |------------|------|---------|
-| file://../metrics-agent | metricsAgent(metrics-agent) | 0.1.8 |
-| file://../rush-observability | rush(rush-observability) | 0.6.2 |
+| file://../metrics-agent | metricsAgent(metrics-agent) | 0.1.9 |
+| file://../rush-observability | rush(rush-observability) | 0.6.3 |
 
 ## Values
 

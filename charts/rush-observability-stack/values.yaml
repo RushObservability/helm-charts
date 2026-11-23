@@ -52,7 +52,7 @@ rush:
           annotations: {}
         image:
           repository: ghcr.io/rushobservability/sre-agent
-          tag: "0.2.1"
+          tag: "0.2.3"
           digest: ""
           pullPolicy: IfNotPresent
         replicas: 1
@@ -301,7 +301,7 @@ collectors:
         successThreshold: 1
     image:
       repository: otel/opentelemetry-collector-contrib
-      tag: "0.164.0-386"
+      tag: "0.164.0"
       digest: ""
       pullPolicy: IfNotPresent
     kind: deployment
