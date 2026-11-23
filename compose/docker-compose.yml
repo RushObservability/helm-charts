@@ -5,7 +5,7 @@ name: rush-local
 # profiles so `docker compose up` stays small and predictable.
 
 x-demo-app: &demo-app
-  image: ghcr.io/rushobservability/example-app:0.1.1
+  image: ghcr.io/rushobservability/example-app:0.1.2
   profiles: [demo, all]
   restart: unless-stopped
   depends_on:
@@ -67,7 +67,7 @@ services:
     restart: "no"
 
   query-api:
-    image: ghcr.io/rushobservability/query-api:0.1.13
+    image: ghcr.io/rushobservability/query-api:0.1.14
     environment:
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_DATABASE: observability
@@ -133,7 +133,7 @@ services:
     restart: "no"
 
   frontend:
-    image: ghcr.io/rushobservability/frontend:0.1.17
+    image: ghcr.io/rushobservability/frontend:0.1.19
     environment:
       QUERY_API_HOST: query-api:8080
       API_PUBLIC_URL: http://localhost:${RUSH_API_PORT:-8080}
@@ -267,7 +267,7 @@ services:
       RUSH_LOG_EVENTS: "true"
 
   traffic:
-    image: ghcr.io/rushobservability/example-app:0.1.1
+    image: ghcr.io/rushobservability/example-app:0.1.2
     profiles: [demo, all]
     command:
       - node
@@ -282,7 +282,7 @@ services:
     restart: unless-stopped
 
   sre-agent:
-    image: ghcr.io/rushobservability/sre-agent:0.2.1
+    image: ghcr.io/rushobservability/sre-agent:0.2.3
     profiles: [sre, all]
     environment:
       SRE_AGENT_PORT: "8081"
