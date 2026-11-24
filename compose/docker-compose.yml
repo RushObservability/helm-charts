@@ -67,7 +67,7 @@ services:
     restart: "no"
 
   query-api:
-    image: ghcr.io/rushobservability/query-api:0.1.14
+    image: ghcr.io/rushobservability/query-api:0.1.15
     environment:
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_DATABASE: observability
