@@ -1,6 +1,6 @@
 # metrics-agent
 
-![Version: 0.1.9](https://img.shields.io/badge/Version-0.1.9-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.5](https://img.shields.io/badge/AppVersion-0.1.5-informational?style=flat-square)
+![Version: 0.1.10](https://img.shields.io/badge/Version-0.1.10-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.5](https://img.shields.io/badge/AppVersion-0.1.5-informational?style=flat-square)
 
 Cluster-wide metric collection from Prometheus and VictoriaMetrics CRDs.
 
@@ -64,6 +64,7 @@ Kubernetes: `>=1.27.0-0`
 | podSecurityContext.runAsUser | int | `65532` |  |
 | podSecurityContext.seccompProfile.type | string | `"RuntimeDefault"` |  |
 | precedence | object | `{"enabled":true}` | The VictoriaMetrics Operator's Prometheus converter must be enabled with VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES=true. See README.md. |
+| rbac.admissionPolicy.enabled | bool | `true` | The agent patches VictoriaMetrics scrape objects cluster-wide, but only to set the ignore-prometheus-updates annotation and ownerReferences. On Kubernetes 1.30+ this installs a ValidatingAdmissionPolicy that denies any other change by the agent's ServiceAccount, so a leaked token cannot rewrite a scrape spec. Skipped when the cluster does not serve admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy or precedence is disabled. |
 | rbac.create | bool | `true` |  |
 | replicaCount | int | `1` | The controller is intentionally single-replica until leader election is implemented. The deployment template rejects values other than one. |
 | resources.limits.cpu | string | `"200m"` |  |
