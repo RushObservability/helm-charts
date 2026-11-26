@@ -1,8 +1,8 @@
 apiVersion: v2
 name: rush-observability
 description: Core Rush observability platform with Query API, frontend, anomaly processing, and ClickHouse
-version: 0.6.3
-appVersion: 0.1.14
+version: 0.6.4
+appVersion: 0.1.15
 type: application
 kubeVersion: ">=1.25.0-0"
 home: https://rushobservability.com
