@@ -78,6 +78,8 @@ Kubernetes: `>=1.27.0-0`
 | rushRemoteWrite.interval | string | `"15s"` |  |
 | rushRemoteWrite.tenant | string | `""` | Optional tenant name/id routing hint. It never authorizes access; the ingest-only bearer key must already belong to this tenant. |
 | rushRemoteWrite.url | string | `""` |  |
+| scrape.allowedNamespaces | list | `[]` | Namespaces whose Prometheus and VictoriaMetrics scrape objects may create targets. Empty means every namespace the agent can see. |
+| scrape.allowedTargetNamespaces | list | `["*"]` | Namespaces that ServiceMonitor, PodMonitor and their VM equivalents may point at. "*" scrapes every scrape object in the cluster, including Probe, ScrapeConfig, VMProbe and VMScrapeConfig. Empty keeps each monitor inside its own namespace and reads Probe and ScrapeConfig objects only from allowedNamespaces. |
 | scrape.enabled | bool | `true` |  |
 | scrape.interval | string | `"15s"` |  |
 | scrape.timeout | string | `"10s"` |  |
