@@ -55,6 +55,10 @@ spec:
             - --scrape-interval={{ .Values.scrape.interval }}
             - --scrape-timeout={{ .Values.scrape.timeout }}
           env:
+            {{- with .Values.scrape.allowedTargetNamespaces }}
+            - name: METRICS_AGENT_SCRAPE_ALLOWED_TARGET_NAMESPACES
+              value: {{ join "," . | quote }}
+            {{- end }}
             # --scrape-enabled is a value-less flag, so true/false goes through the env var.
             - name: METRICS_AGENT_SCRAPE_ENABLED
               value: {{ .Values.scrape.enabled | quote }}

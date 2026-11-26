@@ -297,3 +297,19 @@ Administrators can inspect and revoke sessions under **Settings → Users**.
 Inventory reads, revocations, and bearer rotations are audited without storing
 tokens or token hashes. ClickHouse stores keyed HMAC digests only. The first
 upgrade to keyed storage revokes legacy raw or unkeyed session rows.
+
+## Authenticated SRE metrics
+
+Enable `metricsAgent.sreMetrics.enabled` on the stack with image versions that
+support the metrics-only credential and verified EndpointSlice discovery. The
+stack creates a dedicated `<release>-sre-metrics` Secret when no Secret name is
+provided. To supply your own, set `metricsAgent.sreMetrics.tokenSecret.name`
+and store a distinct token under `sre-agent-metrics-token` or the configured
+key. Restart the SRE agent after rotating the Secret so its environment reloads.
+
+Replica discovery accepts ready, non-host-network Pods selected by the SRE
+Service. It checks the EndpointSlice owner and the Pod identity, IP, and port
+before the metrics agent sends its token. For network-level egress enforcement,
+enable `metricsAgent.networkPolicy.enabled` and provide the extra egress rules
+your cluster needs for DNS, the Kubernetes API, remote write, and workload
+scrapes. The chart adds the SRE Pod rule for the release namespace and HTTP port.
