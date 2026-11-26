@@ -40,6 +40,15 @@ scrape:
   enabled: true
   interval: 15s
   timeout: 10s
+  # -- Namespaces whose Prometheus and VictoriaMetrics scrape objects may create
+  # targets. Empty means every namespace the agent can see.
+  allowedNamespaces: []
+  # -- Namespaces that ServiceMonitor, PodMonitor and their VM equivalents may
+  # point at. "*" scrapes every scrape object in the cluster, including Probe,
+  # ScrapeConfig, VMProbe and VMScrapeConfig. Empty keeps each monitor inside its
+  # own namespace and reads Probe and ScrapeConfig objects only from
+  # allowedNamespaces.
+  allowedTargetNamespaces: ["*"]
 
 serviceAccount:
   create: true
