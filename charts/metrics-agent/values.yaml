@@ -155,9 +155,9 @@ sreMetrics:
   # -- Stack installs default to http://<release>-sre-agent:8081/metrics.
   url: ""
   tokenSecret:
-    # -- Stack installs default to <release>-bootstrap. Override for external Secrets.
+    # -- Stack installs default to <release>-sre-metrics. Override for external Secrets.
     name: ""
-    key: sre-agent-internal-token
+    key: sre-agent-metrics-token
   discovery:
     # -- Scrape each ready Service endpoint with a distinct instance label.
     enabled: false

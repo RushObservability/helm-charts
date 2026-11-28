@@ -7,7 +7,7 @@ enabled=(--set rush.queryApi.integrations.sreAgent.enabled=true --set metricsAge
 helm template health "$chart_dir" "${enabled[@]}" --set metricsAgent.networkPolicy.enabled=true --set-json 'metricsAgent.networkPolicy.egress=[]' > "$render_dir/enabled.yaml"
 helm template health "$chart_dir" --set rush.queryApi.integrations.sreAgent.enabled=true > "$render_dir/disabled.yaml"
 helm template health "$chart_dir" "${enabled[@]}" --set rush.queryApi.config.secrets.existingSecret=external-bootstrap \
-  --set metricsAgent.sreMetrics.tokenSecret.name=external-bootstrap \
+  --set metricsAgent.sreMetrics.tokenSecret.name=external-metrics \
   --set rush.queryApi.integrations.sreAgent.service.port=8181 \
   --set metricsAgent.sreMetrics.url=http://health-sre-agent:8181/metrics > "$render_dir/custom.yaml"
 python3 - "$render_dir" <<'PY'
@@ -16,14 +16,17 @@ import sys
 import yaml
 
 root = pathlib.Path(sys.argv[1])
-for filename, expected_secret, port in [('enabled.yaml', 'health-bootstrap', 8081), ('custom.yaml', 'external-bootstrap', 8181), ('disabled.yaml', None, 8081)]:
+for filename, expected_secret, port in [('enabled.yaml', 'health-sre-metrics', 8081), ('custom.yaml', 'external-metrics', 8181), ('disabled.yaml', None, 8081)]:
     docs = [doc for doc in yaml.safe_load_all((root / filename).read_text()) if doc]
     deployment = next(doc for doc in docs if doc['kind'] == 'Deployment' and doc['metadata']['name'] == 'health-metrics-agent')
     pod = deployment['spec']['template']['spec']
     container = pod['containers'][0]
     env = {entry['name']: entry.get('value') for entry in container['env']}
     token_volumes = [volume for volume in pod.get('volumes', []) if volume['name'] == 'sre-metrics-token']
+    sre = next(doc for doc in docs if doc['kind'] == 'Deployment' and doc['metadata']['name'] == 'health-sre-agent')
+    sre_env = {entry['name']: entry for entry in sre['spec']['template']['spec']['containers'][0]['env']}
     if not expected_secret:
+        assert 'SRE_AGENT_METRICS_TOKEN' not in sre_env
         assert not token_volumes and 'METRICS_AGENT_SRE_METRICS_URL' not in env
         continue
     assert env['METRICS_AGENT_SRE_METRICS_URL'] == f'http://health-sre-agent:{port}/metrics'
@@ -32,7 +35,15 @@ for filename, expected_secret, port in [('enabled.yaml', 'health-bootstrap', 808
     raw_env = {entry['name']: entry for entry in container['env']}
     assert raw_env['METRICS_AGENT_SRE_METRICS_NAMESPACE']['valueFrom']['fieldRef']['fieldPath'] == 'metadata.namespace'
     assert token_volumes[0]['secret']['secretName'] == expected_secret
-    assert token_volumes[0]['secret']['items'] == [{'key': 'sre-agent-internal-token', 'path': 'token'}]
+    assert sre_env['SRE_AGENT_METRICS_TOKEN']['valueFrom']['secretKeyRef'] == {'name': expected_secret, 'key': 'sre-agent-metrics-token'}
+    assert sre_env['SRE_AGENT_INTERNAL_TOKEN']['valueFrom']['secretKeyRef']['name'] != expected_secret
+    scoped_roles = [doc for doc in docs if doc['kind'] == 'Role' and doc['metadata']['name'] == 'health-metrics-agent-sre-discovery']
+    assert scoped_roles[0]['rules'] == [{'apiGroups': ['discovery.k8s.io'], 'resources': ['endpointslices'], 'verbs': ['list']}]
+    generated_secrets = [doc for doc in docs if doc['kind'] == 'Secret' and doc['metadata']['name'] == expected_secret]
+    assert bool(generated_secrets) == (filename == 'enabled.yaml')
+    if generated_secrets:
+        assert set(generated_secrets[0]['data']) == {'sre-agent-metrics-token'}
+    assert token_volumes[0]['secret']['items'] == [{'key': 'sre-agent-metrics-token', 'path': 'token'}]
     mounts = [mount for mount in container['volumeMounts'] if mount['name'] == 'sre-metrics-token']
     assert mounts == [{'name': 'sre-metrics-token', 'mountPath': '/var/run/rush-sre-metrics', 'readOnly': True}]
     sre_policy = next(doc for doc in docs if doc['kind'] == 'NetworkPolicy' and doc['metadata']['name'] == 'health-sre-agent')
@@ -40,7 +51,10 @@ for filename, expected_secret, port in [('enabled.yaml', 'health-bootstrap', 808
     assert any(source.get('podSelector', {}).get('matchLabels', {}).get('app.kubernetes.io/component') == 'metrics-agent' for source in sources)
     if filename == 'enabled.yaml':
         agent_policy = next(doc for doc in docs if doc['kind'] == 'NetworkPolicy' and doc['metadata']['name'] == 'health-metrics-agent')
-        assert agent_policy['spec']['egress'][0]['ports'] == [{'protocol': 'TCP', 'port': 'http'}]
+        rule = agent_policy['spec']['egress'][0]
+        assert rule['ports'] == [{'protocol': 'TCP', 'port': 'http'}]
+        assert rule['to'][0]['namespaceSelector']['matchLabels'] == {'kubernetes.io/metadata.name': 'default'}
+        assert rule['to'][0]['podSelector']['matchLabels']['app.kubernetes.io/component'] == 'sre-agent'
 PY
 assert_rejected() {
   if helm template health "$chart_dir" "$@" >/dev/null 2>&1; then
@@ -49,7 +63,7 @@ assert_rejected() {
   fi
 }
 assert_rejected --set metricsAgent.sreMetrics.enabled=true
-assert_rejected "${enabled[@]}" --set rush.queryApi.config.secrets.existingSecret=external-bootstrap
+assert_rejected "${enabled[@]}" --set metricsAgent.sreMetrics.tokenSecret.key=sre-agent-internal-token
 assert_rejected "${enabled[@]}" --set rush.queryApi.integrations.sreAgent.service.port=8181
 assert_rejected "${enabled[@]}" --set metricsAgent.sreMetrics.url=http://user:token@health-sre-agent:8081/metrics
 echo 'authenticated SRE metrics configuration and network paths render correctly'

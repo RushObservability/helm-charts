@@ -12,8 +12,8 @@
 {{- if not .Values.rush.queryApi.integrations.sreAgent.enabled -}}
 {{- fail "metricsAgent.sreMetrics.enabled requires rush.queryApi.integrations.sreAgent.enabled" -}}
 {{- end -}}
-{{- if and .Values.rush.queryApi.config.secrets.existingSecret (not .Values.metricsAgent.sreMetrics.tokenSecret.name) -}}
-{{- fail "set metricsAgent.sreMetrics.tokenSecret.name when using an external bootstrap Secret" -}}
+{{- if and .Values.metricsAgent.sreMetrics.discovery.namespace (ne .Values.metricsAgent.sreMetrics.discovery.namespace .Release.Namespace) -}}
+{{- fail "the stack SRE agent and its metrics discovery must use the release namespace" -}}
 {{- end -}}
 {{- if and (ne (int .Values.rush.queryApi.integrations.sreAgent.service.port) 8081) (not .Values.metricsAgent.sreMetrics.url) -}}
 {{- fail "set metricsAgent.sreMetrics.url when using a custom SRE-agent Service port" -}}

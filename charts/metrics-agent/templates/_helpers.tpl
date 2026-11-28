@@ -111,7 +111,7 @@ app.kubernetes.io/component: metrics-agent
 {{- if .Values.sreMetrics.tokenSecret.name -}}
 {{- .Values.sreMetrics.tokenSecret.name -}}
 {{- else if .Values.global.rush.stack.enabled -}}
-{{- printf "%s-bootstrap" .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-sre-metrics" (.Release.Name | trunc 51 | trimSuffix "-") -}}
 {{- else -}}
 {{- fail "sreMetrics.tokenSecret.name is required for standalone authenticated SRE scraping" -}}
 {{- end -}}

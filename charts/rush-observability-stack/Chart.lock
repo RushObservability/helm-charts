@@ -4,6 +4,6 @@ dependencies:
   version: 0.6.4
 - name: metrics-agent
   repository: file://../metrics-agent
-  version: 0.1.12
-digest: sha256:a5e0158aa9dbfbd949c087d633356bd0b4e3202394d4cbb5ae09bee6d776d9d2
-generated: "2026-11-26T11:19:28.26059-08:00"
+  version: 0.1.13
+digest: sha256:7ad8ab8da26540f1aaca4c1063f9139c9f205ecafd366fd5fbd5e496e9a558b6
+generated: "2026-11-28T07:24:22.694979-08:00"

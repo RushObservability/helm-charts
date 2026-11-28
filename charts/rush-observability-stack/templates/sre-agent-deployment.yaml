@@ -47,6 +47,13 @@ spec:
                 secretKeyRef:
                   name: {{ $bootstrapSecret }}
                   key: sre-agent-internal-token
+            {{- if include "rush.stackSreMetricsEnabled" . }}
+            - name: SRE_AGENT_METRICS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "rush.stackSreMetricsSecretName" . | quote }}
+                  key: {{ .Values.metricsAgent.sreMetrics.tokenSecret.key | quote }}
+            {{- end }}
             # The agent reads telemetry and configuration through query-api.
             # It never receives ClickHouse credentials.
             - name: QUERY_API_URL

@@ -67,3 +67,13 @@
 {{- define "rush.stackVectorFullOtel" -}}
 {{- if and (eq .Values.collectors.mode "vector") (eq .Values.collectors.vector.mode "full-otel") }}true{{- end -}}
 {{- end -}}
+
+{{- define "rush.stackSreMetricsEnabled" -}}
+{{- if and .Values.metricsAgent.enabled .Values.metricsAgent.precedence.enabled .Values.metricsAgent.scrape.enabled .Values.metricsAgent.sreMetrics.enabled .Values.rush.queryApi.integrations.sreAgent.enabled -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{- define "rush.stackSreMetricsSecretName" -}}
+{{- default (printf "%s-sre-metrics" (.Release.Name | trunc 51 | trimSuffix "-")) .Values.metricsAgent.sreMetrics.tokenSecret.name -}}
+{{- end -}}
