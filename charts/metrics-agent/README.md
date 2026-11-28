@@ -1,6 +1,6 @@
 # metrics-agent
 
-![Version: 0.1.12](https://img.shields.io/badge/Version-0.1.12-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.6](https://img.shields.io/badge/AppVersion-0.1.6-informational?style=flat-square)
+![Version: 0.1.13](https://img.shields.io/badge/Version-0.1.13-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.1.6](https://img.shields.io/badge/AppVersion-0.1.6-informational?style=flat-square)
 
 Cluster-wide metric collection from Prometheus and VictoriaMetrics CRDs.
 
@@ -107,8 +107,8 @@ Kubernetes: `>=1.27.0-0`
 | sreMetrics.discovery.namespace | string | `""` |  |
 | sreMetrics.discovery.serviceName | string | `""` |  |
 | sreMetrics.enabled | bool | `false` | Explicitly enable authenticated collection from the optional SRE agent. |
-| sreMetrics.tokenSecret.key | string | `"sre-agent-internal-token"` |  |
-| sreMetrics.tokenSecret.name | string | `""` | Stack installs default to <release>-bootstrap. Override for external Secrets. |
+| sreMetrics.tokenSecret.key | string | `"sre-agent-metrics-token"` |  |
+| sreMetrics.tokenSecret.name | string | `""` | Stack installs default to <release>-sre-metrics. Override for external Secrets. |
 | sreMetrics.url | string | `""` | Stack installs default to http://<release>-sre-agent:8081/metrics. |
 | status.livenessPath | string | `"/livez"` |  |
 | status.metricsPath | string | `"/metrics"` |  |
