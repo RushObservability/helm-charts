@@ -1,7 +1,7 @@
 <clickhouse>
     <users>
-        <!-- SELECT grants and strict tenant row policies are installed and
-             verified by query-api before it becomes ready. -->
+        <!-- SELECT on the telemetry tables only. Query API installs tenant row
+             policies and refuses to start if this user can read anything else. -->
         <rushquery>
             <password from_env="CLICKHOUSE_READ_PASSWORD" />
             <networks>
@@ -10,6 +10,30 @@
             <profile>default</profile>
             <quota>default</quota>
             <access_management>0</access_management>
+            <grants>
+                <query>GRANT SELECT ON observability.logs</query>
+                <query>GRANT SELECT ON observability.spans</query>
+                <query>GRANT SELECT ON observability.spans_by_trace</query>
+                <query>GRANT SELECT ON observability.services</query>
+                <query>GRANT SELECT ON observability.metrics_gauge</query>
+                <query>GRANT SELECT ON observability.metrics_sum</query>
+                <query>GRANT SELECT ON observability.metrics_histogram</query>
+                <query>GRANT SELECT ON observability.metrics_exp_histogram</query>
+                <query>GRANT SELECT ON observability.metrics_summary</query>
+                <query>GRANT SELECT ON observability.metrics_gauge_1m</query>
+                <query>GRANT SELECT ON observability.metrics_gauge_1h</query>
+                <query>GRANT SELECT ON observability.metrics_sum_1m</query>
+                <query>GRANT SELECT ON observability.metrics_sum_1h</query>
+                <query>GRANT SELECT ON observability.rum</query>
+                <query>GRANT SELECT ON observability.rum_replay</query>
+                <query>GRANT SELECT ON observability.signal_usage</query>
+                <query>GRANT SELECT ON observability.tenant_usage</query>
+                <query>GRANT SELECT ON observability.profile_samples</query>
+                <query>GRANT SELECT ON observability.signal_query_stats</query>
+                <!-- Backing tables of the services and spans_by_trace views. ClickHouse
+                     names them .inner_id.<uuid> at runtime. -->
+                <query>GRANT SELECT ON observability.`.inner_id.`*</query>
+            </grants>
         </rushquery>
     </users>
 </clickhouse>
