@@ -156,7 +156,7 @@ clickhouse:
     # @default -- see values.yaml
     image:
       repository: clickhouse/clickhouse-server
-      tag: "26.10.3.7"
+      tag: "26.10.4.207"
       pullPolicy: IfNotPresent
     # -- Bound ClickHouse memory, in both operator and standalone mode. With NO limit the server sizes max_server_memory_usage to
     # ~90% of the whole node and the cgroup working-set grows unbounded. A hard limit caps
@@ -240,7 +240,7 @@ clickhouse:
       size: 10Gi
   image:
     repository: clickhouse/clickhouse-server
-    tag: "26.10.3.7"
+    tag: "26.10.4.207"
     digest: ""
     pullPolicy: IfNotPresent
   service:
